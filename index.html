@@ -65,7 +65,7 @@
     max-width:560px; min-height:22px; padding:8px 16px 0; font-size:14px;
     color:var(--ink-soft); text-align:center;
   }
-  #controls{ display:flex; gap:10px; padding:10px 14px 6px; }
+  #controls{ display:flex; gap:10px; padding:10px 14px 6px; flex-wrap:wrap; justify-content:center; }
   #controls button{
     font-size:15px; font-weight:700; letter-spacing:1px; cursor:pointer;
     padding:12px 18px; border-radius:10px; border:2px solid var(--ink);
@@ -75,6 +75,7 @@
   #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; min-width:120px; }
   #moveBtn.danger{ background:var(--vermillion); border-color:var(--vermillion); }
   #rescueBtn{ display:none; background:var(--gold); border-color:var(--gold); color:var(--ink); }
+  #hintBtn{ border-color:var(--gold); color:var(--ink); }
   #footer{ padding:8px 14px 20px; font-size:12px; color:var(--ink-soft); text-align:center; }
   #footer a{ color:var(--indigo); cursor:pointer; text-decoration:underline; }
   /* modals */
@@ -138,6 +139,7 @@
   <button id="holdBtn">HOLD</button>
   <button id="undoBtn">UNDO</button>
   <button id="moveBtn">MOVE</button>
+  <button id="hintBtn">🏮 HINT</button>
   <button id="rescueBtn">RESCUE ⛩</button>
 </div>
 
@@ -757,6 +759,8 @@ const RoninEngine = (() => {
     $('moveBtn').classList.toggle('danger', !!(preview && preview.captured));
     $('moveBtn').textContent = preview && preview.captured ? 'MOVE ⚠' : 'MOVE';
     $('rescueBtn').style.display = (play && canAscend() && !G.queue.length) ? 'inline-block' : 'none';
+    $('hintBtn').style.display = hintAvailable() ? 'inline-block' : 'none';
+    $('hintBtn').disabled = !play;
   }
 
   // ---------- turn flow ----------
@@ -805,6 +809,45 @@ const RoninEngine = (() => {
     G.finalMoves = G.moveCount;
     G.squares[G.attempt - 1] = 'w';
     finalizeDay(true);
+  }
+
+  // One hint per castle: the old maps mark the solver's optimal next move from
+  // the current position. Costs your only lantern; stamps 🏮 on the share result.
+  function hintAvailable() {
+    if (G.phase !== 'play' || !G.layout) return false;
+    if (G.mode === 'daily') { const s = readStore(); return !(s.hints && s.hints[G.dayNum]); }
+    return !G.hintUsed;
+  }
+  function markHintUsed() {
+    if (G.mode === 'daily') { const s = readStore(); s.hints = s.hints || {}; s.hints[G.dayNum] = true; writeStore(s); }
+    else G.hintUsed = true;
+  }
+  async function useHint() {
+    if (!hintAvailable() || G.busy || modalOpen()) return;
+    G.busy = true;
+    G.queue = []; hints = []; preview = null;
+    setMsg('Consulting the old maps… 🏮');
+    updateButtons();
+    await new Promise(r => setTimeout(r, 40)); // let the status paint before the solve
+    const res = RE.solveBoard({ ronin: G.ronin, army: G.army, stairs: G.layout.stairs },
+      { fLimit: RE.PAR_MAX, maxNodes: 500000, wantPath: true });
+    markHintUsed();
+    G.busy = false;
+    if (!res) {
+      setMsg('The maps show no way in from here — learn what you can, and fall back. 🏮');
+      refreshHints(); updateHud();
+      return;
+    }
+    if (!res.path.length) {
+      setMsg('The way is open — tap the Emperor and end this. 🏮');
+      refreshHints(); updateHud();
+      return;
+    }
+    const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, res.path[0]);
+    if (!steps) { setMsg('The maps are smudged here — trust your instincts. 🏮'); refreshHints(); updateHud(); return; }
+    G.queue = steps;
+    refreshHints(); updateHud();
+    setMsg(`The old maps mark a route — rescue in ${res.par} from here. Take it, or find your own. 🏮`);
   }
 
   // After a lost day: animate the solver's optimal line so the player sees the way in.
@@ -900,7 +943,9 @@ const RoninEngine = (() => {
   function squaresStr() { return G.squares.map(s => s === 'w' ? '🟩' : s === 'f' ? '🟥' : '⬜').join(''); }
   function shareText() {
     const w = G.squares.indexOf('w');
-    const head = `浪人 RONIN #${G.dayNum} ${squaresStr()}`;
+    const s = readStore();
+    const lantern = (s.hints && s.hints[G.dayNum]) ? ' 🏮' : '';
+    const head = `浪人 RONIN #${G.dayNum} ${squaresStr()}${lantern}`;
     const line = w >= 0
       ? `Rescued on attempt ${w + 1} · ${G.finalMoves} moves (par ${G.layout.par})${G.finalMoves === G.layout.par ? ' — perfect ⚔️' : ''}`
       : `The Emperor waits… (par ${G.layout.par})`;
@@ -1011,6 +1056,7 @@ const RoninEngine = (() => {
         <li>⚔️ <b>Guards:</b> after each of your moves, the two nearest guards step toward you. Orange arrows show who will move. If a guard reaches your tile — <b>captured</b>.</li>
         <li>👑 <b>Rescue:</b> reach a tile beside the Emperor, then tap him. Fewer moves is better — match <b>par</b> for a perfect rescue.</li>
         <li>🌄 <b>Daily:</b> same castle for everyone, every day. You have <b>3 attempts</b> — the guards are predictable, so every failure teaches you their ways.</li>
+        <li>🏮 <b>Hint:</b> once per castle, the old maps will mark your best next move — but your shared result will carry the lantern.</li>
       </ul>
       <button class="primary" id="beginBtn">BEGIN</button>
     `);
@@ -1060,6 +1106,7 @@ const RoninEngine = (() => {
   });
 
   $('moveBtn').onclick = executeMove;
+  $('hintBtn').onclick = useHint;
   $('holdBtn').onclick = hold;
   $('undoBtn').onclick = () => { if (G.queue.length) { G.queue.pop(); refreshHints(); } };
   $('rescueBtn').onclick = ascend;
@@ -1073,7 +1120,7 @@ const RoninEngine = (() => {
     G.layout = layout;
     G.attempt = 1; G.squares = [null, null, null];
     G.moveCount = 0; G.finalMoves = null; G.queue = [];
-    G.phase = 'play'; G.busy = false;
+    G.phase = 'play'; G.busy = false; G.hintUsed = false;
     G.ronin = { ...layout.ronin };
     G.army = layout.army.map(p => ({ ...p }));
     syncVis(); refreshHints(); updateHud();
@@ -1134,7 +1181,7 @@ const RoninEngine = (() => {
     const t = setInterval(() => { if (!G.busy && !tweens.length) { clearInterval(t); res(); } }, 25);
   });
   window.RoninDebug = {
-    G, RE, vis, startPractice, executeMove, hold, ascend, revealSolution,
+    G, RE, vis, startPractice, executeMove, hold, ascend, revealSolution, useHint, shareText,
     async autoWin() {
       while (G.phase === 'play') {
         await waitIdle();

@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-05 (v1.3 — "reveal the way in" after a lost day)*
+*Last updated: 2026-07-05 (v1.4 — 🏮 hint: one per castle)*
 
 ## What this project is
 
@@ -82,6 +82,13 @@ back for the daily format. `chess-ronin-001*` is an unrelated earlier side explo
   to return. Uses the existing solveBoard(wantPath) infrastructure; inputs stay locked during and
   after replay; results already saved so nothing is overwritten. Also fixed capture-flash decay to
   be time-based (was frame-based; stuck at full red on hidden tabs).
+- **2026-07-05** 🏮 **Hint** (one per castle): HINT button consults the solver from the *current*
+  position and queues the optimal next move (player can take it, undo it, or ignore it); status
+  shows moves-remaining-from-here. Spent-state persists per day in localStorage (`store.hints`);
+  practice boards get a fresh lantern each. Honesty stamp: using the hint adds 🏮 to the share
+  string. Edge messages handled: already beside Emperor ("tap him"), and no-path-from-here (the
+  hint spends itself telling you the attempt is doomed — informative on purpose). Scoring is
+  otherwise unaffected; hint doesn't cost a move.
 
 ## Verified (browser, 2026-07-04)
 
