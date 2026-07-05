@@ -230,8 +230,9 @@ const RoninEngine = (() => {
         let picked = null;
         for (const [er, ec] of tries) {
           if (er === a.r && ec === a.c) continue;
+          if (!stepLegal(a.r, a.c, er, ec, stairs)) continue; // never reach through a wall
           if (er === ronin.r && ec === ronin.c) { picked = [er, ec]; break; }
-          if (stepLegal(a.r, a.c, er, ec, stairs) && !occ.has(key(er, ec))) { picked = [er, ec]; break; }
+          if (!occ.has(key(er, ec))) { picked = [er, ec]; break; }
         }
         if (!picked) continue;
         tr = picked[0]; tc = picked[1];
@@ -484,6 +485,19 @@ const RoninEngine = (() => {
     s.results = s.results || {};
     s.results[G.dayNum] = { squares: G.squares, moves: G.finalMoves, par: G.layout.par, done: !!done };
     writeStore(s);
+  }
+  // Daily boards are deterministic, so cache the generated layout per day —
+  // avoids re-running the solver (up to a few seconds on hard days) on every load.
+  function cachedDailyBoard(dayNum) {
+    const s = readStore();
+    const cached = s.board && s.board.day === dayNum ? s.board.layout : null;
+    if (cached) return { ronin: cached.ronin, army: cached.army.map(p => ({ ...p })), stairs: new Set(cached.stairs), par: cached.par };
+    const layout = RE.dailyBoard(dayNum);
+    try {
+      s.board = { day: dayNum, layout: { ronin: layout.ronin, army: layout.army, stairs: [...layout.stairs], par: layout.par } };
+      writeStore(s);
+    } catch {}
+    return layout;
   }
 
   // ---------- tween machinery ----------
@@ -1042,7 +1056,7 @@ const RoninEngine = (() => {
     const dayNum = Math.max(1, RE.dayNumber());
     G.dayNum = dayNum;
     setTimeout(() => {
-      const layout = RE.dailyBoard(dayNum);
+      const layout = cachedDailyBoard(dayNum);
       const saved = (readStore().results || {})[dayNum];
       beginBoard(layout, 'daily');
       if (saved) {

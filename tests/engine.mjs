@@ -86,8 +86,9 @@ export function armyReply(ronin, army, stairs) {
       let picked = null;
       for (const [er, ec] of tries) {
         if (er === a.r && ec === a.c) continue;
+        if (!stepLegal(a.r, a.c, er, ec, stairs)) continue; // never reach through a wall
         if (er === ronin.r && ec === ronin.c) { picked = [er, ec]; break; }
-        if (stepLegal(a.r, a.c, er, ec, stairs) && !occ.has(key(er, ec))) { picked = [er, ec]; break; }
+        if (!occ.has(key(er, ec))) { picked = [er, ec]; break; }
       }
       if (!picked) continue;
       tr = picked[0]; tc = picked[1];

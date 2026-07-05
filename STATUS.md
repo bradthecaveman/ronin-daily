@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-05 (v1.1 — diagonal guards + visual pass)*
+*Last updated: 2026-07-05 (v1.2 — through-wall capture fix + daily board cache)*
 
 ## What this project is
 
@@ -63,6 +63,18 @@ back for the daily format. `chess-ronin-001*` is an unrelated earlier side explo
   as pale disc); stair treads now run across direction of travel (vertical treads on E/W gates,
   horizontal on N/S — previously all horizontal); guards recoloured to centered red dot + red ring
   (was off-center dot + cream ring).
+- **2026-07-05** Bugfix (Brad hit it in play): guards could capture the Ronin *through a wall* —
+  the diagonal-fallback capture shortcut skipped the `stepLegal` check. Now the fallback (incl. the
+  capture) requires a legal step, so a guard can only reach the Ronin across a ring boundary via a
+  stair. Repro + fix covered in `tests/`. Note: this weakened guards slightly, so daily boards
+  regenerated (still 100% solvable; par spread 8–13). Side effect: solver search grows with weaker
+  guards → worst-case gen ~7s.
+- **2026-07-05** Added per-day board cache in localStorage (`store.board = {day, layout}`). Daily
+  boards are deterministic, so generate once per day per device instead of on every page load —
+  hides the gen-time regression above; reloads are instant. Verified cache matches fresh gen.
+- **Clarified rule:** only the **two nearest guards** move each army turn — precisely, the two
+  nearest that have a legal step toward the Ronin (a fully-boxed-in nearest guard is skipped for the
+  next-nearest). The orange arrows always show exactly which guards will move.
 
 ## Verified (browser, 2026-07-04)
 
