@@ -694,11 +694,13 @@ const RoninEngine = (() => {
     }
     ctx.restore();
 
-    // capture flash
+    // capture flash — time-based decay so it fades correctly even if frames were skipped
     if (flashT > 0) {
-      ctx.fillStyle = `rgba(211,49,37,${Math.min(.4, flashT / 500)})`;
-      ctx.fillRect(0, 0, px, px);
-      flashT -= 16;
+      const left = flashT - performance.now();
+      if (left > 0) {
+        ctx.fillStyle = `rgba(211,49,37,${Math.min(.4, left / 500 * .4)})`;
+        ctx.fillRect(0, 0, px, px);
+      } else flashT = 0;
     }
   }
 
@@ -773,7 +775,7 @@ const RoninEngine = (() => {
       for (const m of rep.moves) queueTween(vis.army[m.i], m.to, 170);
       afterTweens(() => {
         G.army = rep.army; syncVis();
-        if (rep.captured) { flashT = 500; attemptFailed('captured'); return; }
+        if (rep.captured) { flashT = performance.now() + 500; attemptFailed('captured'); return; }
         G.busy = false;
         postChecks();
       });
@@ -791,7 +793,7 @@ const RoninEngine = (() => {
     for (const m of rep.moves) queueTween(vis.army[m.i], m.to, 170);
     afterTweens(() => {
       G.army = rep.army; syncVis();
-      if (rep.captured) { flashT = 500; attemptFailed('captured'); return; }
+      if (rep.captured) { flashT = performance.now() + 500; attemptFailed('captured'); return; }
       G.busy = false;
       postChecks();
     });
@@ -803,6 +805,42 @@ const RoninEngine = (() => {
     G.finalMoves = G.moveCount;
     G.squares[G.attempt - 1] = 'w';
     finalizeDay(true);
+  }
+
+  // After a lost day: animate the solver's optimal line so the player sees the way in.
+  async function revealSolution() {
+    if (G.phase !== 'done' || G.busy || G.revealing) return;
+    G.revealing = true; G.busy = true;
+    closeModal();
+    G.ronin = { ...G.layout.ronin };
+    G.army = G.layout.army.map(p => ({ ...p }));
+    G.queue = []; hints = []; preview = null;
+    syncVis(); updateHud();
+    setMsg('Consulting the old maps…');
+    await new Promise(r => setTimeout(r, 60)); // let the status paint before the solve
+    const res = RE.solveBoard({ ronin: G.ronin, army: G.army, stairs: G.layout.stairs },
+      { fLimit: RE.PAR_MAX, maxNodes: 500000, wantPath: true });
+    if (!res || !res.path) { setMsg('The path is lost to history.'); G.busy = false; G.revealing = false; return; }
+    let moveNo = 0;
+    for (const ep of res.path) {
+      const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, ep);
+      if (!steps) break;
+      for (const s of steps) queueTween(vis.ronin, s, 260);
+      G.ronin = { r: ep.r, c: ep.c };
+      moveNo++;
+      G.moveCount = moveNo; updateHud();
+      setMsg(ep.hold ? `Move ${moveNo}: hold — let the guards drift…` : `Move ${moveNo} of ${res.par}…`);
+      await new Promise(r => afterTweens(r));
+      const rep = RE.armyReply(G.ronin, G.army, G.layout.stairs);
+      for (const m of rep.moves) queueTween(vis.army[m.i], m.to, 240);
+      G.army = rep.army;
+      await new Promise(r => afterTweens(r));
+      if (!document.hidden) await new Promise(r => setTimeout(r, 200)); // beat between turns
+    }
+    moveNo++;
+    G.moveCount = moveNo; updateHud();
+    setMsg(`Move ${moveNo}: Ascend ⛩ — that was the way in. Par ${G.layout.par}. Tomorrow, it's yours.`);
+    G.busy = false; G.revealing = false;
   }
 
   function postChecks() {
@@ -942,6 +980,7 @@ const RoninEngine = (() => {
       <h2 style="text-align:center">${won ? 'Emperor rescued! ⛩' : 'Captured 💀'}</h2>
       <div class="squares">${squaresStr()}</div>
       <div class="headline">${headline}</div>
+      ${!won ? `<button class="primary" id="revealBtn" style="background:var(--gold);color:var(--ink)">REVEAL THE WAY IN ⛩</button>` : ''}
       ${isDaily ? `<button class="primary" id="shareBtn">SHARE RESULT</button><div id="shareFeedback"></div>` : ''}
       ${isDaily ? statsHtml() : ''}
       ${isDaily ? countdownHtml() : ''}
@@ -957,6 +996,8 @@ const RoninEngine = (() => {
       };
       startCountdown();
     }
+    const rb = $('revealBtn');
+    if (rb) rb.onclick = () => { rb.disabled = true; revealSolution(); };
     $('practiceLink2').onclick = () => { closeModal(); startPractice(); };
   }
 
@@ -1093,7 +1134,7 @@ const RoninEngine = (() => {
     const t = setInterval(() => { if (!G.busy && !tweens.length) { clearInterval(t); res(); } }, 25);
   });
   window.RoninDebug = {
-    G, RE, vis, startPractice, executeMove, hold, ascend,
+    G, RE, vis, startPractice, executeMove, hold, ascend, revealSolution,
     async autoWin() {
       while (G.phase === 'play') {
         await waitIdle();

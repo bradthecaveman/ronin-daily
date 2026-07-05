@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-05 (v1.2 — through-wall capture fix + daily board cache)*
+*Last updated: 2026-07-05 (v1.3 — "reveal the way in" after a lost day)*
 
 ## What this project is
 
@@ -75,6 +75,13 @@ back for the daily format. `chess-ronin-001*` is an unrelated earlier side explo
 - **Clarified rule:** only the **two nearest guards** move each army turn — precisely, the two
   nearest that have a legal step toward the Ronin (a fully-boxed-in nearest guard is skipped for the
   next-nearest). The orange arrows always show exactly which guards will move.
+- **2026-07-05** "REVEAL THE WAY IN ⛩" (Brad's idea): after a lost day (all 3 attempts failed,
+  daily or practice), the end modal offers an animated replay of the solver's optimal line —
+  board resets, the Ronin walks the par path move by move with a move counter, ends with
+  "that was the way in… tomorrow, it's yours." Turns a frustrating loss into a lesson + a reason
+  to return. Uses the existing solveBoard(wantPath) infrastructure; inputs stay locked during and
+  after replay; results already saved so nothing is overwritten. Also fixed capture-flash decay to
+  be time-based (was frame-based; stuck at full red on hidden tabs).
 
 ## Verified (browser, 2026-07-04)
 
