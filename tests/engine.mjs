@@ -71,14 +71,27 @@ export function armyReply(ronin, army, stairs) {
   for (const i of order) {
     if (done >= ARMY_MOVES) break;
     const a = arr[i];
+    // DIAGONAL VARIANT: guards step 8-directionally toward the ronin (chebyshev),
+    // keeping both axes when possible; fall back to an orthogonal step if the
+    // diagonal is blocked by a wall/occupant.
     let dr = Math.sign(ronin.r - a.r), dc = Math.sign(ronin.c - a.c);
-    if (dr !== 0 && dc !== 0) {
-      const rd = Math.abs(ronin.r - a.r), cd = Math.abs(ronin.c - a.c);
-      if (rd > cd) dc = 0; else dr = 0;
-    }
     if (dr === 0 && dc === 0) continue;
-    const tr = a.r + dr, tc = a.c + dc;
-    if (!stepLegal(a.r, a.c, tr, tc, stairs)) continue;
+    let tr = a.r + dr, tc = a.c + dc;
+    if (!stepLegal(a.r, a.c, tr, tc, stairs) || occ.has(key(tr, tc))) {
+      // diagonal blocked — try the dominant orthogonal axis, then the other
+      const rd = Math.abs(ronin.r - a.r), cd = Math.abs(ronin.c - a.c);
+      const tries = (rd >= cd)
+        ? [[a.r + dr, a.c], [a.r, a.c + dc]]
+        : [[a.r, a.c + dc], [a.r + dr, a.c]];
+      let picked = null;
+      for (const [er, ec] of tries) {
+        if (er === a.r && ec === a.c) continue;
+        if (er === ronin.r && ec === ronin.c) { picked = [er, ec]; break; }
+        if (stepLegal(a.r, a.c, er, ec, stairs) && !occ.has(key(er, ec))) { picked = [er, ec]; break; }
+      }
+      if (!picked) continue;
+      tr = picked[0]; tc = picked[1];
+    }
     if (tr === ronin.r && tc === ronin.c) {
       moves.push({ i, from: { r: a.r, c: a.c }, to: { r: tr, c: tc } });
       a.r = tr; a.c = tc;

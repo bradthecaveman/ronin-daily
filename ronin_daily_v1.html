@@ -219,14 +219,23 @@ const RoninEngine = (() => {
     for (const i of order) {
       if (done >= ARMY_MOVES) break;
       const a = arr[i];
-      let dr = Math.sign(ronin.r - a.r), dc = Math.sign(ronin.c - a.c);
-      if (dr !== 0 && dc !== 0) {
-        const rd = Math.abs(ronin.r - a.r), cd = Math.abs(ronin.c - a.c);
-        if (rd > cd) dc = 0; else dr = 0;
-      }
+      // guards step 8-directionally toward the ronin (chebyshev); if the diagonal
+      // is blocked by a wall or occupant, fall back to the dominant orthogonal axis
+      const dr = Math.sign(ronin.r - a.r), dc = Math.sign(ronin.c - a.c);
       if (dr === 0 && dc === 0) continue;
-      const tr = a.r + dr, tc = a.c + dc;
-      if (!stepLegal(a.r, a.c, tr, tc, stairs)) continue;
+      let tr = a.r + dr, tc = a.c + dc;
+      if (!stepLegal(a.r, a.c, tr, tc, stairs) || occ.has(key(tr, tc))) {
+        const rd = Math.abs(ronin.r - a.r), cd = Math.abs(ronin.c - a.c);
+        const tries = (rd >= cd) ? [[a.r + dr, a.c], [a.r, a.c + dc]] : [[a.r, a.c + dc], [a.r + dr, a.c]];
+        let picked = null;
+        for (const [er, ec] of tries) {
+          if (er === a.r && ec === a.c) continue;
+          if (er === ronin.r && ec === ronin.c) { picked = [er, ec]; break; }
+          if (stepLegal(a.r, a.c, er, ec, stairs) && !occ.has(key(er, ec))) { picked = [er, ec]; break; }
+        }
+        if (!picked) continue;
+        tr = picked[0]; tc = picked[1];
+      }
       if (tr === ronin.r && tc === ronin.c) {
         moves.push({ i, from: { r: a.r, c: a.c }, to: { r: tr, c: tc } });
         a.r = tr; a.c = tc;
@@ -447,8 +456,8 @@ const RoninEngine = (() => {
     stair: '#d9a544', stairLine: 'rgba(40,30,10,.55)',
     wall: '#171a22', goldWall: '#c9a13f',
     gridDark: 'rgba(255,255,255,.06)', gridLight: 'rgba(0,0,0,.08)',
-    ronin: '#f7f3e8', roninRing: '#2b3a67',
-    guard: '#23262e', guardRing: 'rgba(244,239,228,.85)', guardEye: '#8f2f2b',
+    ronin: '#e3b23c', roninRing: '#b7382f',
+    guard: '#23262e', guardRing: '#b0342c', guardEye: '#b0342c',
     emperor: '#e3b23c', emperorSun: '#b7382f',
     path: '#2b3a67', hint: 'rgba(43,58,103,.38)',
     intent: '#ff9d1a', danger: '#d33125',
@@ -543,9 +552,19 @@ const RoninEngine = (() => {
       ctx.strokeRect(c * cell + .5, r * cell + .5, cell - 1, cell - 1);
       if (stairs.has(RE.key(r, c))) {
         ctx.strokeStyle = COL.stairLine; ctx.lineWidth = 2;
+        // steps run across the direction of travel: N/S gates flow vertically
+        // (horizontal treads), E/W gates flow horizontally (vertical treads)
+        const northSouth = Math.abs(r - 6) > Math.abs(c - 6);
         for (let i = 1; i <= 3; i++) {
-          const y = r * cell + (cell * i) / 4;
-          ctx.beginPath(); ctx.moveTo(c * cell + cell * .22, y); ctx.lineTo(c * cell + cell * .78, y); ctx.stroke();
+          ctx.beginPath();
+          if (northSouth) {
+            const y = r * cell + (cell * i) / 4;
+            ctx.moveTo(c * cell + cell * .22, y); ctx.lineTo(c * cell + cell * .78, y);
+          } else {
+            const x = c * cell + (cell * i) / 4;
+            ctx.moveTo(x, r * cell + cell * .22); ctx.lineTo(x, r * cell + cell * .78);
+          }
+          ctx.stroke();
         }
       }
     }
@@ -645,7 +664,7 @@ const RoninEngine = (() => {
       ctx.strokeStyle = COL.guardRing; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(x, y, cell * .29, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = COL.guardEye;
-      ctx.beginPath(); ctx.arc(x, y - cell * .05, cell * .08, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, cell * .08, 0, Math.PI * 2); ctx.fill();
     }
     // ronin
     {

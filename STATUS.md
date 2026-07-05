@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-05*
+*Last updated: 2026-07-05 (v1.1 — diagonal guards + visual pass)*
 
 ## What this project is
 
@@ -35,8 +35,9 @@ back for the daily format. `chess-ronin-001*` is an unrelated earlier side explo
   tiles), 12 guards (6/4/2 by ring). Board geometry itself never changes.
 - Ronin: up to **2 steps/turn** (8-directional), or HOLD. No grapple/leap in v1 (parked for hard
   mode, along with ronin classes with different skills).
-- Guards: after each Ronin turn, the **2 nearest** each take 1 orthogonal step toward the Ronin
-  (deterministic: distance sort, index tiebreak, dominant axis, ties go horizontal). Guard onto
+- Guards: after each Ronin turn, the **2 nearest** each take 1 step toward the Ronin,
+  **8-directionally (diagonal allowed)**, falling back to the dominant orthogonal axis when a wall
+  or occupant blocks the diagonal (deterministic: distance sort, index tiebreak). Guard onto
   Ronin = captured.
 - Win: end a turn beside the Emperor, then Ascend (tap him) — counts as a move.
 - 3 attempts/day, same castle. Score = moves; par = solver optimum shown up front.
@@ -53,6 +54,15 @@ back for the daily format. `chess-ronin-001*` is an unrelated earlier side explo
 - **2026-07-04** Guard-intent arrows shown to player (deterministic AI = fair to show; deaths
   should be planning errors, not gotchas).
 - **2026-07-05** Repo initialized; index.html deploy copy; harness moved into `tests/`.
+- **2026-07-05** Guards move diagonally now (was orthogonal). Brad flagged the orthogonal AI let
+  the king-moving Ronin slip past diagonally — "a bit of a cheat." Benchmark confirmed: orthogonal
+  piled daily pars at the floor (8:74, 9:30, 10:14); diagonal spreads them across the band
+  (8:44, 9:25, 10:25, 11:17, 12:6, 13:2, 14:1) while staying 100% solver-verified. Fewer gen
+  tries (avg 2.6 vs 5.8), gen time still fine (p90 ~0.9s, max ~3.3s behind veil).
+- **2026-07-05** Visual pass: Ronin recoloured to gold+red-ring (Emperor family, was hard to spot
+  as pale disc); stair treads now run across direction of travel (vertical treads on E/W gates,
+  horizontal on N/S — previously all horizontal); guards recoloured to centered red dot + red ring
+  (was off-center dot + cream ring).
 
 ## Verified (browser, 2026-07-04)
 
