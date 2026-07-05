@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Ronin Prototype v17</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+  :root{
+    --bg:#f3f5f8;
+    --panel:#fff;
+    --muted:#667;
+  }
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;margin:12px;background:var(--bg);color:#123;}
+  h1{margin:4px 0 12px;font-size:20px}
+  #container{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  #boardWrap{background:var(--panel);padding:10px;border-radius:8px;box-shadow:0 6px 18px rgba(15,25,40,0.06)}
+  canvas{display:block;background:transparent}
+  #controls{max-width:420px}
+  button{padding:8px 10px;margin:6px 6px 6px 0;border-radius:8px;border:1px solid #d2d7df;background:#fff;cursor:pointer}
+  .status{margin-top:8px;font-weight:600}
+  .info{font-size:13px;color:var(--muted);max-width:420px;margin-top:8px}
+  .legend{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .sw{width:18px;height:18px;display:inline-block;margin-right:8px;border:1px solid #444;vertical-align:middle}
+  .small{font-size:12px;color:#556;margin-top:6px}
+</style>
+</head>
+<body>
+<h1>Ronin Prototype v17</h1>
+
+<div id="container">
+  <div id="boardWrap">
+    <canvas id="board" width="650" height="650"></canvas>
+  </div>
+
+  <div id="controls">
+    <div>
+      <button id="modePlaceRonin">Place Ronin (only 8 allowed tiles)</button>
+      <button id="modePlaceArmy">Place Army</button>
+    </div>
+
+    <div>
+      <button id="autoPlace">Auto Place (both)</button>
+      <button id="autoPlaceArmy">Auto Place Army</button>
+    </div>
+
+    <div>
+      <button id="startGame" disabled>Start Game</button>
+      <button id="resetAll">Reset All</button>
+    </div>
+
+    <div style="margin-top:8px">
+      Ronin placed: <span id="roninPlaced">No</span><br>
+      Army — Bottom: <span id="armyBottom">0</span>/6, Middle: <span id="armyMid">0</span>/4, Inner: <span id="armyInner">0</span>/2
+    </div>
+
+    <div class="status" id="status">Status: Setup — place Ronin then Army (or use Auto Place).</div>
+
+    <div class="info" id="help">
+      Rules (v17): 4 tiers (bottom → middle → inner → emperor). Tier changes only via stair tiles.
+      Bottom: 2-row outer ring. Middle: 2-row ring. Inner: 2-row ring. Emperor: single center tile (unwalkable).
+      <br><strong>Stairs:</strong> bottom-tier = corners; middle-tier = N/S/E/W midpoints; inner-tier = midpoints of inner sides (N/S/E/W).
+      <br><strong>Ronin:</strong> moves up to 3 steps (4 if hidden), can leap-capture by moving over an army piece, Grapple (press "g", swap with adjacent enemy, 2 uses), Ascend: when on inner-tier tile adjacent to Emperor click the Emperor tile to rescue (uses the Ronin turn).
+      <br><strong>Army:</strong> pieces = 6 bottom / 4 middle / 2 inner. Army moves up to 2 distinct pieces 1 square each (3 if alerted). Army captures by moving onto Ronin's square.
+    </div>
+
+    <div class="legend" style="margin-top:10px">
+      <div><span class="sw" style="background:#2b6fc2"></span> Bottom tier</div>
+      <div><span class="sw" style="background:#4aa34a"></span> Middle tier</div>
+      <div><span class="sw" style="background:#cfecca"></span> Inner tier</div>
+      <div><span class="sw" style="background:#ff7043"></span> Emperor</div>
+      <div><span class="sw" style="background:#ffe066; border:2px solid #f1c40f"></span> Stairs (arrow)</div>
+      <div><span class="sw" style="background:hotpink"></span> Ronin Start</div>
+      <div><span class="sw" style="background:#2f6cff"></span> Ronin</div>
+      <div><span class="sw" style="background:#ff5a5a"></span> Army</div>
+    </div>
+
+    <div class="small">Tips: double-click to execute Ronin queued move. Press <strong>g</strong> to Grapple (swap). Press <strong>Enter</strong> to execute move.</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // === Configuration ===
+  const N = 13;                // grid (13x13) — same math as v15
+  const thickness = 2;        // ring thickness
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const cellSize = canvas.width / N;
+  const armyTargets = { bottom:6, mid:4, inner:2 };
+
+  // === Game state ===
+  let board = [];            // integer level or 'S' for stair
+  let stairMask = [];        // boolean map for stairs
+  let pieces = { ronin: null, emperor: null, army: [] };
+  let counts = { ronin:0, bottom:0, mid:0, inner:0 };
+  let allowedRoninStarts = [];
+  let mode = 'placeRonin';   // 'placeRonin' | 'placeArmy'
+  let phase = 'setup';       // 'setup' | 'player' | 'army' | 'finished'
+  let movePath = [];
+  let grappleUses = 2;
+
+  // UI references
+  const statusEl = document.getElementById('status');
+  const roninPlacedEl = document.getElementById('roninPlaced');
+  const armyBottomEl = document.getElementById('armyBottom');
+  const armyMidEl = document.getElementById('armyMid');
+  const armyInnerEl = document.getElementById('armyInner');
+  const startBtn = document.getElementById('startGame');
+
+  // Buttons
+  document.getElementById('modePlaceRonin').addEventListener('click', ()=>{ mode='placeRonin'; setStatus('Mode: Place Ronin (only 8 allowed bottom tiles).'); });
+  document.getElementById('modePlaceArmy').addEventListener('click', ()=>{ mode='placeArmy'; setStatus('Mode: Place Army'); });
+  document.getElementById('autoPlace').addEventListener('click', autoPlace);
+  document.getElementById('autoPlaceArmy').addEventListener('click', autoPlaceArmyOnly);
+  document.getElementById('resetAll').addEventListener('click', ()=>{ init(); setStatus('Board reset'); });
+  document.getElementById('startGame').addEventListener('click', startGame);
+
+  document.addEventListener('keydown', (e)=>{
+    if(phase==='player' && e.key==='Enter') executeRoninMove();
+    if(e.key==='g' || e.key==='G') tryGrapple();
+    if(e.key==='Escape'){ movePath=[]; draw(); setStatus('Selection cleared'); }
+  });
+
+  function setStatus(s){ statusEl.textContent = 'Status: ' + s; }
+
+  // === Board construction (same layout math as v15) ===
+  function buildBoard(){
+    // initialize levels array
+    board = Array.from({length:N}, ()=>Array(N).fill(null));
+    const sizes = [N, N-2*thickness, N-4*thickness, 1];
+    const levels = [3,2,1,0]; // 3 bottom, 2 mid, 1 inner, 0 emperor
+    const c = Math.floor(N/2);
+
+    for(let i=0;i<sizes.length;i++){
+      const size = sizes[i], level = levels[i], half = Math.floor(size/2);
+      for(let r = c-half; r <= c+half; r++){
+        for(let cc = c-half; cc <= c+half; cc++){
+          board[r][cc] = level;
+        }
+      }
+    }
+
+    // stair mask: bottom corners, middle mid-sides (N,S,E,W), inner mid-sides (N,S,E,W)
+    stairMask = Array.from({length:N}, ()=>Array(N).fill(false));
+    // bottom tier stairs at corners
+    const bottomCorners = [
+      {r: 0, c: 0}, {r: 0, c: N-1}, {r: N-1, c: 0}, {r: N-1, c: N-1}
+    ];
+    for(const p of bottomCorners) stairMask[p.r][p.c] = true;
+
+    // middle-tier mid-sides (aligned to middle square)
+    const sizeMid = N - 2*thickness; // 9 for N=13
+    const halfMid = Math.floor(sizeMid/2); // 4
+    const midSides = [
+      {r: c - halfMid, c: c}, // north middle
+      {r: c + halfMid, c: c}, // south middle
+      {r: c, c: c - halfMid}, // west middle
+      {r: c, c: c + halfMid}  // east middle
+    ];
+    for(const p of midSides) stairMask[p.r][p.c] = true;
+
+    // inner-tier mid-sides (N,S,E,W) — requested change from corners to sides
+    const sizeInner = N - 4*thickness; // 5
+    const halfInner = Math.floor(sizeInner/2); // 2
+    const innerSides = [
+      {r: c - halfInner, c: c}, // north of inner
+      {r: c + halfInner, c: c}, // south of inner
+      {r: c, c: c - halfInner}, // west of inner
+      {r: c, c: c + halfInner}  // east of inner
+    ];
+    for(const p of innerSides) stairMask[p.r][p.c] = true;
+
+    // overlay 'S' for stair on board
+    for(let r=0;r<N;r++) for(let cc=0;cc<N;cc++) if(stairMask[r][cc]) board[r][cc] = 'S';
+
+    // allowed ronin starts: four corners + midpoints of each side (8 tiles)
+    allowedRoninStarts = [
+      {r:0,c:0}, {r:0,c:N-1}, {r:N-1,c:0}, {r:N-1,c:N-1},
+      {r:0,c:Math.floor(N/2)}, {r:N-1,c:Math.floor(N/2)},
+      {r:Math.floor(N/2),c:0}, {r:Math.floor(N/2),c:N-1}
+    ];
+  }
+
+  // === Helpers ===
+  function inBounds(r,c){ return r>=0 && r<N && c>=0 && c<N; }
+  function cxy(r,c){ return { x:c*cellSize, y:r*cellSize, cx:(c+0.5)*cellSize, cy:(r+0.5)*cellSize }; }
+  function roundRect(ctx,x,y,w,h,r,fill){ if(r===undefined) r=6; ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); if(fill) ctx.fill(); }
+  function tileIsAllowedStart(r,c){ return allowedRoninStarts.some(p => p.r===r && p.c===c); }
+
+  // reset pieces to initial empty
+  function resetPieces(){
+    pieces.army = [];
+    const c = Math.floor(N/2);
+    pieces.emperor = { r: c, c: c, kind: 'emperor' };
+    pieces.ronin = null;
+    counts = { ronin:0, bottom:0, mid:0, inner:0 };
+    updatePlacementUI();
+  }
+
+  function updatePlacementUI(){
+    roninPlacedEl.textContent = counts.ronin ? 'Yes' : 'No';
+    armyBottomEl.textContent = counts.bottom;
+    armyMidEl.textContent = counts.mid;
+    armyInnerEl.textContent = counts.inner;
+    const ok = (counts.ronin===1 && counts.bottom===armyTargets.bottom && counts.mid===armyTargets.mid && counts.inner===armyTargets.inner);
+    startBtn.disabled = !ok;
+  }
+
+  // === Drawing ===
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // draw tiles
+    for(let r=0;r<N;r++){
+      for(let c=0;c<N;c++){
+        const v = board[r][c];
+        const pos = cxy(r,c);
+        let g = ctx.createLinearGradient(pos.x,pos.y,pos.x+cellSize,pos.y+cellSize);
+        if(v===3){ g.addColorStop(0,'#355fb0'); g.addColorStop(1,'#2b6fc2'); } // bottom
+        else if(v===2){ g.addColorStop(0,'#4fae4f'); g.addColorStop(1,'#4aa34a'); } // mid
+        else if(v===1){ g.addColorStop(0,'#dff5d9'); g.addColorStop(1,'#cfecca'); } // inner
+        else if(v===0){ g.addColorStop(0,'#ff8a60'); g.addColorStop(1,'#ff7043'); } // emperor (center)
+        else if(v==='S'){ g.addColorStop(0,'#fff1b8'); g.addColorStop(1,'#ffe066'); } // stair (base)
+        ctx.fillStyle = g; ctx.fillRect(pos.x,pos.y,cellSize,cellSize);
+
+        // stair visual emphasis for non-S tiles where we also need a visible stair (but we set board[r][c]='S' earlier)
+        ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1; ctx.strokeRect(pos.x+0.5,pos.y+0.5,cellSize-1,cellSize-1);
+      }
+    }
+
+    // highlight ronin start tiles pink
+    ctx.globalAlpha = 0.95;
+    for(const p of allowedRoninStarts){
+      const pos = cxy(p.r,p.c);
+      ctx.fillStyle = 'hotpink';
+      ctx.fillRect(pos.x+2,pos.y+2,cellSize-4,cellSize-4);
+      // small outline
+      ctx.strokeStyle = '#b2226b'; ctx.lineWidth = 2; ctx.strokeRect(pos.x+2.5,pos.y+2.5,cellSize-5,cellSize-5);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // draw stairs arrows (on top so they're visible)
+    drawStairArrows();
+
+    // draw pieces (with shadow)
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.22)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
+    for(const a of pieces.army) drawPiece(a.r,a.c,'army');
+    if(pieces.emperor) drawPiece(pieces.emperor.r,pieces.emperor.c,'emperor');
+    if(pieces.ronin) drawPiece(pieces.ronin.r,pieces.ronin.c,'ronin');
+    ctx.restore();
+
+    // draw queued path
+    if(phase==='player' && movePath.length>0){
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,40,180,0.95)'; ctx.beginPath();
+      const start = { r: pieces.ronin.r, c: pieces.ronin.c };
+      const path = [start, ...movePath];
+      for(let i=0;i<path.length;i++){
+        const p = path[i];
+        const pos = cxy(p.r,p.c);
+        if(i===0) ctx.moveTo(pos.cx,pos.cy); else ctx.lineTo(pos.cx,pos.cy);
+      }
+      ctx.stroke();
+    }
+
+    // emperor neighbor markers (valid ascend tiles)
+    drawEmperorMarkers();
+  }
+
+  // draw small arrow on each stair pointing toward center
+  function drawStairArrows(){
+    if(!pieces.emperor) return;
+    const centerR = pieces.emperor.r, centerC = pieces.emperor.c;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.font = `${Math.floor(cellSize*0.45)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline='middle';
+    for(let r=0;r<N;r++){
+      for(let c=0;c<N;c++){
+        if(!stairMask[r][c]) continue;
+        const pos = cxy(r,c);
+        // direction vector from stair -> center
+        const dr = centerR - r, dc = centerC - c;
+        // choose dominant direction
+        let arrow = '↑';
+        if(Math.abs(dc) > Math.abs(dr)){
+          arrow = dc > 0 ? '→' : '←';
+        } else {
+          arrow = dr > 0 ? '↓' : '↑';
+        }
+        // draw small circle and arrow
+        ctx.save();
+        ctx.translate(pos.cx, pos.cy);
+        // small rounded tile behind arrow for contrast
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.beginPath(); ctx.arc(0,0,cellSize*0.18,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#222';
+        ctx.fillText(arrow, 0, 0);
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawPiece(r,c,kind){
+    const pos = cxy(r,c);
+    const w = cellSize*0.7, h = cellSize*0.7;
+    const x = pos.x + (cellSize - w)/2, y = pos.y + (cellSize - h)/2;
+    if(kind==='ronin'){
+      const grad = ctx.createLinearGradient(x,y,x,y+h); grad.addColorStop(0,'#6ea1ff'); grad.addColorStop(1,'#2f6cff');
+      ctx.fillStyle = grad; roundRect(ctx,x,y,w,h,true);
+      ctx.fillStyle = '#fff'; ctx.font='bold 18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('R', pos.cx, pos.cy+1);
+    } else if(kind==='emperor'){
+      const grad = ctx.createLinearGradient(x,y,x,y+h); grad.addColorStop(0,'#ffd9c2'); grad.addColorStop(1,'#ffb899');
+      ctx.fillStyle = grad; roundRect(ctx,x,y,w,h,true);
+      ctx.fillStyle = '#5a3115'; ctx.font='bold 16px sans-serif'; ctx.fillText('E', pos.cx, pos.cy+1);
+    } else {
+      const grad = ctx.createLinearGradient(x,y,x,y+h); grad.addColorStop(0,'#ff8a8a'); grad.addColorStop(1,'#ff5a5a');
+      ctx.fillStyle = grad; roundRect(ctx,x,y,w*0.9,h*0.9,true);
+      ctx.fillStyle = '#fff'; ctx.font='bold 14px sans-serif'; ctx.fillText('A', pos.cx, pos.cy+1);
+    }
+  }
+
+  function drawEmperorMarkers(){
+    if(!pieces.emperor) return;
+    const er = pieces.emperor.r, ec = pieces.emperor.c;
+    const neighbors = [
+      {r:er-1,c:ec-1},{r:er-1,c:ec},{r:er-1,c:ec+1},
+      {r:er,c:ec-1},                 {r:er,c:ec+1},
+      {r:er+1,c:ec-1},{r:er+1,c:ec},{r:er+1,c:ec+1}
+    ];
+    for(const n of neighbors){
+      if(!inBounds(n.r,n.c)) continue;
+      if(board[n.r][n.c] !== 1) continue; // only inner-tier tiles
+      const pos = cxy(n.r,n.c);
+      ctx.save(); ctx.translate(pos.cx,pos.cy);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath(); ctx.arc(0,10,4,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // === Game logic helpers ===
+  function pieceAt(r,c){
+    if(pieces.ronin && pieces.ronin.r===r && pieces.ronin.c===c) return pieces.ronin;
+    if(pieces.emperor && pieces.emperor.r===r && pieces.emperor.c===c) return pieces.emperor;
+    for(const a of pieces.army) if(a.r===r && a.c===c) return a;
+    return null;
+  }
+
+  function tierOf(r,c){
+    const v = board[r][c];
+    if(v==='S') return null;
+    if(v===3) return 'bottom';
+    if(v===2) return 'mid';
+    if(v===1) return 'inner';
+    return null;
+  }
+
+  // === Placement handlers ===
+  function handlePlacement(r,c){
+    if(mode === 'placeRonin'){
+      if(!tileIsAllowedStart(r,c)){ setStatus('Invalid start tile for Ronin — choose one of the 8 allowed bottom tiles.'); return; }
+      if(pieceAt(r,c)){ setStatus('Tile occupied.'); return; }
+      pieces.ronin = { r, c, kind: 'ronin' }; counts.ronin = 1;
+      setStatus('Ronin placed.');
+      updatePlacementCounts(); draw(); updatePlacementUI();
+    } else if(mode === 'placeArmy'){
+      const t = tierOf(r,c);
+      if(!t){ setStatus('Cannot place on stair or invalid tile.'); return; }
+      if(pieceAt(r,c)){ setStatus('Tile occupied.'); return; }
+      if(t==='bottom' && counts.bottom < armyTargets.bottom){ pieces.army.push({r,c,kind:'army',movable:true}); counts.bottom++; setStatus('Army placed (bottom).'); }
+      else if(t==='mid' && counts.mid < armyTargets.mid){ pieces.army.push({r,c,kind:'army',movable:true}); counts.mid++; setStatus('Army placed (mid).'); }
+      else if(t==='inner' && counts.inner < armyTargets.inner){ pieces.army.push({r,c,kind:'army',movable:true}); counts.inner++; setStatus('Army placed (inner).'); }
+      else { setStatus('Tier full or cannot place there.'); return; }
+      updatePlacementCounts(); draw(); updatePlacementUI();
+    }
+  }
+
+  function updatePlacementCounts(){
+    counts.bottom = pieces.army.filter(a => tierOf(a.r,a.c) === 'bottom').length;
+    counts.mid = pieces.army.filter(a => tierOf(a.r,a.c) === 'mid').length;
+    counts.inner = pieces.army.filter(a => tierOf(a.r,a.c) === 'inner').length;
+    counts.ronin = pieces.ronin ? 1 : 0;
+  }
+
+  // === Auto-place helpers ===
+  function autoPlace(){
+    buildBoard(); resetPieces();
+    const c = Math.floor(N/2);
+    pieces.ronin = { r: N-1, c: c, kind: 'ronin' }; // bottom center
+    counts.ronin = 1;
+    randomPlaceInTier('bottom', armyTargets.bottom);
+    randomPlaceInTier('mid', armyTargets.mid);
+    randomPlaceInTier('inner', armyTargets.inner);
+    updatePlacementCounts(); updatePlacementUI(); draw(); setStatus('Auto-placed Ronin and Army.');
+  }
+
+  function autoPlaceArmyOnly(){
+    pieces.army = [];
+    randomPlaceInTier('bottom', armyTargets.bottom);
+    randomPlaceInTier('mid', armyTargets.mid);
+    randomPlaceInTier('inner', armyTargets.inner);
+    updatePlacementCounts(); updatePlacementUI(); draw(); setStatus('Auto-placed Army (ronin unchanged).');
+  }
+
+  function randomPlaceInTier(tierName, needed){
+    const candidates = [];
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+      if(tierOf(r,c)===tierName && !pieceAt(r,c)) candidates.push({r,c});
+    }
+    for(let i=0;i<needed && candidates.length>0;i++){
+      const idx = Math.floor(Math.random()*candidates.length);
+      const p = candidates.splice(idx,1)[0];
+      pieces.army.push({r:p.r,c:p.c,kind:'army',movable:true});
+    }
+  }
+
+  function resetPlacement(){
+    pieces.army = []; pieces.ronin = null; counts = { ronin:0, bottom:0, mid:0, inner:0 }; const c=Math.floor(N/2); pieces.emperor={r:c,c:c,kind:'emperor'}; updatePlacementUI();
+  }
+
+  // === Click handling ===
+  canvas.addEventListener('click', (ev)=>{
+    const rect = canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+    const c = Math.floor(mx / cellSize), r = Math.floor(my / cellSize);
+    if(!inBounds(r,c)) return;
+    // special: clicking Emperor during player phase triggers Ascend if adjacent
+    if(phase === 'player' && r === pieces.emperor.r && c === pieces.emperor.c){
+      if(canRoninAscend()){
+        setStatus('RONIN ASCENDS — Emperor rescued! You win.');
+        phase = 'finished'; draw(); return;
+      } else { setStatus('You must be on an inner-tier tile adjacent to the Emperor to Ascend.'); return; }
+    }
+    if(phase === 'setup') return handlePlacement(r,c);
+    if(phase === 'player') return handlePlayerClick(r,c);
+  });
+
+  // === Player & movement logic ===
+  function handlePlayerClick(r,c){
+    if(r === pieces.emperor.r && c === pieces.emperor.c){
+      setStatus('Click Emperor only when adjacent on inner-tier to Ascend.'); return;
+    }
+    const p = pieceAt(r,c);
+    if(p && p.kind === 'ronin'){ movePath = []; setStatus('Ronin selected — click adjacent tiles to queue steps'); draw(); return; }
+    if(!pieces.ronin){ setStatus('No Ronin placed'); return; }
+    if(phase !== 'player') return;
+    roninAttemptAddStep({r,c});
+  }
+
+  function validRoninStep(from,to){ const dr=to.r-from.r, dc=to.c-from.c; return Math.max(Math.abs(dr), Math.abs(dc))===1; }
+  function isRoninHidden(){ for(const a of pieces.army) if(canSee(a, pieces.ronin)) return false; return true; }
+
+  // tier crossing allowed only when adjacent and one side is a stair
+  function tierCrossAllowed(from,to){
+    const tf = board[from.r][from.c], tt = board[to.r][to.c];
+    if(tf === tt) return true;
+    if(Math.max(Math.abs(from.r-to.r), Math.abs(from.c-to.c)) !== 1) return false;
+    if(board[from.r][from.c] === 'S' || board[to.r][to.c] === 'S') return true;
+    return false;
+  }
+
+  function roninAttemptAddStep(target){
+    const start = { r: pieces.ronin.r, c: pieces.ronin.c };
+    const cur = movePath.length>0 ? movePath[movePath.length-1] : start;
+    if(!validRoninStep(cur,target)){ setStatus('Step must be adjacent'); return; }
+    if(board[target.r][target.c] === 0){ setStatus('Use Ascend (click Emperor) when adjacent — do not queue a move to the Emperor tile.'); return; }
+    if(!tierCrossAllowed(cur,target)){ setStatus('Cannot change tiers here — use stairs'); return; }
+    const seq = [...movePath, target];
+    const maxSteps = isRoninHidden()?4:3;
+    if(seq.length > maxSteps){ setStatus('Not enough movement points'); return; }
+    let passed=0; let prev = start;
+    for(const s of seq){
+      if(!tierCrossAllowed(prev,s)){ setStatus('Path attempts illegal tier crossing; use stairs'); return; }
+      const q = pieceAt(s.r,s.c); if(q && q.kind && q.kind!=='ronin' && q.kind!=='emperor') passed++;
+      prev = s;
+    }
+    if(passed>1){ setStatus('Move would pass through more than one army piece'); return; }
+    movePath.push(target); draw(); setStatus('Path updated ('+movePath.length+' steps)');
+  }
+
+  function executeRoninMove(){
+    if(phase!=='player') return;
+    if(movePath.length===0){ setStatus('No move queued'); return; }
+    const passed=[];
+    for(const s of movePath){ const q=pieceAt(s.r,s.c); if(q && q.kind && q.kind!=='ronin' && q.kind!=='emperor') passed.push(q); }
+    if(passed.length>1){ setStatus('Illegal: passes through >1 enemy'); movePath=[]; draw(); return; }
+    if(passed.length===1){ const p=passed[0]; pieces.army = pieces.army.filter(a=>!(a.r===p.r && a.c===p.c)); setStatus('Captured enemy during leap!'); }
+    const final = movePath[movePath.length-1];
+    pieces.ronin.r = final.r; pieces.ronin.c = final.c; movePath=[];
+    setStatus('Ronin moved.');
+    draw();
+    phase = 'army'; setTimeout(armyTurn, 300);
+  }
+
+  function canRoninAscend(){
+    if(!pieces.ronin) return false;
+    const dr = Math.abs(pieces.ronin.r - pieces.emperor.r);
+    const dc = Math.abs(pieces.ronin.c - pieces.emperor.c);
+    if(Math.max(dr,dc) !== 1) return false;
+    if(board[pieces.ronin.r][pieces.ronin.c] !== 1) return false; // must be inner tier
+    return true;
+  }
+
+  function tryGrapple(){
+    if(phase!=='player'){ setStatus('Not your turn'); return; }
+    if(grappleUses<=0){ setStatus('No grapples left'); return; }
+    const adj = pieces.army.find(a => Math.max(Math.abs(a.r - pieces.ronin.r), Math.abs(a.c - pieces.ronin.c))===1);
+    if(!adj){ setStatus('No adjacent enemy to grapple'); return; }
+    if(!tierCrossAllowed({r:pieces.ronin.r,c:pieces.ronin.c},{r:adj.r,c:adj.c})){ setStatus('Cannot swap across tiers here — use stairs'); return; }
+    const rr = pieces.ronin.r, rc = pieces.ronin.c;
+    pieces.ronin.r = adj.r; pieces.ronin.c = adj.c;
+    adj.r = rr; adj.c = rc;
+    grappleUses--; draw(); setStatus('Grapple used — swapped with enemy.');
+    phase='army'; setTimeout(armyTurn, 300);
+  }
+
+  // LoS: returns true if army piece 'a' can see 'target' along straight or diagonal path without a tier-block
+  function canSee(a,target){
+    const dr = target.r - a.r, dc = target.c - a.c;
+    if(dr===0 && dc===0) return true;
+    const stepR = dr===0?0:dr/Math.abs(dr);
+    const stepC = dc===0?0:dc/Math.abs(dc);
+    if(!(Math.abs(stepR)===0 || Math.abs(stepC)===0 || Math.abs(Math.abs(stepR)-Math.abs(stepC))===0)) return false;
+    let rr=a.r+stepR, cc=a.c+stepC;
+    while(inBounds(rr,cc)){
+      if(board[rr][cc] !== board[a.r][a.c] && !stairMask[rr][cc]) return false;
+      if(rr===target.r && cc===target.c) return true;
+      rr+=stepR; cc+=stepC;
+    }
+    return false;
+  }
+
+  // === Army turn ===
+  function armyTurn(){
+    let alerted = pieces.army.some(a => canSee(a, pieces.ronin));
+    let movesAllowed = alerted ? 3 : 2;
+    setStatus('Army moves: ' + movesAllowed + (alerted ? ' (alerted)' : ''));
+
+    const candidates = pieces.army.filter(a => a.movable).slice();
+    candidates.sort((A,B)=>chebyshevDist({r:A.r,c:A.c}, pieces.ronin) - chebyshevDist({r:B.r,c:B.c}, pieces.ronin));
+
+    const moved = new Set();
+    let done = 0;
+    for(let i=0;i<candidates.length && done < movesAllowed;i++){
+      const a = candidates[i];
+      if(moved.has(a)) continue;
+      let dr = Math.sign(pieces.ronin.r - a.r), dc = Math.sign(pieces.ronin.c - a.c);
+      if(dr!==0 && dc!==0){
+        const rd = Math.abs(pieces.ronin.r - a.r), cd = Math.abs(pieces.ronin.c - a.c);
+        if(rd>cd) dc=0; else dr=0;
+      }
+      const tr = a.r + dr, tc = a.c + dc;
+      if(!inBounds(tr,tc)) continue;
+      if(!tierCrossAllowed({r:a.r,c:a.c},{r:tr,c:tc})) continue;
+      const occ = pieceAt(tr,tc);
+      if(occ && occ.kind && occ.kind!=='ronin') continue;
+      if(occ && occ.kind==='ronin'){ a.r = tr; a.c = tc; draw(); setStatus('ARMY WINS — Ronin captured'); phase='finished'; return; }
+      a.r = tr; a.c = tc;
+      moved.add(a); done++; draw();
+    }
+
+    if(phase!=='finished'){ phase='player'; setStatus('Player turn.'); }
+  }
+
+  function chebyshevDist(a,b){ return Math.max(Math.abs(a.r-b.r), Math.abs(a.c-b.c)); }
+
+  // === Init / Start ===
+  function init(){
+    buildBoard(); resetPieces(); draw(); setStatus('Setup: place Ronin then Army (or use Auto Place).');
+  }
+
+  function startGame(){
+    updatePlacementCounts();
+    if(!(counts.ronin===1 && counts.bottom===armyTargets.bottom && counts.mid===armyTargets.mid && counts.inner===armyTargets.inner)){
+      setStatus('Cannot start: placement incomplete.'); return;
+    }
+    phase = 'player'; movePath = []; grappleUses = 2;
+    setStatus('Game started — Player turn. Move adjacent to Emperor then click him to Ascend (win).');
+    document.getElementById('modePlaceRonin').disabled = true;
+    document.getElementById('modePlaceArmy').disabled = true;
+    document.getElementById('autoPlace').disabled = true;
+    document.getElementById('autoPlaceArmy').disabled = true;
+    startBtn.disabled = true;
+    draw();
+  }
+
+  // === Utilities for placement and UI ===
+  function updatePlacementUI(){ updatePlacementCounts(); updatePlacementCounts(); }
+  function updatePlacementCounts(){ counts.bottom = pieces.army.filter(a => tierOf(a.r,a.c) === 'bottom').length; counts.mid = pieces.army.filter(a => tierOf(a.r,a.c) === 'mid').length; counts.inner = pieces.army.filter(a => tierOf(a.r,a.c) === 'inner').length; counts.ronin = pieces.ronin ? 1 : 0; updatePlacementUIElements(); }
+  function updatePlacementUIElements(){ roninPlacedEl.textContent = counts.ronin ? 'Yes' : 'No'; armyBottomEl.textContent = counts.bottom; armyMidEl.textContent = counts.mid; armyInnerEl.textContent = counts.inner; startBtn.disabled = !(counts.ronin===1 && counts.bottom===armyTargets.bottom && counts.mid===armyTargets.mid && counts.inner===armyTargets.inner); }
+
+  // === Auto/place helpers already defined above ===
+  // (autoPlace and autoPlaceArmyOnly are above)
+
+  // === Click-to-place logic during setup: reuse handlePlacement above via canvas click ===
+
+  // === Expose some helpers to window for debug ===
+  window.RoninV17 = { init, buildBoard, pieces };
+
+  init();
+
+  // small convenience: expose functions globally for manual testing in console if needed
+  window.autoPlace = autoPlace;
+  window.autoPlaceArmy = autoPlaceArmyOnly;
+  window.resetAll = () => { init(); setStatus('Board reset'); };
+  window.startGame = startGame;
+
+  // dblclick to execute move
+  canvas.addEventListener('dblclick', ()=>{ if(phase==='player') executeRoninMove(); });
+
+  // End of closure
+})();
+</script>
+</body>
+</html>

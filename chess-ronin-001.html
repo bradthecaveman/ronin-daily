@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Chess Ronin 001</title>
+<style>
+  body { font-family: sans-serif; text-align: center; background: #f9f9f9; color: #222; }
+  h1 { margin-bottom: 0; }
+  .pitch { color: #666; font-size: 14px; margin-top: 4px; }
+  #status { font-size: 18px; font-weight: bold; margin: 10px 0 4px; min-height: 24px; }
+  #substatus { font-size: 13px; color: #777; min-height: 18px; }
+  #wrap { display: inline-block; margin: 10px auto; }
+  #boardRow { display: flex; align-items: center; justify-content: center; }
+  #ranks { display: flex; flex-direction: column; margin-right: 4px; }
+  #ranks div, #files div { width: 60px; height: 60px; display:flex; align-items:center; justify-content:center; font-size: 12px; color:#999; }
+  #files { display: flex; margin-left: 20px; }
+  #board { display: grid; grid-template-columns: repeat(8, 60px); grid-template-rows: repeat(8, 60px); border: 3px solid #333; }
+  .square { width: 60px; height: 60px; display: flex; justify-content: center; align-items: center; position: relative; cursor: default; }
+  .light { background: #eee; }
+  .dark { background: #b7c0c9; }
+  .piece { font-size: 34px; cursor: pointer; user-select: none; line-height: 1; }
+  .ronin-piece { color: #b3261e; cursor: pointer; }
+  .army-piece { color: #1a1a1a; cursor: pointer; }
+  .emperor-piece { color: #c9971d; }
+  .selected { outline: 3px solid #2d6cdf; outline-offset: -3px; }
+  .legal-move::after {
+    content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%;
+    background: rgba(45,108,223,0.55);
+  }
+  .legal-capture::after {
+    content: ""; position: absolute; width: 46px; height: 46px; border-radius: 50%;
+    border: 4px solid rgba(200,30,30,0.75); background: transparent;
+  }
+  button { margin: 5px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #banner { font-size: 22px; font-weight: bold; margin: 10px; min-height: 28px; }
+  #banner.win { color: #1a7a32; }
+  #banner.lose { color: #b3261e; }
+  #legend { font-size: 12px; color: #666; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>Chess Ronin 001</h1>
+<div class="pitch">"A lone Ronin must infiltrate a guarded board and rescue the Emperor before being trapped by an army that moves twice as fast."</div>
+
+<div>
+  <button id="newGameBtn" onclick="resetGame()">New Game</button>
+  <button id="endTurnBtn" onclick="endArmyTurn()">End Turn</button>
+  <button id="rescueBtn" onclick="rescue()">Rescue</button>
+</div>
+
+<div id="status"></div>
+<div id="substatus"></div>
+<div id="banner"></div>
+
+<div id="wrap">
+  <div id="files"></div>
+  <div id="boardRow">
+    <div id="ranks"></div>
+    <div id="board"></div>
+  </div>
+</div>
+
+<div id="legend">
+  Red = Ronin (moves 1 sq any direction, can silently dispatch lone pawns, blocked by armed pieces) &middot;
+  Black = Army (up to 2 different pieces per turn) &middot; Gold crown = Emperor (neutral, cannot be entered)
+</div>
+
+<script>
+const EMPEROR = { r: 4, c: 4 };
+const PIECE_SYMBOLS = {
+  RONIN: "\u{1F977}",
+  P: "♟",
+  N: "♞",
+  R: "♜",
+  B: "♝",
+};
+
+let board, turn, armyMovesLeft, selected, legalMoves, movedIds, canRescue, gameOver, nextId;
+
+function emptyBoard() {
+  return Array(8).fill(null).map(() => Array(8).fill(null));
+}
+
+function place(r, c, owner, type) {
+  board[r][c] = { id: nextId++, owner, type };
+}
+
+function init() {
+  board = emptyBoard();
+  nextId = 1;
+  place(EMPEROR.r, EMPEROR.c, "neutral", "EMPEROR");
+  place(0, 0, "ronin", "RONIN");
+
+  place(7, 0, "army", "R");
+  place(7, 7, "army", "R");
+  place(6, 2, "army", "N");
+  place(6, 5, "army", "N");
+  place(5, 1, "army", "B");
+  place(5, 6, "army", "B");
+  place(5, 3, "army", "P");
+  place(5, 5, "army", "P");
+
+  turn = "ronin";
+  armyMovesLeft = 2;
+  selected = null;
+  legalMoves = [];
+  movedIds = new Set();
+  gameOver = null;
+  canRescue = isAdjacentToEmperor(findRonin());
+  draw();
+}
+
+function findRonin() {
+  for (let r = 0; r < 8; r++)
+    for (let c = 0; c < 8; c++)
+      if (board[r][c] && board[r][c].owner === "ronin") return { r, c };
+  return null;
+}
+
+function inBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+function isEmperorSq(r, c) { return r === EMPEROR.r && c === EMPEROR.c; }
+function isAdjacentToEmperor(pos) {
+  if (!pos) return false;
+  return Math.abs(pos.r - EMPEROR.r) <= 1 && Math.abs(pos.c - EMPEROR.c) <= 1 && !(pos.r === EMPEROR.r && pos.c === EMPEROR.c);
+}
+
+function slideMoves(r, c, dirs, owner) {
+  const res = [];
+  for (const [dr, dc] of dirs) {
+    let nr = r + dr, nc = c + dc;
+    while (inBounds(nr, nc) && !isEmperorSq(nr, nc)) {
+      const target = board[nr][nc];
+      if (!target) {
+        res.push({ r: nr, c: nc, capture: false });
+      } else {
+        if (target.owner !== owner) res.push({ r: nr, c: nc, capture: true });
+        break;
+      }
+      nr += dr; nc += dc;
+    }
+  }
+  return res;
+}
+
+function moveGen(r, c) {
+  const p = board[r][c];
+  if (!p) return [];
+  if (p.type === "RONIN") {
+    const res = [];
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = r + dr, nc = c + dc;
+        if (!inBounds(nr, nc) || isEmperorSq(nr, nc)) continue;
+        const target = board[nr][nc];
+        if (!target) res.push({ r: nr, c: nc, capture: false });
+        else if (target.owner === "army" && target.type === "P") res.push({ r: nr, c: nc, capture: true });
+      }
+    }
+    return res;
+  }
+  if (p.type === "P") {
+    const res = [];
+    const fr = r - 1;
+    if (inBounds(fr, c) && !isEmperorSq(fr, c) && !board[fr][c]) res.push({ r: fr, c, capture: false });
+    for (const dc of [-1, 1]) {
+      const nc = c + dc;
+      if (inBounds(fr, nc) && !isEmperorSq(fr, nc) && board[fr][nc] && board[fr][nc].owner === "ronin") {
+        res.push({ r: fr, c: nc, capture: true });
+      }
+    }
+    return res;
+  }
+  if (p.type === "N") {
+    const offsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+    const res = [];
+    for (const [dr, dc] of offsets) {
+      const nr = r + dr, nc = c + dc;
+      if (!inBounds(nr, nc) || isEmperorSq(nr, nc)) continue;
+      const target = board[nr][nc];
+      if (!target || target.owner !== "army") res.push({ r: nr, c: nc, capture: !!target });
+    }
+    return res;
+  }
+  if (p.type === "R") return slideMoves(r, c, [[1,0],[-1,0],[0,1],[0,-1]], "army");
+  if (p.type === "B") return slideMoves(r, c, [[1,1],[1,-1],[-1,1],[-1,-1]], "army");
+  return [];
+}
+
+function draw() {
+  const filesEl = document.getElementById("files");
+  const ranksEl = document.getElementById("ranks");
+  filesEl.innerHTML = "";
+  ranksEl.innerHTML = "";
+  for (let c = 0; c < 8; c++) {
+    const d = document.createElement("div");
+    d.innerText = String.fromCharCode(97 + c);
+    filesEl.appendChild(d);
+  }
+  for (let r = 0; r < 8; r++) {
+    const d = document.createElement("div");
+    d.innerText = 8 - r;
+    ranksEl.appendChild(d);
+  }
+
+  const el = document.getElementById("board");
+  el.innerHTML = "";
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const d = document.createElement("div");
+      d.className = "square " + ((r + c) % 2 ? "dark" : "light");
+      if (selected && selected.r === r && selected.c === c) d.classList.add("selected");
+      const lm = legalMoves.find(m => m.r === r && m.c === c);
+      if (lm) d.classList.add(lm.capture ? "legal-capture" : "legal-move");
+
+      const p = board[r][c];
+      if (p) {
+        const span = document.createElement("span");
+        span.className = "piece " + (p.type === "EMPEROR" ? "emperor-piece" : p.owner === "ronin" ? "ronin-piece" : "army-piece");
+        span.innerText = p.type === "EMPEROR" ? "\u{1F451}" : PIECE_SYMBOLS[p.type];
+        d.appendChild(span);
+      }
+      d.onclick = () => onClick(r, c);
+      el.appendChild(d);
+    }
+  }
+
+  const statusEl = document.getElementById("status");
+  const subEl = document.getElementById("substatus");
+  const bannerEl = document.getElementById("banner");
+  document.getElementById("endTurnBtn").disabled = gameOver || turn !== "army";
+  document.getElementById("rescueBtn").disabled = !!gameOver || turn !== "ronin" || !canRescue;
+
+  if (gameOver) {
+    statusEl.innerText = "";
+    subEl.innerText = "";
+    bannerEl.className = gameOver === "ronin" ? "win" : "lose";
+    bannerEl.innerText = gameOver === "ronin" ? "The Ronin rescues the Emperor. Ronin wins!" : "The Ronin is captured. Army wins!";
+    return;
+  }
+  bannerEl.className = "";
+  bannerEl.innerText = "";
+  if (turn === "ronin") {
+    statusEl.innerText = "Ronin's Turn";
+    subEl.innerText = canRescue ? "Adjacent to the Emperor — Rescue is available!" : "Select the Ronin to move.";
+  } else {
+    statusEl.innerText = "Army's Turn";
+    subEl.innerText = `Moves remaining: ${armyMovesLeft} (select up to 2 different pieces)`;
+  }
+}
+
+function onClick(r, c) {
+  if (gameOver) return;
+  const clicked = board[r][c];
+
+  if (selected) {
+    const dest = legalMoves.find(m => m.r === r && m.c === c);
+    if (dest) {
+      performMove(selected, { r, c });
+      return;
+    }
+    if (clicked && isSelectable(r, c)) {
+      selectSquare(r, c);
+    } else {
+      selected = null;
+      legalMoves = [];
+      draw();
+    }
+    return;
+  }
+
+  if (clicked && isSelectable(r, c)) selectSquare(r, c);
+}
+
+function isSelectable(r, c) {
+  const p = board[r][c];
+  if (!p) return false;
+  if (turn === "ronin") return p.type === "RONIN";
+  return p.owner === "army" && !movedIds.has(p.id);
+}
+
+function selectSquare(r, c) {
+  selected = { r, c };
+  legalMoves = moveGen(r, c);
+  draw();
+}
+
+function performMove(from, to) {
+  const moving = board[from.r][from.c];
+  const captured = board[to.r][to.c];
+
+  if (captured && captured.owner === "ronin") {
+    board[to.r][to.c] = moving;
+    board[from.r][from.c] = null;
+    selected = null; legalMoves = [];
+    gameOver = "army";
+    draw();
+    return;
+  }
+
+  board[to.r][to.c] = moving;
+  board[from.r][from.c] = null;
+  selected = null;
+  legalMoves = [];
+
+  if (turn === "ronin") {
+    turn = "army";
+    armyMovesLeft = 2;
+    movedIds = new Set();
+  } else {
+    movedIds.add(moving.id);
+    armyMovesLeft--;
+    if (armyMovesLeft <= 0) endArmyTurn();
+  }
+  finishTurnCheck();
+}
+
+function finishTurnCheck() {
+  if (gameOver) { draw(); return; }
+  if (turn === "ronin") {
+    canRescue = isAdjacentToEmperor(findRonin());
+  }
+  draw();
+}
+
+function endArmyTurn() {
+  if (gameOver || turn !== "army") return;
+  turn = "ronin";
+  selected = null;
+  legalMoves = [];
+  canRescue = isAdjacentToEmperor(findRonin());
+  draw();
+}
+
+function rescue() {
+  if (gameOver || turn !== "ronin" || !canRescue) return;
+  gameOver = "ronin";
+  draw();
+}
+
+function resetGame() { init(); }
+
+init();
+</script>
+
+</body>
+</html>

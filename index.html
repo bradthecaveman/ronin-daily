@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>RONIN 浪人 — a daily rescue puzzle</title>
+<meta name="description" content="One ronin. One castle. One rescue a day. Cross the walls, slip the guards, reach the Emperor — in as few moves as you can."/>
+<meta property="og:title" content="RONIN 浪人 — a daily rescue puzzle"/>
+<meta property="og:description" content="Slip past the guards and rescue the Emperor. New castle every day."/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f4efe4'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23b7382f'/%3E%3C/svg%3E"/>
+<style>
+  :root{
+    --paper:#f4efe4; --paper-2:#ece5d3; --ink:#22252d; --ink-soft:#5a5e6b;
+    --indigo:#2b3a67; --indigo-bright:#3f5aa8;
+    --vermillion:#b7382f; --gold:#d9a544; --pine:#4d6b57; --slate:#33445d;
+    --win:#3f7d4e;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  }
+  header{
+    width:100%; max-width:560px; display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px 6px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand .kanji{ font-size:26px; color:var(--vermillion); font-weight:700; }
+  .brand h1{
+    margin:0; font-family:"Iowan Old Style",Palatino,Georgia,serif;
+    font-size:26px; letter-spacing:6px; font-weight:700;
+  }
+  .icon-btn{
+    border:1.5px solid var(--ink); background:transparent; color:var(--ink);
+    width:34px; height:34px; border-radius:50%; font-size:16px; font-weight:700;
+    cursor:pointer; line-height:1;
+  }
+  .icon-btn:active{ background:var(--paper-2); }
+  #chipRow{
+    width:100%; max-width:560px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px 8px; font-size:14px; color:var(--ink-soft);
+  }
+  #attemptDots{ display:flex; gap:6px; align-items:center; }
+  .adot{ width:12px; height:12px; border-radius:50%; border:2px solid var(--ink-soft); }
+  .adot.cur{ border-color:var(--ink); }
+  .adot.f{ background:var(--vermillion); border-color:var(--vermillion); }
+  .adot.w{ background:var(--win); border-color:var(--win); }
+  #practiceChip{
+    display:none; background:var(--indigo); color:#fff; font-size:11px; letter-spacing:2px;
+    padding:2px 8px; border-radius:10px;
+  }
+  #boardFrame{
+    position:relative; border-radius:12px; padding:7px; background:var(--ink);
+    box-shadow:0 10px 30px rgba(20,24,35,.25);
+  }
+  canvas{ display:block; border-radius:6px; }
+  #veil{
+    position:absolute; inset:7px; border-radius:6px; background:rgba(34,37,45,.92);
+    display:flex; align-items:center; justify-content:center; color:var(--paper);
+    font-size:15px; letter-spacing:1px; z-index:5;
+  }
+  #status{
+    max-width:560px; min-height:22px; padding:8px 16px 0; font-size:14px;
+    color:var(--ink-soft); text-align:center;
+  }
+  #controls{ display:flex; gap:10px; padding:10px 14px 6px; }
+  #controls button{
+    font-size:15px; font-weight:700; letter-spacing:1px; cursor:pointer;
+    padding:12px 18px; border-radius:10px; border:2px solid var(--ink);
+    background:transparent; color:var(--ink); min-width:84px;
+  }
+  #controls button:disabled{ opacity:.35; cursor:default; }
+  #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; min-width:120px; }
+  #moveBtn.danger{ background:var(--vermillion); border-color:var(--vermillion); }
+  #rescueBtn{ display:none; background:var(--gold); border-color:var(--gold); color:var(--ink); }
+  #footer{ padding:8px 14px 20px; font-size:12px; color:var(--ink-soft); text-align:center; }
+  #footer a{ color:var(--indigo); cursor:pointer; text-decoration:underline; }
+  /* modals */
+  #overlay{
+    position:fixed; inset:0; background:rgba(24,26,33,.55); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:16px;
+  }
+  #overlay.open{ display:flex; }
+  .modal{
+    background:var(--paper); border-radius:14px; max-width:420px; width:100%;
+    padding:22px 22px 18px; box-shadow:0 18px 50px rgba(0,0,0,.35);
+    max-height:88vh; overflow-y:auto; position:relative;
+  }
+  .modal h2{ margin:0 0 6px; font-family:"Iowan Old Style",Palatino,Georgia,serif; letter-spacing:1px; }
+  .modal .x{
+    position:absolute; top:10px; right:12px; border:none; background:none;
+    font-size:20px; cursor:pointer; color:var(--ink-soft);
+  }
+  .modal ul{ padding-left:20px; margin:10px 0; }
+  .modal li{ margin:9px 0; font-size:14.5px; line-height:1.45; }
+  .modal .primary{
+    width:100%; margin-top:12px; padding:12px; font-size:16px; font-weight:700;
+    background:var(--indigo); color:#fff; border:none; border-radius:10px; cursor:pointer;
+  }
+  .squares{ font-size:30px; letter-spacing:4px; text-align:center; margin:10px 0 4px; }
+  .headline{ text-align:center; font-size:16px; margin:2px 0 10px; }
+  .headline b{ color:var(--vermillion); }
+  .statgrid{ display:flex; justify-content:space-around; text-align:center; margin:14px 0 4px; }
+  .statgrid .n{ font-size:26px; font-weight:800; }
+  .statgrid .l{ font-size:11px; color:var(--ink-soft); letter-spacing:1px; text-transform:uppercase; }
+  .dist{ margin:10px 0 2px; }
+  .dist .row{ display:flex; align-items:center; gap:8px; margin:4px 0; font-size:12px; }
+  .dist .bar{ background:var(--indigo); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; min-width:18px; text-align:right; }
+  #countdown{ text-align:center; font-size:13px; color:var(--ink-soft); margin-top:12px; }
+  #shareFeedback{ text-align:center; font-size:13px; color:var(--win); min-height:16px; margin-top:6px; font-weight:700; }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
+  <div class="brand"><span class="kanji">浪人</span><h1>RONIN</h1></div>
+  <button class="icon-btn" id="statsBtn" aria-label="Statistics">≡</button>
+</header>
+
+<div id="chipRow">
+  <span id="dayChip">#—</span>
+  <span id="practiceChip">PRACTICE</span>
+  <span id="attemptDots"></span>
+  <span id="moveChip">moves 0 · par —</span>
+</div>
+
+<div id="boardFrame">
+  <canvas id="board"></canvas>
+  <div id="veil">forging today's castle…</div>
+</div>
+
+<div id="status">Reach the Emperor. Tap tiles to plan up to 2 steps, then MOVE.</div>
+
+<div id="controls">
+  <button id="holdBtn">HOLD</button>
+  <button id="undoBtn">UNDO</button>
+  <button id="moveBtn">MOVE</button>
+  <button id="rescueBtn">RESCUE ⛩</button>
+</div>
+
+<div id="footer">
+  cross the walls only at golden stairs · after your move, the two nearest guards step<br/>
+  <a id="practiceLink">practice on a random castle</a> · ronin daily v1
+</div>
+
+<div id="overlay">
+  <div class="modal" id="modal">
+    <button class="x" id="modalX">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script id="engine">
+// ===== Ronin Daily Engine (pure logic, no DOM) =====
+const RoninEngine = (() => {
+  const N = 13, C = 6;
+  const RONIN_STEPS = 2;
+  const ARMY_MOVES = 2;
+  const PAR_MIN = 8, PAR_MAX = 14;
+  const GEN_MAX_TRIES = 400;
+  const EPOCH_UTC = Date.UTC(2026, 6, 4); // puzzle #1 = 2026-07-04 (local date)
+  const START_TILES = [[0,0],[0,6],[0,12],[6,0],[6,12],[12,0],[12,6],[12,12]];
+
+  const key = (r, c) => r * 13 + c;
+  const cheb = (r1, c1, r2, c2) => Math.max(Math.abs(r1 - r2), Math.abs(c1 - c2));
+  const ringOf = (r, c) => Math.max(Math.abs(r - C), Math.abs(c - C));
+  const tierOf = (r, c) => { const d = ringOf(r, c); return d === 0 ? 0 : d <= 2 ? 1 : d <= 4 ? 2 : 3; };
+
+  function hash32(a, b) {
+    let h = 2166136261 >>> 0;
+    h = Math.imul(h ^ (a >>> 0), 16777619);
+    h = Math.imul(h ^ (b >>> 0), 16777619);
+    h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15;
+    return h >>> 0;
+  }
+  function mulberry32(seed) {
+    let t = seed >>> 0;
+    return function () {
+      t = (t + 0x6D2B79F5) | 0;
+      let r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function shuffle(arr, rng) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+  function dayNumber(date) {
+    const d = date || new Date();
+    return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - EPOCH_UTC) / 86400000) + 1;
+  }
+
+  function stepLegal(fr, fc, tr, tc, stairs) {
+    if (tr < 0 || tr > 12 || tc < 0 || tc > 12) return false;
+    if (cheb(fr, fc, tr, tc) !== 1) return false;
+    if (tr === C && tc === C) return false;
+    const a = tierOf(fr, fc), b = tierOf(tr, tc);
+    if (a === b) return true;
+    return stairs.has(key(fr, fc)) || stairs.has(key(tr, tc));
+  }
+
+  function armyReply(ronin, army, stairs) {
+    const arr = army.map(p => ({ r: p.r, c: p.c }));
+    const order = arr.map((_, i) => i).sort((x, y) => {
+      const dx = cheb(arr[x].r, arr[x].c, ronin.r, ronin.c);
+      const dy = cheb(arr[y].r, arr[y].c, ronin.r, ronin.c);
+      return dx - dy || x - y;
+    });
+    const occ = new Set(arr.map(p => key(p.r, p.c)));
+    const moves = [];
+    let done = 0;
+    for (const i of order) {
+      if (done >= ARMY_MOVES) break;
+      const a = arr[i];
+      let dr = Math.sign(ronin.r - a.r), dc = Math.sign(ronin.c - a.c);
+      if (dr !== 0 && dc !== 0) {
+        const rd = Math.abs(ronin.r - a.r), cd = Math.abs(ronin.c - a.c);
+        if (rd > cd) dc = 0; else dr = 0;
+      }
+      if (dr === 0 && dc === 0) continue;
+      const tr = a.r + dr, tc = a.c + dc;
+      if (!stepLegal(a.r, a.c, tr, tc, stairs)) continue;
+      if (tr === ronin.r && tc === ronin.c) {
+        moves.push({ i, from: { r: a.r, c: a.c }, to: { r: tr, c: tc } });
+        a.r = tr; a.c = tc;
+        return { army: arr, moves, captured: true };
+      }
+      if (occ.has(key(tr, tc))) continue;
+      occ.delete(key(a.r, a.c)); occ.add(key(tr, tc));
+      moves.push({ i, from: { r: a.r, c: a.c }, to: { r: tr, c: tc } });
+      a.r = tr; a.c = tc; done++;
+    }
+    return { army: arr, moves, captured: false };
+  }
+
+  function roninOptions(ronin, army, stairs) {
+    const occ = new Set(army.map(p => key(p.r, p.c)));
+    const seen = new Set([key(ronin.r, ronin.c)]);
+    let frontier = [ronin];
+    const out = [];
+    let anyStep = false;
+    for (let s = 0; s < RONIN_STEPS; s++) {
+      const nxt = [];
+      for (const p of frontier) {
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const nr = p.r + dr, nc = p.c + dc;
+          if (!stepLegal(p.r, p.c, nr, nc, stairs)) continue;
+          const k = key(nr, nc);
+          if (occ.has(k) || seen.has(k)) continue;
+          seen.add(k);
+          const q = { r: nr, c: nc };
+          nxt.push(q); out.push(q);
+          anyStep = true;
+        }
+      }
+      frontier = nxt;
+    }
+    if (anyStep) out.push({ r: ronin.r, c: ronin.c, hold: true });
+    return out;
+  }
+
+  function pathTo(ronin, army, stairs, target) {
+    if (target.hold || (target.r === ronin.r && target.c === ronin.c)) {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const nr = ronin.r + dr, nc = ronin.c + dc;
+        if (!stepLegal(ronin.r, ronin.c, nr, nc, stairs)) continue;
+        if (army.some(p => p.r === nr && p.c === nc)) continue;
+        return [{ r: nr, c: nc }, { r: ronin.r, c: ronin.c }];
+      }
+      return null;
+    }
+    const occ = new Set(army.map(p => key(p.r, p.c)));
+    const prev = new Map([[key(ronin.r, ronin.c), null]]);
+    let frontier = [ronin];
+    for (let s = 0; s < RONIN_STEPS; s++) {
+      const nxt = [];
+      for (const p of frontier) {
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const nr = p.r + dr, nc = p.c + dc;
+          if (!stepLegal(p.r, p.c, nr, nc, stairs)) continue;
+          const k = key(nr, nc);
+          if (occ.has(k) || prev.has(k)) continue;
+          prev.set(k, p);
+          if (nr === target.r && nc === target.c) {
+            const path = [];
+            let cur = { r: nr, c: nc };
+            while (cur && !(cur.r === ronin.r && cur.c === ronin.c)) {
+              path.unshift({ r: cur.r, c: cur.c });
+              cur = prev.get(key(cur.r, cur.c));
+            }
+            return path;
+          }
+          nxt.push({ r: nr, c: nc });
+        }
+      }
+      frontier = nxt;
+    }
+    return null;
+  }
+
+  // A* over (ronin, army) states; the army reply is deterministic, so this is
+  // single-agent search. par counts ronin turns including the final Ascend.
+  function solveBoard(board, opts = {}) {
+    const stairs = board.stairs instanceof Set ? board.stairs : new Set(board.stairs);
+    const maxNodes = opts.maxNodes ?? 250000;
+    const fLimit = Math.min(opts.fLimit ?? 60, 60);
+    const wantPath = !!opts.wantPath;
+    const h = (r, c) => { const d = ringOf(r, c); return d <= 1 ? 1 : Math.ceil((d - 1) / RONIN_STEPS) + 1; };
+    const sKey = (ro, ar) => { let s = '' + (ro.r * 13 + ro.c); for (const p of ar) s += ',' + (p.r * 13 + p.c); return s; };
+
+    const start = { ro: { r: board.ronin.r, c: board.ronin.c }, army: board.army.map(p => ({ r: p.r, c: p.c })), g: 0 };
+    const f0 = h(start.ro.r, start.ro.c);
+    if (f0 > fLimit) return null;
+
+    const buckets = [];
+    const push = (f, node) => { (buckets[f] || (buckets[f] = [])).push(node); };
+    const visited = new Map();
+    const parent = wantPath ? new Map() : null;
+    const k0 = sKey(start.ro, start.army);
+    visited.set(k0, 0);
+    if (wantPath) parent.set(k0, null);
+    push(f0, start);
+
+    let nodes = 0;
+    for (let f = f0; f <= fLimit; f++) {
+      const bucket = buckets[f];
+      if (!bucket) continue;
+      for (let bi = 0; bi < bucket.length; bi++) {
+        const node = bucket[bi];
+        const kk = sKey(node.ro, node.army);
+        if (visited.get(kk) < node.g) continue;
+        if (ringOf(node.ro.r, node.ro.c) === 1) {
+          const result = { par: node.g + 1, nodes };
+          if (wantPath) {
+            const path = [];
+            let ck = kk;
+            while (ck) {
+              const ent = parent.get(ck);
+              if (ent) path.unshift(ent.ep);
+              ck = ent ? ent.pk : null;
+            }
+            result.path = path;
+          }
+          return result;
+        }
+        if (++nodes > maxNodes) return null;
+        for (const ep of roninOptions(node.ro, node.army, stairs)) {
+          const rep = armyReply(ep, node.army, stairs);
+          if (rep.captured) continue;
+          const g2 = node.g + 1;
+          const f2 = g2 + h(ep.r, ep.c);
+          if (f2 > fLimit) continue;
+          const child = { ro: { r: ep.r, c: ep.c }, army: rep.army, g: g2 };
+          const ck = sKey(child.ro, child.army);
+          const prevG = visited.get(ck);
+          if (prevG !== undefined && prevG <= g2) continue;
+          visited.set(ck, g2);
+          if (wantPath) parent.set(ck, { pk: kk, ep: { r: ep.r, c: ep.c, hold: !!ep.hold } });
+          push(f2, child);
+        }
+      }
+    }
+    return null;
+  }
+
+  function genCandidate(rng) {
+    const stairs = new Set();
+    const sidesO = shuffle([0, 1, 2, 3], rng).slice(0, 3);
+    for (const s of sidesO) {
+      const off = 3 + Math.floor(rng() * 7);
+      let r, c;
+      if (s === 0) { r = 2; c = off; } else if (s === 1) { r = off; c = 10; }
+      else if (s === 2) { r = 10; c = off; } else { r = off; c = 2; }
+      stairs.add(key(r, c));
+    }
+    const sidesI = shuffle([0, 1, 2, 3], rng).slice(0, 2);
+    for (const s of sidesI) {
+      const off = 5 + Math.floor(rng() * 3);
+      let r, c;
+      if (s === 0) { r = 4; c = off; } else if (s === 1) { r = off; c = 8; }
+      else if (s === 2) { r = 8; c = off; } else { r = off; c = 4; }
+      stairs.add(key(r, c));
+    }
+    const [sr, sc] = START_TILES[Math.floor(rng() * 8)];
+    const ronin = { r: sr, c: sc };
+
+    const bottom = [], middle = [], inner = [];
+    for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
+      const d = ringOf(r, c);
+      if (stairs.has(key(r, c))) continue;
+      if (d >= 5) { if (cheb(r, c, ronin.r, ronin.c) >= 4) bottom.push({ r, c }); }
+      else if (d >= 3) middle.push({ r, c });
+      else if (d === 2) inner.push({ r, c });
+    }
+    shuffle(bottom, rng); shuffle(middle, rng); shuffle(inner, rng);
+    const army = [...bottom.slice(0, 6), ...middle.slice(0, 4), ...inner.slice(0, 2)];
+    if (army.length !== 12) return null;
+    return { ronin, army, stairs };
+  }
+
+  // Deterministic: same seed → same accepted board on every client.
+  function generateFromSeed(seedBase) {
+    let fallback = null;
+    for (let t = 0; t < GEN_MAX_TRIES; t++) {
+      const rng = mulberry32(hash32(seedBase, t));
+      const cand = genCandidate(rng);
+      if (!cand) continue;
+      const res = solveBoard(cand, { fLimit: PAR_MAX, maxNodes: 60000 });
+      if (!res) continue;
+      if (res.par >= PAR_MIN) return { ...cand, par: res.par, genTries: t + 1 };
+      if (!fallback) fallback = { ...cand, par: res.par, genTries: t + 1 };
+    }
+    return fallback;
+  }
+
+  const dailyBoard = (dayNum) => generateFromSeed(hash32(0x524F4E49, dayNum));
+  const practiceBoard = (seed) => generateFromSeed(hash32(0x50524143, seed));
+
+  return {
+    N, C, RONIN_STEPS, ARMY_MOVES, PAR_MIN, PAR_MAX, START_TILES,
+    key, cheb, ringOf, tierOf, hash32, mulberry32, dayNumber,
+    stepLegal, armyReply, roninOptions, pathTo, solveBoard,
+    genCandidate, generateFromSeed, dailyBoard, practiceBoard,
+  };
+})();
+</script>
+
+<script>
+(() => {
+  const RE = RoninEngine;
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+
+  // ---------- palette ----------
+  const COL = {
+    bottom: '#33445d', middle: '#4d6b57', inner: '#e8ddbd', emperorTile: '#a63028',
+    stair: '#d9a544', stairLine: 'rgba(40,30,10,.55)',
+    wall: '#171a22', goldWall: '#c9a13f',
+    gridDark: 'rgba(255,255,255,.06)', gridLight: 'rgba(0,0,0,.08)',
+    ronin: '#f7f3e8', roninRing: '#2b3a67',
+    guard: '#23262e', guardRing: 'rgba(244,239,228,.85)', guardEye: '#8f2f2b',
+    emperor: '#e3b23c', emperorSun: '#b7382f',
+    path: '#2b3a67', hint: 'rgba(43,58,103,.38)',
+    intent: '#ff9d1a', danger: '#d33125',
+  };
+
+  // ---------- game state ----------
+  const G = {
+    mode: 'daily', dayNum: 1, layout: null,
+    ronin: null, army: null,
+    attempt: 1, squares: [null, null, null],
+    moveCount: 0, finalMoves: null, queue: [],
+    busy: false, phase: 'play', // 'play' | 'done'
+  };
+  const vis = { ronin: { r: 0, c: 0 }, army: [] };
+  let cell = 40, hints = [], preview = null, flashT = 0;
+
+  // ---------- storage ----------
+  const SKEY = 'ronin.daily.v1';
+  const readStore = () => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch { return {}; } };
+  const writeStore = (s) => { try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch {} };
+  function saveDay(done) {
+    if (G.mode !== 'daily') return;
+    const s = readStore();
+    s.results = s.results || {};
+    s.results[G.dayNum] = { squares: G.squares, moves: G.finalMoves, par: G.layout.par, done: !!done };
+    writeStore(s);
+  }
+
+  // ---------- tween machinery ----------
+  let tweens = [], afterFns = [];
+  const ease = (k) => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+  function queueTween(target, to, dur) {
+    if (document.hidden) { target.r = to.r; target.c = to.c; return; } // no animation on hidden tabs
+    tweens.push({ target, to: { r: to.r, c: to.c }, dur, from: null, t0: null });
+  }
+  function afterTweens(fn) { if (!tweens.length) fn(); else afterFns.push(fn); }
+  function stepTweens(now) {
+    if (document.hidden) {
+      // rAF is paused on hidden tabs — snap animations so game logic never stalls
+      while (tweens.length) {
+        const t0 = tweens.shift();
+        t0.target.r = t0.to.r; t0.target.c = t0.to.c;
+        if (!tweens.length) { const fns = afterFns; afterFns = []; fns.forEach(f => f()); }
+      }
+      return;
+    }
+    const t = tweens[0];
+    if (!t) return;
+    if (!t.t0) { t.t0 = now; t.from = { r: t.target.r, c: t.target.c }; }
+    const k = Math.min(1, (now - t.t0) / t.dur);
+    const e = ease(k);
+    t.target.r = t.from.r + (t.to.r - t.from.r) * e;
+    t.target.c = t.from.c + (t.to.c - t.from.c) * e;
+    if (k >= 1) {
+      t.target.r = t.to.r; t.target.c = t.to.c;
+      tweens.shift();
+      if (!tweens.length) { const fns = afterFns; afterFns = []; fns.forEach(f => f()); }
+    }
+  }
+  function syncVis() {
+    vis.ronin = { r: G.ronin.r, c: G.ronin.c };
+    vis.army = G.army.map(p => ({ r: p.r, c: p.c }));
+  }
+
+  // ---------- layout / sizing ----------
+  function resize() {
+    // guard against 0-width reports (hidden tabs, bfcache restores)
+    const availW = window.innerWidth >= 200 ? window.innerWidth : 562;
+    cell = Math.floor(Math.min(520, availW - 42) / 13);
+    const px = cell * 13, dpr = window.devicePixelRatio || 1;
+    canvas.width = px * dpr; canvas.height = px * dpr;
+    canvas.style.width = px + 'px'; canvas.style.height = px + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- drawing ----------
+  const cx = (c) => (c + .5) * cell, cy = (r) => (r + .5) * cell;
+  function draw(now) {
+    const px = cell * 13;
+    ctx.clearRect(0, 0, px, px);
+    const stairs = G.layout ? G.layout.stairs : new Set();
+
+    for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
+      const d = RE.ringOf(r, c);
+      let fill = d === 0 ? COL.emperorTile : d <= 2 ? COL.inner : d <= 4 ? COL.middle : COL.bottom;
+      if (stairs.has(RE.key(r, c))) fill = COL.stair;
+      ctx.fillStyle = fill;
+      ctx.fillRect(c * cell, r * cell, cell, cell);
+      ctx.strokeStyle = d <= 2 ? COL.gridLight : COL.gridDark;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(c * cell + .5, r * cell + .5, cell - 1, cell - 1);
+      if (stairs.has(RE.key(r, c))) {
+        ctx.strokeStyle = COL.stairLine; ctx.lineWidth = 2;
+        for (let i = 1; i <= 3; i++) {
+          const y = r * cell + (cell * i) / 4;
+          ctx.beginPath(); ctx.moveTo(c * cell + cell * .22, y); ctx.lineTo(c * cell + cell * .78, y); ctx.stroke();
+        }
+      }
+    }
+
+    // walls on tier boundaries (gaps at stairs)
+    ctx.lineCap = 'round';
+    for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
+      const a = RE.tierOf(r, c);
+      if (c < 12) {
+        const b = RE.tierOf(r, c + 1);
+        if (a !== b && !stairs.has(RE.key(r, c)) && !stairs.has(RE.key(r, c + 1))) {
+          ctx.strokeStyle = (a === 0 || b === 0) ? COL.goldWall : COL.wall;
+          ctx.lineWidth = 3.5;
+          ctx.beginPath(); ctx.moveTo((c + 1) * cell, r * cell + 1); ctx.lineTo((c + 1) * cell, (r + 1) * cell - 1); ctx.stroke();
+        }
+      }
+      if (r < 12) {
+        const b = RE.tierOf(r + 1, c);
+        if (a !== b && !stairs.has(RE.key(r, c)) && !stairs.has(RE.key(r + 1, c))) {
+          ctx.strokeStyle = (a === 0 || b === 0) ? COL.goldWall : COL.wall;
+          ctx.lineWidth = 3.5;
+          ctx.beginPath(); ctx.moveTo(c * cell + 1, (r + 1) * cell); ctx.lineTo((c + 1) * cell - 1, (r + 1) * cell); ctx.stroke();
+        }
+      }
+    }
+
+    if (!G.layout) return;
+
+    // queued path
+    if (G.queue.length) {
+      ctx.strokeStyle = COL.path; ctx.lineWidth = 2.5; ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(cx(G.ronin.c), cy(G.ronin.r));
+      for (const q of G.queue) ctx.lineTo(cx(q.c), cy(q.r));
+      ctx.stroke(); ctx.setLineDash([]);
+      G.queue.forEach((q, i) => {
+        ctx.fillStyle = COL.path;
+        ctx.beginPath(); ctx.arc(cx(q.c), cy(q.r), cell * .17, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.floor(cell * .22)}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(String(i + 1), cx(q.c), cy(q.r) + .5);
+      });
+      if (preview && preview.captured) {
+        const q = G.queue[G.queue.length - 1];
+        ctx.strokeStyle = COL.danger; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx(q.c), cy(q.r), cell * .38, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+
+    // legal-step hints
+    if (G.phase === 'play' && !G.busy) {
+      ctx.fillStyle = COL.hint;
+      for (const hcell of hints) {
+        ctx.beginPath(); ctx.arc(cx(hcell.c), cy(hcell.r), cell * .11, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // guard intent arrows
+    if (preview) {
+      for (const m of preview.moves) {
+        const isCap = preview.captured && m === preview.moves[preview.moves.length - 1];
+        ctx.strokeStyle = ctx.fillStyle = isCap ? COL.danger : COL.intent;
+        ctx.lineWidth = 3;
+        const x1 = cx(m.from.c), y1 = cy(m.from.r), x2 = cx(m.to.c), y2 = cy(m.to.r);
+        const ang = Math.atan2(y2 - y1, x2 - x1);
+        const sx = x1 + Math.cos(ang) * cell * .3, sy = y1 + Math.sin(ang) * cell * .3;
+        const ex = x1 + Math.cos(ang) * cell * .78, ey = y1 + Math.sin(ang) * cell * .78;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(ex + Math.cos(ang) * 7, ey + Math.sin(ang) * 7);
+        ctx.lineTo(ex + Math.cos(ang + 2.5) * 6, ey + Math.sin(ang + 2.5) * 6);
+        ctx.lineTo(ex + Math.cos(ang - 2.5) * 6, ey + Math.sin(ang - 2.5) * 6);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    // emperor
+    const ex0 = cx(6), ey0 = cy(6);
+    ctx.fillStyle = COL.emperor;
+    ctx.beginPath(); ctx.arc(ex0, ey0, cell * .32, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COL.emperorSun;
+    ctx.beginPath(); ctx.arc(ex0, ey0, cell * .16, 0, Math.PI * 2); ctx.fill();
+    if (canAscend() && !G.queue.length && !G.busy && G.phase === 'play') {
+      const pulse = .42 + .1 * Math.sin(now / 260);
+      ctx.strokeStyle = COL.emperor; ctx.lineWidth = 3; ctx.globalAlpha = .55 + .4 * Math.sin(now / 260);
+      ctx.beginPath(); ctx.arc(ex0, ey0, cell * pulse + 4, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // guards
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+    for (const g of vis.army) {
+      const x = cx(g.c), y = cy(g.r);
+      ctx.fillStyle = COL.guard;
+      ctx.beginPath(); ctx.arc(x, y, cell * .29, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = COL.guardRing; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x, y, cell * .29, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = COL.guardEye;
+      ctx.beginPath(); ctx.arc(x, y - cell * .05, cell * .08, 0, Math.PI * 2); ctx.fill();
+    }
+    // ronin
+    {
+      const x = cx(vis.ronin.c), y = cy(vis.ronin.r);
+      ctx.fillStyle = COL.ronin;
+      ctx.beginPath(); ctx.arc(x, y, cell * .3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = COL.roninRing; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(x, y, cell * .3, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x - cell * .13, y + cell * .13); ctx.lineTo(x + cell * .15, y - cell * .15);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // capture flash
+    if (flashT > 0) {
+      ctx.fillStyle = `rgba(211,49,37,${Math.min(.4, flashT / 500)})`;
+      ctx.fillRect(0, 0, px, px);
+      flashT -= 16;
+    }
+  }
+
+  function loop(now) { stepTweens(now); draw(now); requestAnimationFrame(loop); }
+  // guarantees tween/turn progress even when the tab is hidden and rAF is paused
+  setInterval(() => { if (document.hidden) stepTweens(performance.now()); }, 120);
+
+  // ---------- rules helpers ----------
+  const guardAt = (r, c) => G.army.some(p => p.r === r && p.c === c);
+  const canAscend = () => G.layout && RE.ringOf(G.ronin.r, G.ronin.c) === 1;
+  function refreshHints() {
+    hints = [];
+    preview = null;
+    if (!G.layout || G.phase !== 'play') { updateButtons(); return; }
+    const head = G.queue.length ? G.queue[G.queue.length - 1] : G.ronin;
+    if (G.queue.length < RE.RONIN_STEPS) {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const nr = head.r + dr, nc = head.c + dc;
+        if (!RE.stepLegal(head.r, head.c, nr, nc, G.layout.stairs)) continue;
+        if (guardAt(nr, nc)) continue;
+        if (nr === G.ronin.r && nc === G.ronin.c) continue;
+        if (G.queue.some(q => q.r === nr && q.c === nc)) continue;
+        hints.push({ r: nr, c: nc });
+      }
+    }
+    if (G.queue.length) {
+      const ep = G.queue[G.queue.length - 1];
+      preview = RE.armyReply(ep, G.army, G.layout.stairs);
+    }
+    updateButtons();
+  }
+
+  // ---------- HUD ----------
+  const $ = (id) => document.getElementById(id);
+  function setMsg(m) { $('status').textContent = m; }
+  function updateHud() {
+    $('dayChip').textContent = G.mode === 'daily' ? `#${G.dayNum}` : 'random castle';
+    $('practiceChip').style.display = G.mode === 'practice' ? 'inline-block' : 'none';
+    $('moveChip').textContent = `moves ${G.moveCount} · par ${G.layout ? G.layout.par : '—'}`;
+    const dots = $('attemptDots');
+    dots.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const d = document.createElement('span');
+      d.className = 'adot' + (G.squares[i] === 'f' ? ' f' : G.squares[i] === 'w' ? ' w' : (i === G.attempt - 1 && G.phase === 'play') ? ' cur' : '');
+      dots.appendChild(d);
+    }
+  }
+  function updateButtons() {
+    const play = G.phase === 'play' && !G.busy;
+    $('moveBtn').disabled = !play || !G.queue.length;
+    $('undoBtn').disabled = !play || !G.queue.length;
+    $('holdBtn').disabled = !play || G.queue.length > 0;
+    $('moveBtn').classList.toggle('danger', !!(preview && preview.captured));
+    $('moveBtn').textContent = preview && preview.captured ? 'MOVE ⚠' : 'MOVE';
+    $('rescueBtn').style.display = (play && canAscend() && !G.queue.length) ? 'inline-block' : 'none';
+  }
+
+  // ---------- turn flow ----------
+  function executeMove() {
+    if (G.phase !== 'play' || G.busy || !G.queue.length || modalOpen()) return;
+    G.busy = true;
+    const endpoint = G.queue[G.queue.length - 1];
+    const rep = RE.armyReply(endpoint, G.army, G.layout.stairs);
+    for (const q of G.queue) queueTween(vis.ronin, q, 150);
+    G.ronin = { r: endpoint.r, c: endpoint.c };
+    G.moveCount++;
+    G.queue = [];
+    hints = []; preview = null;
+    updateHud(); updateButtons();
+    afterTweens(() => {
+      for (const m of rep.moves) queueTween(vis.army[m.i], m.to, 170);
+      afterTweens(() => {
+        G.army = rep.army; syncVis();
+        if (rep.captured) { flashT = 500; attemptFailed('captured'); return; }
+        G.busy = false;
+        postChecks();
+      });
+    });
+  }
+
+  function hold() {
+    if (G.phase !== 'play' || G.busy || G.queue.length || modalOpen()) return;
+    if (!RE.roninOptions(G.ronin, G.army, G.layout.stairs).length) return;
+    G.busy = true;
+    G.moveCount++;
+    const rep = RE.armyReply(G.ronin, G.army, G.layout.stairs);
+    setMsg('You hold your ground…');
+    updateHud();
+    for (const m of rep.moves) queueTween(vis.army[m.i], m.to, 170);
+    afterTweens(() => {
+      G.army = rep.army; syncVis();
+      if (rep.captured) { flashT = 500; attemptFailed('captured'); return; }
+      G.busy = false;
+      postChecks();
+    });
+  }
+
+  function ascend() {
+    if (G.phase !== 'play' || G.busy || G.queue.length || !canAscend() || modalOpen()) return;
+    G.moveCount++;
+    G.finalMoves = G.moveCount;
+    G.squares[G.attempt - 1] = 'w';
+    finalizeDay(true);
+  }
+
+  function postChecks() {
+    const opts = RE.roninOptions(G.ronin, G.army, G.layout.stairs);
+    if (canAscend()) setMsg('Beside the Emperor — tap him (or RESCUE) to finish! ⛩');
+    else if (!opts.length) { attemptFailed('cornered'); return; }
+    else setMsg('');
+    refreshHints(); updateHud();
+  }
+
+  function attemptFailed(reason) {
+    G.busy = false;
+    G.squares[G.attempt - 1] = 'f';
+    updateHud();
+    const capturedMsg = reason === 'cornered' ? `Cornered on move ${G.moveCount}` : `Captured on move ${G.moveCount}`;
+    if (G.attempt < 3) {
+      saveDay(false);
+      openModal(`
+        <h2>${capturedMsg} 💀</h2>
+        <p style="text-align:center;color:var(--ink-soft)">Attempt ${G.attempt} of 3 — the castle resets, the guards return to their posts.<br/>You know their ways a little better now.</p>
+        <button class="primary" id="retryBtn">Attempt ${G.attempt + 1}</button>
+      `);
+      $('retryBtn').onclick = (e) => {
+        e.target.disabled = true; e.target.onclick = null; // double-tap must not skip an attempt
+        closeModal(); G.attempt++; resetAttempt();
+      };
+    } else {
+      finalizeDay(false);
+    }
+  }
+
+  function resetAttempt() {
+    G.ronin = { ...G.layout.ronin };
+    G.army = G.layout.army.map(p => ({ ...p }));
+    G.moveCount = 0; G.queue = []; G.busy = false;
+    syncVis();
+    setMsg(`Attempt ${G.attempt} — reach the Emperor.`);
+    refreshHints(); updateHud();
+  }
+
+  function finalizeDay(won) {
+    G.phase = 'done';
+    G.busy = false;
+    saveDay(true);
+    updateHud(); updateButtons();
+    if (document.hidden) showEndModal(won);
+    else setTimeout(() => showEndModal(won), won ? 250 : 650);
+  }
+
+  // ---------- modals ----------
+  function openModal(html) { $('modalContent').innerHTML = html; $('overlay').classList.add('open'); }
+  function closeModal() { $('overlay').classList.remove('open'); }
+  const modalOpen = () => $('overlay').classList.contains('open');
+  $('modalX').onclick = closeModal;
+  $('overlay').onclick = (e) => { if (e.target === $('overlay')) closeModal(); };
+
+  function squaresStr() { return G.squares.map(s => s === 'w' ? '🟩' : s === 'f' ? '🟥' : '⬜').join(''); }
+  function shareText() {
+    const w = G.squares.indexOf('w');
+    const head = `浪人 RONIN #${G.dayNum} ${squaresStr()}`;
+    const line = w >= 0
+      ? `Rescued on attempt ${w + 1} · ${G.finalMoves} moves (par ${G.layout.par})${G.finalMoves === G.layout.par ? ' — perfect ⚔️' : ''}`
+      : `The Emperor waits… (par ${G.layout.par})`;
+    return head + '\n' + line;
+  }
+
+  function calcStats() {
+    const results = readStore().results || {};
+    const today = RE.dayNumber();
+    let played = 0, wins = 0, dist = [0, 0, 0];
+    for (const d of Object.keys(results)) {
+      const r = results[d];
+      if (!r.done) continue;
+      played++;
+      const w = r.squares.indexOf('w');
+      if (w >= 0) { wins++; dist[w]++; }
+    }
+    const winsOn = (d) => { const r = results[d]; return r && r.done && r.squares.includes('w'); };
+    let cur = 0;
+    for (let d = (results[today] && results[today].done) ? today : today - 1; d >= 1; d--) {
+      if (winsOn(d)) cur++; else break;
+    }
+    let max = 0, run = 0;
+    for (let d = 1; d <= today; d++) {
+      if (winsOn(d)) { run++; max = Math.max(max, run); }
+      else if (results[d] || d < today) run = 0;
+    }
+    return { played, wins, cur, max, dist };
+  }
+
+  function statsHtml() {
+    const s = calcStats();
+    const pc = s.played ? Math.round(100 * s.wins / s.played) : 0;
+    const maxD = Math.max(1, ...s.dist);
+    return `
+      <div class="statgrid">
+        <div><div class="n">${s.played}</div><div class="l">played</div></div>
+        <div><div class="n">${pc}</div><div class="l">win %</div></div>
+        <div><div class="n">${s.cur}</div><div class="l">streak</div></div>
+        <div><div class="n">${s.max}</div><div class="l">best</div></div>
+      </div>
+      <div class="dist">
+        ${[0, 1, 2].map(i => `
+          <div class="row"><span>attempt ${i + 1}</span>
+          <span class="bar" style="width:${Math.max(8, 90 * s.dist[i] / maxD)}%">${s.dist[i]}</span></div>`).join('')}
+      </div>`;
+  }
+
+  let cdTimer = null;
+  function countdownHtml() { return `<div id="countdown"></div>`; }
+  function startCountdown() {
+    const el = $('countdown');
+    if (!el) return;
+    clearInterval(cdTimer);
+    const tick = () => {
+      const now = new Date();
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+      const ms = next - now;
+      const h = String(Math.floor(ms / 3600000)).padStart(2, '0');
+      const m = String(Math.floor(ms / 60000) % 60).padStart(2, '0');
+      const s = String(Math.floor(ms / 1000) % 60).padStart(2, '0');
+      const e = $('countdown');
+      if (!e) { clearInterval(cdTimer); return; }
+      e.textContent = `next castle in ${h}:${m}:${s}`;
+    };
+    tick(); cdTimer = setInterval(tick, 1000);
+  }
+
+  function showEndModal(won) {
+    const w = G.squares.indexOf('w');
+    const perfect = won && G.finalMoves === G.layout.par;
+    const headline = won
+      ? `${G.finalMoves} moves · par ${G.layout.par}${perfect ? ' — <b>perfect ⚔️</b>' : ''}`
+      : `The Emperor waits… <b>(par ${G.layout.par})</b>`;
+    const isDaily = G.mode === 'daily';
+    openModal(`
+      <h2 style="text-align:center">${won ? 'Emperor rescued! ⛩' : 'Captured 💀'}</h2>
+      <div class="squares">${squaresStr()}</div>
+      <div class="headline">${headline}</div>
+      ${isDaily ? `<button class="primary" id="shareBtn">SHARE RESULT</button><div id="shareFeedback"></div>` : ''}
+      ${isDaily ? statsHtml() : ''}
+      ${isDaily ? countdownHtml() : ''}
+      <div style="text-align:center;margin-top:12px;font-size:13px">
+        <a id="practiceLink2" style="color:var(--indigo);cursor:pointer;text-decoration:underline">
+          ${isDaily ? 'practice on a random castle' : 'another random castle'}</a>
+      </div>
+    `);
+    if (isDaily) {
+      $('shareBtn').onclick = async () => {
+        try { await navigator.clipboard.writeText(shareText()); $('shareFeedback').textContent = 'copied to clipboard!'; }
+        catch { $('shareFeedback').textContent = shareText().replace('\n', ' — '); }
+      };
+      startCountdown();
+    }
+    $('practiceLink2').onclick = () => { closeModal(); startPractice(); };
+  }
+
+  function showHelp() {
+    openModal(`
+      <h2>浪人 RONIN</h2>
+      <p style="margin:4px 0;color:var(--ink-soft);font-size:14px">The Emperor is held at the heart of the castle. You are the only one coming for him.</p>
+      <ul>
+        <li>🥷 <b>Move:</b> tap tiles to plan up to <b>2 steps</b> (any direction), then hit <b>MOVE</b>. Or <b>HOLD</b> to wait in place.</li>
+        <li>🏯 <b>Walls:</b> the castle has three rings. Cross between rings only at the <b>golden stairs</b>.</li>
+        <li>⚔️ <b>Guards:</b> after each of your moves, the two nearest guards step toward you. Orange arrows show who will move. If a guard reaches your tile — <b>captured</b>.</li>
+        <li>👑 <b>Rescue:</b> reach a tile beside the Emperor, then tap him. Fewer moves is better — match <b>par</b> for a perfect rescue.</li>
+        <li>🌄 <b>Daily:</b> same castle for everyone, every day. You have <b>3 attempts</b> — the guards are predictable, so every failure teaches you their ways.</li>
+      </ul>
+      <button class="primary" id="beginBtn">BEGIN</button>
+    `);
+    $('beginBtn').onclick = () => {
+      closeModal();
+      const s = readStore(); s.seenHelp = true; writeStore(s);
+    };
+  }
+
+  // ---------- input ----------
+  canvas.addEventListener('click', (ev) => {
+    if (!G.layout || G.phase !== 'play' || G.busy || modalOpen()) return;
+    const rect = canvas.getBoundingClientRect();
+    const c = Math.floor((ev.clientX - rect.left) / cell);
+    const r = Math.floor((ev.clientY - rect.top) / cell);
+    if (r < 0 || r > 12 || c < 0 || c > 12) return;
+
+    if (r === 6 && c === 6) {
+      if (canAscend() && !G.queue.length) ascend();
+      else setMsg('Reach a tile beside the Emperor first, inside the keep.');
+      return;
+    }
+    const head = G.queue.length ? G.queue[G.queue.length - 1] : G.ronin;
+    if (G.queue.length && r === head.r && c === head.c) { G.queue.pop(); refreshHints(); return; }
+    if (G.queue.length >= RE.RONIN_STEPS) { setMsg('Two steps max — MOVE, or tap your last step to undo.'); return; }
+    if (!RE.stepLegal(head.r, head.c, r, c, G.layout.stairs)) {
+      if (RE.cheb(head.r, head.c, r, c) === 1) setMsg('A wall blocks that step — find the golden stairs.');
+      else setMsg('Plan one step at a time, from where your path ends.');
+      return;
+    }
+    if (guardAt(r, c)) { setMsg('A guard holds that tile.'); return; }
+    if ((r === G.ronin.r && c === G.ronin.c) || G.queue.some(q => q.r === r && q.c === c)) {
+      setMsg('You cannot double back within one move.');
+      return;
+    }
+    G.queue.push({ r, c });
+    setMsg('');
+    refreshHints();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (modalOpen()) { if (e.key === 'Escape') closeModal(); return; }
+    if (e.key === 'Enter') executeMove();
+    else if (e.key === 'Backspace') { if (G.queue.length) { G.queue.pop(); refreshHints(); } e.preventDefault(); }
+    else if (e.key === 'Escape') { G.queue = []; refreshHints(); }
+    else if (e.key === 'h' || e.key === 'H') hold();
+  });
+
+  $('moveBtn').onclick = executeMove;
+  $('holdBtn').onclick = hold;
+  $('undoBtn').onclick = () => { if (G.queue.length) { G.queue.pop(); refreshHints(); } };
+  $('rescueBtn').onclick = ascend;
+  $('helpBtn').onclick = showHelp;
+  $('statsBtn').onclick = () => { openModal(`<h2>Statistics</h2>${statsHtml()}${countdownHtml()}`); startCountdown(); };
+  $('practiceLink').onclick = () => startPractice();
+
+  // ---------- game setup ----------
+  function beginBoard(layout, mode) {
+    G.mode = mode;
+    G.layout = layout;
+    G.attempt = 1; G.squares = [null, null, null];
+    G.moveCount = 0; G.finalMoves = null; G.queue = [];
+    G.phase = 'play'; G.busy = false;
+    G.ronin = { ...layout.ronin };
+    G.army = layout.army.map(p => ({ ...p }));
+    syncVis(); refreshHints(); updateHud();
+    setMsg('Reach the Emperor. Tap tiles to plan up to 2 steps, then MOVE.');
+  }
+
+  function startPractice(seed) {
+    closeModal();
+    $('veil').style.display = 'flex';
+    $('veil').textContent = 'forging a random castle…';
+    setTimeout(() => {
+      const s = seed ?? Math.floor(Math.random() * 2 ** 31);
+      const layout = RE.practiceBoard(s);
+      beginBoard(layout, 'practice');
+      G.practiceSeed = s;
+      $('veil').style.display = 'none';
+    }, 30);
+  }
+
+  function startDaily() {
+    const dayNum = Math.max(1, RE.dayNumber());
+    G.dayNum = dayNum;
+    setTimeout(() => {
+      const layout = RE.dailyBoard(dayNum);
+      const saved = (readStore().results || {})[dayNum];
+      beginBoard(layout, 'daily');
+      if (saved) {
+        G.squares = saved.squares.slice(0, 3);
+        while (G.squares.length < 3) G.squares.push(null);
+        if (saved.done) {
+          G.phase = 'done';
+          G.finalMoves = saved.moves;
+          if (saved.moves != null) G.moveCount = saved.moves;
+          updateHud(); updateButtons();
+          setMsg('Today’s rescue is decided — return tomorrow, or practice below.');
+          showEndModal(saved.squares.includes('w'));
+        } else {
+          G.attempt = G.squares.filter(s => s !== null).length + 1;
+          setMsg(`Attempt ${G.attempt} — reach the Emperor.`);
+          updateHud();
+        }
+      }
+      $('veil').style.display = 'none';
+      if (!readStore().seenHelp) showHelp();
+    }, 30);
+  }
+
+  // day rollover notice
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && G.mode === 'daily' && RE.dayNumber() !== G.dayNum) {
+      setMsg('A new castle has risen — refresh to play today’s puzzle.');
+    }
+  });
+
+  // ---------- debug hooks (console only) ----------
+  const waitIdle = () => new Promise(res => {
+    if (!G.busy && !tweens.length) return res();
+    const t = setInterval(() => { if (!G.busy && !tweens.length) { clearInterval(t); res(); } }, 25);
+  });
+  window.RoninDebug = {
+    G, RE, vis, startPractice, executeMove, hold, ascend,
+    async autoWin() {
+      while (G.phase === 'play') {
+        await waitIdle();
+        if (G.phase !== 'play') break;
+        if (canAscend()) { ascend(); break; }
+        const res = RE.solveBoard({ ronin: G.ronin, army: G.army, stairs: G.layout.stairs }, { fLimit: 40, maxNodes: 400000, wantPath: true });
+        if (!res || !res.path || !res.path.length) return 'no solution from here';
+        const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, res.path[0]);
+        if (!steps) return 'unwalkable endpoint';
+        G.queue = steps;
+        executeMove();
+      }
+      await waitIdle();
+      return 'done';
+    },
+    async holdUntilCaught(maxTurns = 40) {
+      for (let i = 0; i < maxTurns && G.phase === 'play'; i++) {
+        await waitIdle();
+        if (G.phase !== 'play' || G.busy) break;
+        hold();
+      }
+      await waitIdle();
+      return G.phase;
+    },
+  };
+
+  // ---------- boot ----------
+  resize();
+  requestAnimationFrame(loop);
+  startDaily();
+})();
+</script>
+</body>
+</html>
