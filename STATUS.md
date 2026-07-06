@@ -108,6 +108,26 @@ skipping an attempt.
 4. Hard mode shelf: grapple, leap-capture, hidden/alerted bonus moves, ronin classes.
 5. Later: sound, richer animation, og-image, analytics-lite (respecting the no-tracking instinct).
 
+## Release gate — REQUIRED for every change, any session, any model
+
+Before updating `index.html` / committing a gameplay or engine change:
+
+1. `node tests/rules.mjs` — rules regressions (through-wall capture, stair capture,
+   two-nearest-guards, tier crossing, determinism). Must pass 100%.
+2. `node tests/parity.mjs` — the engine embedded in `ronin_daily_v1.html` and the mirror in
+   `tests/engine.mjs` must produce identical boards (40/40). **If you edit the engine in one
+   place you must sync the other** — this test is what catches drift.
+3. `node tests/bench.mjs` — par distribution healthy, 0 unsolvable, replay validation 10/10.
+4. Browser-verify the actual flows you touched (RoninDebug hooks: autoWin, holdUntilCaught,
+   useHint, revealSolution, startPractice(seed)).
+5. `cp ronin_daily_v1.html index.html`, update this file's decision log, commit.
+
+**Never change without strong justification:** the seeded PRNG (mulberry32/hash32), the epoch,
+armyReply's ordering/tiebreaks, or anything that alters daily board generation for dates already
+played — that would silently change everyone's past/shared results. Rules changes (new mechanics,
+guard behaviour) are design work: benchmark variants through the pipeline first (see the diagonal
+guards decision for the pattern) and get Brad's sign-off on the data.
+
 ## Debug hooks
 
 In-browser console: `RoninDebug.startPractice(seed)`, `RoninDebug.autoWin()` (solver plays out
