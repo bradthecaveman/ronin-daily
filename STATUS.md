@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-05 (hosted — live on GitHub Pages)*
+*Last updated: 2026-07-05 (v1.5 — visual pass: less clutter, less intimidating)*
 
 ## Live
 
@@ -104,6 +104,33 @@ share text + clipboard fallback, localStorage persist/restore across reloads, st
 countdown, practice mode isolation from daily record, mobile 375px layout. Bugs found and fixed
 during verification: hidden-tab animation stall, input leaking through modals, retry double-tap
 skipping an attempt.
+
+## Visual pass (2026-07-05, Brad: "first visual impression is a little intimidating")
+
+Diagnosis from a fresh look at the live board: the Ronin (the player's own piece) rendered as a
+gold circle with a single diagonal line — which reads as a "no entry" sign, not a character —
+while 12 bold, high-contrast red-ringed guards dominated the board. The piece you're meant to
+identify with was the hardest thing to find; you looked surrounded before making a move.
+
+Changes:
+- **Ronin**: replaced the diagonal-line mark with a hooded-figure triangle silhouette (dark ink
+  on gold), gave it its own drop shadow and a slightly larger radius — it's now the one piece
+  the eye lifts to first.
+- **Guards**: smaller radius, thinner ring, no shadow — present but visually secondary.
+- **Palette**: lightened bottom/middle tier fills and tier-boundary walls (was near-black,
+  now soft charcoal) — board reads as an inviting puzzle, not a war room.
+- **Chrome**: cut the permanent two-line rules-reminder footer (fully redundant with the ⓘ help
+  modal); restyled controls so HOLD/UNDO are quiet secondary actions and MOVE is the one bold
+  primary button, instead of five equal-weight bordered boxes.
+- **Bug found in passing**: `#moveBtn`/`#holdBtn` etc. were being silently overridden by the
+  `#controls button` base rule — tied on ID count but the base rule's extra type selector gave
+  it higher specificity, so the intended button colors (incl. the original indigo MOVE button)
+  never actually rendered, even before this session. Fixed by scoping the overrides under
+  `#controls #id` (two IDs beats one ID + one type, unambiguously). Worth knowing this pattern
+  if future button color changes silently don't apply — check computed styles, not just the
+  source CSS.
+
+No engine/logic touched — `tests/rules.mjs` and `tests/parity.mjs` re-run clean after this pass.
 
 ## Roadmap / open
 

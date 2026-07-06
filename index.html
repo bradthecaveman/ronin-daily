@@ -65,17 +65,18 @@
     max-width:560px; min-height:22px; padding:8px 16px 0; font-size:14px;
     color:var(--ink-soft); text-align:center;
   }
-  #controls{ display:flex; gap:10px; padding:10px 14px 6px; flex-wrap:wrap; justify-content:center; }
+  #controls{ display:flex; gap:8px; padding:10px 14px 6px; flex-wrap:wrap; justify-content:center; align-items:center; }
   #controls button{
-    font-size:15px; font-weight:700; letter-spacing:1px; cursor:pointer;
-    padding:12px 18px; border-radius:10px; border:2px solid var(--ink);
-    background:transparent; color:var(--ink); min-width:84px;
+    font-size:14px; font-weight:700; letter-spacing:1px; cursor:pointer;
+    padding:11px 16px; border-radius:10px; border:1.5px solid transparent;
+    background:transparent; color:var(--ink-soft); min-width:76px;
   }
-  #controls button:disabled{ opacity:.35; cursor:default; }
-  #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; min-width:120px; }
-  #moveBtn.danger{ background:var(--vermillion); border-color:var(--vermillion); }
-  #rescueBtn{ display:none; background:var(--gold); border-color:var(--gold); color:var(--ink); }
-  #hintBtn{ border-color:var(--gold); color:var(--ink); }
+  #controls button:disabled{ opacity:.3; cursor:default; }
+  #controls #holdBtn, #controls #undoBtn{ border-color:var(--paper-2); background:var(--paper-2); }
+  #controls #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; min-width:120px; font-size:15px; }
+  #controls #moveBtn.danger{ background:var(--vermillion); border-color:var(--vermillion); }
+  #controls #rescueBtn{ display:none; background:var(--gold); border-color:var(--gold); color:var(--ink); }
+  #controls #hintBtn{ border-color:var(--gold); color:var(--ink); }
   #footer{ padding:8px 14px 20px; font-size:12px; color:var(--ink-soft); text-align:center; }
   #footer a{ color:var(--indigo); cursor:pointer; text-decoration:underline; }
   /* modals */
@@ -144,8 +145,7 @@
 </div>
 
 <div id="footer">
-  cross the walls only at golden stairs · after your move, the two nearest guards step<br/>
-  <a id="practiceLink">practice on a random castle</a> · ronin daily v1
+  <a id="practiceLink">practice on a random castle</a>
 </div>
 
 <div id="overlay">
@@ -455,12 +455,12 @@ const RoninEngine = (() => {
 
   // ---------- palette ----------
   const COL = {
-    bottom: '#33445d', middle: '#4d6b57', inner: '#e8ddbd', emperorTile: '#a63028',
-    stair: '#d9a544', stairLine: 'rgba(40,30,10,.55)',
-    wall: '#171a22', goldWall: '#c9a13f',
-    gridDark: 'rgba(255,255,255,.06)', gridLight: 'rgba(0,0,0,.08)',
-    ronin: '#e3b23c', roninRing: '#b7382f',
-    guard: '#23262e', guardRing: '#b0342c', guardEye: '#b0342c',
+    bottom: '#6c86a3', middle: '#7fa189', inner: '#eee5cd', emperorTile: '#a63028',
+    stair: '#d9a544', stairLine: 'rgba(40,30,10,.5)',
+    wall: '#454b57', goldWall: '#c9a13f',
+    gridDark: 'rgba(255,255,255,.10)', gridLight: 'rgba(0,0,0,.07)',
+    ronin: '#e3b23c', roninRing: '#b7382f', roninMark: '#3a2f28',
+    guard: '#454b57', guardRing: '#8a3b34', guardEye: '#8a3b34',
     emperor: '#e3b23c', emperorSun: '#b7382f',
     path: '#2b3a67', hint: 'rgba(43,58,103,.38)',
     intent: '#ff9d1a', danger: '#d33125',
@@ -670,31 +670,36 @@ const RoninEngine = (() => {
       ctx.globalAlpha = 1;
     }
 
-    // guards
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+    // guards — flat and quiet, so they read as present but secondary
     for (const g of vis.army) {
       const x = cx(g.c), y = cy(g.r);
       ctx.fillStyle = COL.guard;
-      ctx.beginPath(); ctx.arc(x, y, cell * .29, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = COL.guardRing; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(x, y, cell * .29, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, cell * .25, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = COL.guardRing; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(x, y, cell * .25, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = COL.guardEye;
-      ctx.beginPath(); ctx.arc(x, y, cell * .08, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, cell * .07, 0, Math.PI * 2); ctx.fill();
     }
-    // ronin
+    // ronin — the only piece with lift (shadow + larger radius) so the eye finds it first
     {
       const x = cx(vis.ronin.c), y = cy(vis.ronin.r);
+      const r = cell * .33;
+      ctx.save();
+      ctx.shadowColor = 'rgba(183,56,47,.45)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 1;
       ctx.fillStyle = COL.ronin;
-      ctx.beginPath(); ctx.arc(x, y, cell * .3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
       ctx.strokeStyle = COL.roninRing; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(x, y, cell * .3, 0, Math.PI * 2); ctx.stroke();
-      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+      // hooded-figure silhouette — reads as a person, not a "no entry" slash
+      ctx.fillStyle = COL.roninMark;
       ctx.beginPath();
-      ctx.moveTo(x - cell * .13, y + cell * .13); ctx.lineTo(x + cell * .15, y - cell * .15);
-      ctx.stroke();
+      ctx.moveTo(x, y - r * 0.55);
+      ctx.lineTo(x + r * 0.42, y + r * 0.42);
+      ctx.lineTo(x - r * 0.42, y + r * 0.42);
+      ctx.closePath();
+      ctx.fill();
     }
-    ctx.restore();
 
     // capture flash — time-based decay so it fades correctly even if frames were skipped
     if (flashT > 0) {
