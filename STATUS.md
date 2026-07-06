@@ -4,7 +4,14 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-05 (v1.4 — 🏮 hint: one per castle)*
+*Last updated: 2026-07-05 (hosted — live on GitHub Pages)*
+
+## Live
+
+**https://bradthecaveman.github.io/ronin-daily/** — GitHub Pages, repo `bradthecaveman/ronin-daily`
+(public), serving `index.html` from `main`. Deploy = `cp ronin_daily_v1.html index.html && git push`;
+Pages rebuilds automatically on push to `main` (usually live within ~1-2 minutes; confirmed via
+`gh api repos/bradthecaveman/ronin-daily/pages/builds/latest`). No custom domain yet — see Roadmap.
 
 ## What this project is
 
@@ -102,9 +109,10 @@ skipping an attempt.
 
 1. **Playtest difficulty feel** — numbers say par 8–12; needs human confirmation that days feel
    varied and fair. Tuning levers: gate counts, par band, guard start-distance floor.
-2. **Hosting** — GitHub Pages (repo ready; needs `gh auth login` + push + enable Pages). Then a
-   custom domain and the share string gains a URL.
-3. Share-string polish once hosted (add link; consider streak emoji).
+2. ~~Hosting~~ — **done 2026-07-05**, see Live section above. Next: sanity-check the name "RONIN"
+   isn't already taken by another game before buying a custom domain; point domain at Pages once
+   chosen.
+3. Share-string polish once a domain exists (add link; consider streak emoji).
 4. Hard mode shelf: grapple, leap-capture, hidden/alerted bonus moves, ronin classes.
 5. Later: sound, richer animation, og-image, analytics-lite (respecting the no-tracking instinct).
 
