@@ -108,6 +108,15 @@ skipping an attempt.
 4. Hard mode shelf: grapple, leap-capture, hidden/alerted bonus moves, ronin classes.
 5. Later: sound, richer animation, og-image, analytics-lite (respecting the no-tracking instinct).
 
+## 10-year horizon validation (run 2026-07-05, `tests/horizon.mjs`)
+
+All **3,650 daily boards** (2026-07-04 → mid-2036) generated and solver-verified: **0 unsolvable,
+0 below the par band**. Par distribution across the decade: 8×1237, 9×929, 10×633, 11×424,
+12×238, 13×118, 14×71 — healthy decay, full band used. 15 days generate slowly (worst 7.2s,
+day 169); the per-day localStorage cache makes that a one-time cost per device, hidden behind the
+loading veil, so no action needed. Re-run this after ANY engine change (it's the final word on
+whether future players ever hit a broken day).
+
 ## Release gate — REQUIRED for every change, any session, any model
 
 Before updating `index.html` / committing a gameplay or engine change:
