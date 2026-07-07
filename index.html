@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>RONIN 浪人 — a daily rescue puzzle</title>
+<title>RONIN — a daily rescue puzzle</title>
 <meta name="description" content="One ronin. One castle. One rescue a day. Cross the walls, slip the guards, reach the Emperor — in as few moves as you can."/>
-<meta property="og:title" content="RONIN 浪人 — a daily rescue puzzle"/>
+<meta property="og:title" content="RONIN — a daily rescue puzzle"/>
 <meta property="og:description" content="Slip past the guards and rescue the Emperor. New castle every day."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -38,7 +38,7 @@
     margin:0; font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif;
     font-size:30px; letter-spacing:9px; font-weight:800; margin-left:9px; line-height:1.05;
   }
-  #attemptDots{ display:flex; gap:9px; align-items:center; justify-content:center; margin-top:7px; }
+  #attemptDots{ display:flex; gap:9px; align-items:center; justify-content:center; margin-top:8px; }
   .adot{ width:16px; height:16px; border-radius:50%; border:2.5px solid var(--ink-soft); }
   .icon-btn{
     border:1.5px solid var(--ink); background:transparent; color:var(--ink);
@@ -62,12 +62,12 @@
     padding:2px 8px; border-radius:10px;
   }
   #boardFrame{
-    position:relative; border-radius:12px; padding:7px; background:var(--ink);
-    box-shadow:0 10px 30px rgba(20,24,35,.25);
+    position:relative; padding:0; background:transparent;
+    box-shadow:14px 18px 34px rgba(58,50,43,.28); /* sun top-left */
   }
-  canvas{ display:block; border-radius:6px; }
+  canvas{ display:block; }
   #veil{
-    position:absolute; inset:7px; border-radius:6px; background:rgba(34,37,45,.92);
+    position:absolute; inset:0; background:rgba(58,50,43,.92);
     display:flex; align-items:center; justify-content:center; color:var(--paper);
     font-size:15px; letter-spacing:1px; z-index:5;
   }
@@ -128,14 +128,12 @@
 
 <header>
   <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
-  <div class="brand"><h1>RONIN</h1><span class="kanji">浪人</span><span id="attemptDots"></span></div>
+  <div class="brand"><h1>RONIN</h1><span id="attemptDots"></span></div>
   <button class="icon-btn" id="statsBtn" aria-label="Statistics">≡</button>
 </header>
 
-<div id="chipRow">
-  <span id="dayChip">#—</span>
+<div id="chipRow" style="justify-content:center">
   <span id="practiceChip">PRACTICE</span>
-  <span id="moveChip">moves 0 · par —</span>
 </div>
 
 <div id="boardFrame">
@@ -617,7 +615,8 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     ctx.fillStyle = COL.outer;
     ctx.fillRect(0, 0, px, px);
     ctx.save();
-    ctx.shadowColor = 'rgba(40,32,24,.35)'; ctx.shadowBlur = cell * .45; ctx.shadowOffsetY = cell * .12;
+    ctx.shadowColor = 'rgba(46,38,30,.5)'; ctx.shadowBlur = cell * .55;
+    ctx.shadowOffsetX = cell * .18; ctx.shadowOffsetY = cell * .22;
     ctx.fillStyle = COL.middle;
     ctx.fillRect(2 * cell, 2 * cell, 9 * cell, 9 * cell);
     ctx.fillStyle = COL.inner;
@@ -633,31 +632,26 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 
     // stair tiles — inset inside their cell so they never cut the wall keyline
     const inset = Math.max(2, cell * .07);
+    ctx.save();
+    ctx.shadowColor = 'rgba(46,38,30,.4)'; ctx.shadowBlur = cell * .18;
+    ctx.shadowOffsetX = cell * .07; ctx.shadowOffsetY = cell * .09;
     for (const k of stairs) {
       const r = Math.floor(k / 13), c = k % 13;
       const x = c * cell + inset, y = r * cell + inset, w = cell - 2 * inset;
       ctx.fillStyle = COL.stair;
       ctx.beginPath(); ctx.roundRect(x, y, w, w, 3); ctx.fill();
-      ctx.strokeStyle = COL.stairLine; ctx.lineWidth = 2;
-      const northSouth = Math.abs(r - 6) > Math.abs(c - 6);
-      for (let i = 1; i <= 3; i++) {
-        ctx.beginPath();
-        if (northSouth) {
-          const yy = y + (w * i) / 4;
-          ctx.moveTo(x + w * .18, yy); ctx.lineTo(x + w * .82, yy);
-        } else {
-          const xx = x + (w * i) / 4;
-          ctx.moveTo(xx, y + w * .18); ctx.lineTo(xx, y + w * .82);
-        }
-        ctx.stroke();
-      }
     }
+    ctx.restore();
 
     // emperor tile — inset red tile, fully inside its cell
     {
       const x = 6 * cell + inset, y = 6 * cell + inset, w = cell - 2 * inset;
+      ctx.save();
+      ctx.shadowColor = 'rgba(46,38,30,.4)'; ctx.shadowBlur = cell * .18;
+      ctx.shadowOffsetX = cell * .07; ctx.shadowOffsetY = cell * .09;
       ctx.fillStyle = COL.emperorTile;
       ctx.beginPath(); ctx.roundRect(x, y, w, w, 3); ctx.fill();
+      ctx.restore();
     }
 
     // walls — uniform 2px keylines on every tier boundary (gaps at stairs) + outer edge
@@ -753,8 +747,6 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       const x = cx(g.c), y = cy(g.r);
       ctx.fillStyle = COL.guard;
       ctx.beginPath(); ctx.arc(x, y, pieceR, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = COL.guardRing; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(x, y, pieceR, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = COL.guardEye;
       ctx.beginPath(); ctx.arc(x, y, pieceR * .16, 0, Math.PI * 2); ctx.fill();
     }
@@ -763,19 +755,20 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       const x = cx(vis.ronin.c), y = cy(vis.ronin.r);
       const r = pieceR;
       ctx.save();
-      ctx.shadowColor = 'rgba(140,47,39,.5)'; ctx.shadowBlur = 9; ctx.shadowOffsetY = 1;
+      ctx.shadowColor = 'rgba(46,38,30,.45)'; ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
       ctx.fillStyle = COL.ronin;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       ctx.strokeStyle = COL.roninRing; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-      // curved slash — a katana arc, cream on red
-      ctx.strokeStyle = COL.roninMark; ctx.lineWidth = Math.max(2.5, r * .18); ctx.lineCap = 'round';
+      // curved katana slash with tapered points — a filled crescent, cream on red
+      ctx.fillStyle = COL.roninMark;
       ctx.beginPath();
-      ctx.moveTo(x - r * .48, y + r * .52);
-      ctx.quadraticCurveTo(x + r * .38, y + r * .28, x + r * .52, y - r * .48);
-      ctx.stroke();
-      ctx.lineCap = 'butt';
+      ctx.moveTo(x - r * .5, y + r * .54);
+      ctx.quadraticCurveTo(x + r * .44, y + r * .34, x + r * .54, y - r * .5);
+      ctx.quadraticCurveTo(x + r * .2, y + r * .1, x - r * .5, y + r * .54);
+      ctx.closePath(); ctx.fill();
     }
 
     // capture flash — time-based decay so it fades correctly even if frames were skipped
@@ -822,9 +815,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   const $ = (id) => document.getElementById(id);
   function setMsg(m) { $('status').textContent = m; }
   function updateHud() {
-    $('dayChip').textContent = G.mode === 'daily' ? `#${G.dayNum}` : 'random castle';
     $('practiceChip').style.display = G.mode === 'practice' ? 'inline-block' : 'none';
-    $('moveChip').textContent = `moves ${G.moveCount} · par ${G.layout ? G.layout.par : '—'}`;
     const dots = $('attemptDots');
     dots.innerHTML = '';
     for (let i = 0; i < 3; i++) {
@@ -1028,7 +1019,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const s = readStore();
     const lantern = modeState(s).hints[G.dayNum] ? ' 🏮' : '';
     const tag = G.diff === 'hard' ? ' ⚔HARD' : '';
-    const head = `浪人 RONIN #${G.dayNum}${tag} ${squaresStr()}${lantern}`;
+    const head = `RONIN #${G.dayNum}${tag} ${squaresStr()}${lantern}`;
     const line = w >= 0
       ? `Rescued on attempt ${w + 1} · ${G.finalMoves} moves (par ${G.layout.par})${G.finalMoves === G.layout.par ? ' — perfect ⚔️' : ''}`
       : `The Emperor waits… (par ${G.layout.par})`;
@@ -1106,6 +1097,8 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const isDaily = G.mode === 'daily';
     openModal(`
       <h2 style="text-align:center">${won ? 'Emperor rescued! ⛩' : 'Captured 💀'}</h2>
+      <div style="text-align:center;color:var(--ink-soft);font-size:13px;letter-spacing:2px">
+        ${isDaily ? 'RONIN #' + G.dayNum : 'PRACTICE'}${G.diff === 'hard' ? ' · ⚔ HARD' : ''}</div>
       <div class="squares">${squaresStr()}</div>
       <div class="headline">${headline}</div>
       ${!won ? `<button class="primary" id="revealBtn" style="background:var(--gold);color:var(--ink)">REVEAL THE WAY IN ⛩</button>` : ''}
@@ -1131,11 +1124,11 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 
   function showHelp() {
     openModal(`
-      <h2>浪人 RONIN</h2>
+      <h2>RONIN</h2>
       <p style="margin:4px 0;color:var(--ink-soft);font-size:14px">The Emperor is held at the heart of the castle. You are the only one coming for him.</p>
       <ul>
         <li>🥷 <b>Move:</b> tap tiles to plan your steps (any direction) — <b>3 per turn</b> on normal, <b>2</b> on hard, then hit <b>MOVE</b>. Or <b>HOLD</b> to wait in place.</li>
-        <li>🏯 <b>Walls:</b> the castle has three rings. Cross between rings only at the <b>golden stairs</b>.</li>
+        <li>🏯 <b>Walls:</b> the castle has three rings. Cross between rings only at the <b>stair tiles</b>.</li>
         <li>⚔️ <b>Guards:</b> after each of your moves, the two nearest guards step toward you. Orange arrows show who will move. If a guard reaches your tile — <b>captured</b>.</li>
         <li>👑 <b>Rescue:</b> reach a tile beside the Emperor, then tap him. Fewer moves is better — match <b>par</b> for a perfect rescue.</li>
         <li>🌄 <b>Daily:</b> same castle for everyone, every day. You have <b>3 attempts</b> — the guards are predictable, so every failure teaches you their ways.</li>

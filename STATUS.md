@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-07 (v1.7 — full visual redesign to traditional palette)*
+*Last updated: 2026-07-07 (v1.7.1 — flat-refinement pass: no keylines on pieces/stairs, sun top-left, minimal front screen)*
 
 ## Live
 
@@ -223,6 +223,22 @@ Brad supplied reference images: a traditional Japanese pigment card (粉白 crea
 
 Gate: rules 20/20, parity 40/40 both modes (engine untouched). Browser-verified desktop + mobile,
 stats-modal mode switch, hard continuity (day 4 par 8).
+
+## Refinement v1.7.1 (2026-07-07, Brad's follow-up)
+
+- Stairs: tread strokes removed — flat inset wood tiles with their own small lift shadow
+  (the wall gap still marks them as gates). Help wording updated ("stair tiles").
+- Guards: outline ring removed — flat charcoal discs, red core.
+- Board frame removed: the 2px outer wall keyline is now the only border, matching interior
+  walls; board itself casts one big soft shadow.
+- Consistent light direction: sun top-left, all shadows (rings, stairs, emperor tile, ronin,
+  board) fall bottom-right; ring shadows strengthened.
+- Ronin slash is a tapered crescent (filled double-quadratic, points at both ends).
+- 浪人 kanji removed everywhere (title, header, help, share string).
+- Front screen shows only: title, attempt dots, board, instructions, buttons. Day number and
+  moves/par now appear ONLY on the end splash (subline "RONIN #N · ⚔ HARD" added there).
+
+Gate: rules 20/20, parity 40/40. Browser-verified mobile + splash content.
 
 ## Roadmap / open
 
