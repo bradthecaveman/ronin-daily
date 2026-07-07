@@ -152,8 +152,19 @@ decade was validated 2026-07-05 and its boards are unchanged (continuity test).
 - **hard**: the exact current live game — 2-step, band [8,14], seed salt `0x524F4E49`
   ("RONI", UNCHANGED so all published hard boards/days stay identical; verify with a
   board-continuity regression test snapshotted BEFORE refactor).
-- **epic**: reserved, NOT in UI yet. Future: leap-capture / grapple / sight-line mechanics,
-  each solver-integrated + lab-benchmarked one at a time.
+- **epic**: reserved, NOT in UI yet. **Brad's design sketch (2026-07-07):**
+  - Ronin moves 3; guards step **2 each** (the two nearest, two steps each — much deadlier
+    kill radius; balance must go through the lab).
+  - **Line of sight**: if NO guard can see the Ronin, he moves 4 (the stealth payoff —
+    resurrect v17's hidden/canSee mechanic). Needs a seen/hidden indicator in the UI.
+  - **Sight-blocker obstacles** on the board (new tile type; decide: block movement too, or
+    vision only?). Generator places them; adds daily variety.
+  - **Curved stairs**: gates can be straight OR curved — curved limits which directions you
+    can exit at the top (directional/edge-based legality, not just tile-based; stepLegal
+    grows a direction parameter). Routing depth: some gates become nearly one-way.
+  Build discipline unchanged: one mechanic at a time through tests/lab.mjs (already
+  parameterized for steps/army), solver integration + naive-bot win-rate + par-band tuning
+  per mechanic, Brad signs off on the data before each ships.
 
 Implementation checklist:
 1. Engine: `MODES` table; `roninOptions/pathTo/solveBoard` take explicit `steps`;
@@ -239,6 +250,11 @@ stats-modal mode switch, hard continuity (day 4 par 8).
   moves/par now appear ONLY on the end splash (subline "RONIN #N · ⚔ HARD" added there).
 
 Gate: rules 20/20, parity 40/40. Browser-verified mobile + splash content.
+
+**Open visual question (Brad, 2026-07-07):** flat stairs "don't look quite right but not sure
+why." Working hypothesis: the lift shadow makes gates read as solid raised blocks (obstacles)
+when they should read as openings/passages. Candidate fixes when revisited: recess them
+(inner shadow, carved-into-the-wall look), restore treads without the lift, or an arch mark.
 
 ## Roadmap / open
 
