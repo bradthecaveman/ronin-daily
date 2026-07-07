@@ -67,7 +67,7 @@ const t = (name, cond) => { if (cond) { pass++; } else { fail++; console.error('
 // --- Ronin cannot pass through guards or enter the Emperor tile ---
 {
   const stairs = new Set([E.key(4, 6)]);
-  const opts = E.roninOptions({ r: 5, c: 6 }, [{ r: 5, c: 5 }, { r: 5, c: 7 }], stairs);
+  const opts = E.roninOptions({ r: 5, c: 6 }, [{ r: 5, c: 5 }, { r: 5, c: 7 }], stairs, 2);
   t('emperor tile is never a ronin endpoint', !opts.some(o => o.r === 6 && o.c === 6));
   t('guard tiles are never ronin endpoints', !opts.some(o => (o.r === 5 && o.c === 5) || (o.r === 5 && o.c === 7)));
   t('hold endpoint offered when moves exist', opts.some(o => o.hold));
@@ -83,10 +83,35 @@ const t = (name, cond) => { if (cond) { pass++; } else { fail++; console.error('
 
 // --- Determinism: same inputs, same reply ---
 {
-  const board = E.dailyBoard(7);
+  const board = E.dailyBoard(7, E.MODES.hard);
   const a = E.armyReply(board.ronin, board.army, board.stairs);
   const b = E.armyReply(board.ronin, board.army, board.stairs);
   t('armyReply is pure/deterministic', JSON.stringify(a) === JSON.stringify(b));
+}
+
+
+// --- HARD-mode board continuity (snapshot taken 2026-07-05, pre-modes refactor) ---
+// If this fails, published hard boards have changed retroactively. NEVER ship that.
+{
+  const SNAP = ["1:9:12,0:30.54.59.86.137:4,1;1,8;0,2;2,11;1,1;7,1;9,4;9,6;3,4;3,9;8,7;5,8","2:13:0,12:34.67.95.109.136:3,0;1,7;0,3;11,0;10,11;0,8;3,6;10,2;7,10;4,3;5,8;7,8","3:11:0,12:32.69.99.119.138:12,0;0,6;0,7;5,1;11,0;1,0;2,9;3,10;6,9;10,4;5,8;8,4","4:8:12,0:33.57.75.109.135:1,7;12,4;0,4;6,1;0,6;6,0;9,3;7,3;9,4;3,10;4,4;6,4","5:8:12,12:32.58.73.127.133:11,6;12,0;0,3;10,0;11,2;9,1;9,7;7,10;10,6;9,8;5,4;4,5"];
+  let ok = 0;
+  for (let d = 1; d <= 5; d++) {
+    const b = E.dailyBoard(d, E.MODES.hard);
+    const sig = d + ':' + b.par + ':' + b.ronin.r + ',' + b.ronin.c + ':' + [...b.stairs].sort((x, y) => x - y).join('.') + ':' + b.army.map(p => p.r + ',' + p.c).join(';');
+    if (sig === SNAP[d - 1]) ok++;
+  }
+  t('HARD boards identical to pre-modes snapshot (days 1-5)', ok === 5);
+}
+
+// --- Modes are distinct and both healthy ---
+{
+  const h = E.dailyBoard(3, E.MODES.hard);
+  const n = E.dailyBoard(3, E.MODES.normal);
+  t('normal board solvable within its band', n && n.par >= E.MODES.normal.parMin && n.par <= E.MODES.normal.parMax);
+  t('modes produce different boards for the same day',
+    JSON.stringify(h.army) !== JSON.stringify(n.army) || h.ronin.r !== n.ronin.r || h.ronin.c !== n.ronin.c);
+  t('3-step options are a superset size of 2-step from open ground',
+    E.roninOptions({ r: 12, c: 6 }, [], new Set(), 3).length > E.roninOptions({ r: 12, c: 6 }, [], new Set(), 2).length);
 }
 
 console.log(`rules: ${pass} passed, ${fail} failed`);

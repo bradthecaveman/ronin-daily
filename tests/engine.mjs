@@ -2,11 +2,18 @@
 // Tuning copy for Node benchmarking; authoritative copy ships inside ronin_daily_v1.html.
 
 export const N = 13, C = 6;
-export const RONIN_STEPS = 2;   // ronin steps per turn
 export const ARMY_MOVES = 2;    // distinct army pieces moved per army turn
-export const PAR_MIN = 8, PAR_MAX = 14;
 export const GEN_MAX_TRIES = 400;
 export const EPOCH_UTC = Date.UTC(2026, 6, 4); // puzzle #1 = 2026-07-04 (local date)
+
+// Difficulty modes. HARD's salt/steps/band are the original v1 values — its daily
+// boards are IDENTICAL to everything published before modes existed (regression-
+// tested in rules.mjs). Do not touch salts/steps/bands of a shipped mode.
+export const MODES = {
+  normal: { key: 'normal', steps: 3, parMin: 6, parMax: 10, salt: 0x4E524D4C }, // "NRML"
+  hard:   { key: 'hard',   steps: 2, parMin: 8, parMax: 14, salt: 0x524F4E49 }, // "RONI"
+  // epic: reserved — future mechanics (leap/grapple/sight-lines), solver + lab work first
+};
 
 export const START_TILES = [[0,0],[0,6],[0,12],[6,0],[6,12],[12,0],[12,6],[12,12]];
 
@@ -57,7 +64,7 @@ export function stepLegal(fr, fc, tr, tc, stairs) {
   return stairs.has(key(fr, fc)) || stairs.has(key(tr, tc));
 }
 
-// Deterministic army reply. Returns { army, moves, captured }.
+// Deterministic army reply (mode-independent). Returns { army, moves, captured }.
 export function armyReply(ronin, army, stairs) {
   const arr = army.map(p => ({ r: p.r, c: p.c }));
   const order = arr.map((_, i) => i).sort((x, y) => {
@@ -71,18 +78,14 @@ export function armyReply(ronin, army, stairs) {
   for (const i of order) {
     if (done >= ARMY_MOVES) break;
     const a = arr[i];
-    // DIAGONAL VARIANT: guards step 8-directionally toward the ronin (chebyshev),
-    // keeping both axes when possible; fall back to an orthogonal step if the
-    // diagonal is blocked by a wall/occupant.
-    let dr = Math.sign(ronin.r - a.r), dc = Math.sign(ronin.c - a.c);
+    // guards step 8-directionally toward the ronin (chebyshev); if the diagonal
+    // is blocked by a wall or occupant, fall back to the dominant orthogonal axis
+    const dr = Math.sign(ronin.r - a.r), dc = Math.sign(ronin.c - a.c);
     if (dr === 0 && dc === 0) continue;
     let tr = a.r + dr, tc = a.c + dc;
     if (!stepLegal(a.r, a.c, tr, tc, stairs) || occ.has(key(tr, tc))) {
-      // diagonal blocked — try the dominant orthogonal axis, then the other
       const rd = Math.abs(ronin.r - a.r), cd = Math.abs(ronin.c - a.c);
-      const tries = (rd >= cd)
-        ? [[a.r + dr, a.c], [a.r, a.c + dc]]
-        : [[a.r, a.c + dc], [a.r + dr, a.c]];
+      const tries = (rd >= cd) ? [[a.r + dr, a.c], [a.r, a.c + dc]] : [[a.r, a.c + dc], [a.r + dr, a.c]];
       let picked = null;
       for (const [er, ec] of tries) {
         if (er === a.r && ec === a.c) continue;
@@ -106,15 +109,18 @@ export function armyReply(ronin, army, stairs) {
   return { army: arr, moves, captured: false };
 }
 
-// All distinct end-tiles the ronin can finish a turn on (1..RONIN_STEPS steps),
+const needSteps = (steps) => { if (!Number.isInteger(steps) || steps < 1) throw new Error('steps (per-mode) required'); };
+
+// All distinct end-tiles the ronin can finish a turn on (1..steps steps),
 // plus a "hold" pseudo-endpoint (step out and back) whenever any step exists.
-export function roninOptions(ronin, army, stairs) {
+export function roninOptions(ronin, army, stairs, steps) {
+  needSteps(steps);
   const occ = new Set(army.map(p => key(p.r, p.c)));
   const seen = new Set([key(ronin.r, ronin.c)]);
   let frontier = [ronin];
   const out = [];
   let anyStep = false;
-  for (let s = 0; s < RONIN_STEPS; s++) {
+  for (let s = 0; s < steps; s++) {
     const nxt = [];
     for (const p of frontier) {
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
@@ -135,8 +141,9 @@ export function roninOptions(ronin, army, stairs) {
   return out;
 }
 
-// Shortest legal step-path (<= RONIN_STEPS) from ronin to target, or null.
-export function pathTo(ronin, army, stairs, target) {
+// Shortest legal step-path (<= steps) from ronin to target, or null.
+export function pathTo(ronin, army, stairs, target, steps) {
+  needSteps(steps);
   if (target.hold || (target.r === ronin.r && target.c === ronin.c)) {
     // out-and-back on any legal neighbour
     for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
@@ -151,7 +158,7 @@ export function pathTo(ronin, army, stairs, target) {
   const occ = new Set(army.map(p => key(p.r, p.c)));
   const prev = new Map([[key(ronin.r, ronin.c), null]]);
   let frontier = [ronin];
-  for (let s = 0; s < RONIN_STEPS; s++) {
+  for (let s = 0; s < steps; s++) {
     const nxt = [];
     for (const p of frontier) {
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
@@ -179,14 +186,15 @@ export function pathTo(ronin, army, stairs, target) {
 }
 
 // A* over (ronin, army) states; army reply is deterministic, so this is
-// single-agent search. Returns { par, nodes, path? } or null.
-// par counts ronin turns including the final Ascend.
+// single-agent search. opts.steps REQUIRED (per-mode). Returns { par, nodes, path? }
+// or null. par counts ronin turns including the final Ascend.
 export function solveBoard(board, opts = {}) {
+  const steps = opts.steps; needSteps(steps);
   const stairs = board.stairs instanceof Set ? board.stairs : new Set(board.stairs);
   const maxNodes = opts.maxNodes ?? 250000;
   const fLimit = Math.min(opts.fLimit ?? 60, 60);
   const wantPath = !!opts.wantPath;
-  const h = (r, c) => { const d = ringOf(r, c); return d <= 1 ? 1 : Math.ceil((d - 1) / RONIN_STEPS) + 1; };
+  const h = (r, c) => { const d = ringOf(r, c); return d <= 1 ? 1 : Math.ceil((d - 1) / steps) + 1; };
   const sKey = (ro, ar) => { let s = '' + (ro.r * 13 + ro.c); for (const p of ar) s += ',' + (p.r * 13 + p.c); return s; };
 
   const start = { ro: { r: board.ronin.r, c: board.ronin.c }, army: board.army.map(p => ({ r: p.r, c: p.c })), g: 0 };
@@ -209,7 +217,7 @@ export function solveBoard(board, opts = {}) {
     for (let bi = 0; bi < bucket.length; bi++) {
       const node = bucket[bi];
       const kk = sKey(node.ro, node.army);
-      if (visited.get(kk) < node.g) continue; // stale entry
+      if (visited.get(kk) < node.g) continue;
       if (ringOf(node.ro.r, node.ro.c) === 1) {
         const result = { par: node.g + 1, nodes };
         if (wantPath) {
@@ -220,12 +228,12 @@ export function solveBoard(board, opts = {}) {
             if (ent) path.unshift(ent.ep);
             ck = ent ? ent.pk : null;
           }
-          result.path = path; // endpoint per turn; Ascend follows
+          result.path = path;
         }
         return result;
       }
       if (++nodes > maxNodes) return null;
-      for (const ep of roninOptions(node.ro, node.army, stairs)) {
+      for (const ep of roninOptions(node.ro, node.army, stairs, steps)) {
         const rep = armyReply(ep, node.army, stairs);
         if (rep.captured) continue;
         const g2 = node.g + 1;
@@ -245,19 +253,20 @@ export function solveBoard(board, opts = {}) {
 }
 
 // One candidate layout from an RNG stream: gates, ronin start, army.
+// RNG call order must NEVER change — it defines every published board.
 export function genCandidate(rng) {
   const stairs = new Set();
-  const sidesO = shuffle([0, 1, 2, 3], rng).slice(0, 3); // outer gates: 3 of 4 sides
+  const sidesO = shuffle([0, 1, 2, 3], rng).slice(0, 3);
   for (const s of sidesO) {
-    const off = 3 + Math.floor(rng() * 7); // 3..9 along the ring-4 band
+    const off = 3 + Math.floor(rng() * 7);
     let r, c;
     if (s === 0) { r = 2; c = off; } else if (s === 1) { r = off; c = 10; }
     else if (s === 2) { r = 10; c = off; } else { r = off; c = 2; }
     stairs.add(key(r, c));
   }
-  const sidesI = shuffle([0, 1, 2, 3], rng).slice(0, 2); // inner gates: 2 of 4 sides
+  const sidesI = shuffle([0, 1, 2, 3], rng).slice(0, 2);
   for (const s of sidesI) {
-    const off = 5 + Math.floor(rng() * 3); // 5..7 along the ring-2 band
+    const off = 5 + Math.floor(rng() * 3);
     let r, c;
     if (s === 0) { r = 4; c = off; } else if (s === 1) { r = off; c = 8; }
     else if (s === 2) { r = 8; c = off; } else { r = off; c = 4; }
@@ -280,21 +289,21 @@ export function genCandidate(rng) {
   return { ronin, army, stairs };
 }
 
-// Deterministic daily/practice board: iterate candidate seeds until one
-// solves inside the par band. Identical on every client.
-export function generateFromSeed(seedBase) {
+// Deterministic: same seed + mode → same accepted board on every client.
+export function generateFromSeed(seedBase, mc) {
+  if (!mc || !mc.steps) throw new Error('mode config required');
   let fallback = null;
   for (let t = 0; t < GEN_MAX_TRIES; t++) {
     const rng = mulberry32(hash32(seedBase, t));
     const cand = genCandidate(rng);
     if (!cand) continue;
-    const res = solveBoard(cand, { fLimit: PAR_MAX, maxNodes: 60000 });
+    const res = solveBoard(cand, { fLimit: mc.parMax, maxNodes: 60000, steps: mc.steps });
     if (!res) continue;
-    if (res.par >= PAR_MIN) return { ...cand, par: res.par, genTries: t + 1 };
+    if (res.par >= mc.parMin) return { ...cand, par: res.par, genTries: t + 1 };
     if (!fallback) fallback = { ...cand, par: res.par, genTries: t + 1 };
   }
   return fallback;
 }
 
-export const dailyBoard = (dayNum) => generateFromSeed(hash32(0x524F4E49, dayNum));   // "RONI"
-export const practiceBoard = (seed) => generateFromSeed(hash32(0x50524143, seed));    // "PRAC"
+export const dailyBoard = (dayNum, mc) => generateFromSeed(hash32(mc.salt, dayNum), mc);
+export const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, mc.salt), seed), mc);

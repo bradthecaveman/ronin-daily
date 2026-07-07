@@ -5,15 +5,16 @@ import * as SHIPPED from './engine.mjs';
 // Baseline naive-bot on REAL shipped boards (exact boards players see).
 function shippedNaive(days = 120) {
   let wins = 0, total = 0;
-  const h = (r, c) => { const d = SHIPPED.ringOf(r, c); return d <= 1 ? 1 : Math.ceil((d - 1) / SHIPPED.RONIN_STEPS) + 1; };
+  const MC = SHIPPED.MODES.hard;
+  const h = (r, c) => { const d = SHIPPED.ringOf(r, c); return d <= 1 ? 1 : Math.ceil((d - 1) / MC.steps) + 1; };
   for (let d = 1; d <= days; d++) {
-    const b = SHIPPED.dailyBoard(d);
+    const b = SHIPPED.dailyBoard(d, MC);
     if (!b) continue;
     total++;
     let ronin = { ...b.ronin }, army = b.army.map(p => ({ ...p })), won = false;
     for (let turn = 0; turn < 40; turn++) {
       if (SHIPPED.ringOf(ronin.r, ronin.c) === 1) { won = true; break; }
-      const opts = SHIPPED.roninOptions(ronin, army, b.stairs);
+      const opts = SHIPPED.roninOptions(ronin, army, b.stairs, MC.steps);
       let best = null, bestScore = Infinity;
       for (const ep of opts) {
         const rep = SHIPPED.armyReply(ep, army, b.stairs);

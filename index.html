@@ -47,6 +47,9 @@
   .adot.cur{ border-color:var(--ink); }
   .adot.f{ background:var(--vermillion); border-color:var(--vermillion); }
   .adot.w{ background:var(--win); border-color:var(--win); }
+  #modeSeg{ display:inline-flex; border:1.5px solid var(--ink-soft); border-radius:12px; overflow:hidden; }
+  #modeSeg button{ border:none; background:transparent; color:var(--ink-soft); font-size:11px; letter-spacing:1px; padding:3px 9px; cursor:pointer; text-transform:uppercase; font-weight:700; }
+  #modeSeg button.on{ background:var(--ink); color:var(--paper); }
   #practiceChip{
     display:none; background:var(--indigo); color:#fff; font-size:11px; letter-spacing:2px;
     padding:2px 8px; border-radius:10px;
@@ -124,6 +127,7 @@
 
 <div id="chipRow">
   <span id="dayChip">#—</span>
+  <span id="modeSeg"><button data-diff="normal">normal</button><button data-diff="hard">hard</button></span>
   <span id="practiceChip">PRACTICE</span>
   <span id="attemptDots"></span>
   <span id="moveChip">moves 0 · par —</span>
@@ -134,7 +138,7 @@
   <div id="veil">forging today's castle…</div>
 </div>
 
-<div id="status">Reach the Emperor. Tap tiles to plan up to 2 steps, then MOVE.</div>
+<div id="status">Reach the Emperor.</div>
 
 <div id="controls">
   <button id="holdBtn">HOLD</button>
@@ -157,289 +161,318 @@
 
 <script id="engine">
 // ===== Ronin Daily Engine (pure logic, no DOM) =====
+// Generated 1:1 from tests/engine.mjs — keep in sync (tests/parity.mjs enforces).
 const RoninEngine = (() => {
-  const N = 13, C = 6;
-  const RONIN_STEPS = 2;
-  const ARMY_MOVES = 2;
-  const PAR_MIN = 8, PAR_MAX = 14;
-  const GEN_MAX_TRIES = 400;
-  const EPOCH_UTC = Date.UTC(2026, 6, 4); // puzzle #1 = 2026-07-04 (local date)
-  const START_TILES = [[0,0],[0,6],[0,12],[6,0],[6,12],[12,0],[12,6],[12,12]];
 
-  const key = (r, c) => r * 13 + c;
-  const cheb = (r1, c1, r2, c2) => Math.max(Math.abs(r1 - r2), Math.abs(c1 - c2));
-  const ringOf = (r, c) => Math.max(Math.abs(r - C), Math.abs(c - C));
-  const tierOf = (r, c) => { const d = ringOf(r, c); return d === 0 ? 0 : d <= 2 ? 1 : d <= 4 ? 2 : 3; };
+const N = 13, C = 6;
+const ARMY_MOVES = 2;    // distinct army pieces moved per army turn
+const GEN_MAX_TRIES = 400;
+const EPOCH_UTC = Date.UTC(2026, 6, 4); // puzzle #1 = 2026-07-04 (local date)
 
-  function hash32(a, b) {
-    let h = 2166136261 >>> 0;
-    h = Math.imul(h ^ (a >>> 0), 16777619);
-    h = Math.imul(h ^ (b >>> 0), 16777619);
-    h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15;
-    return h >>> 0;
+// Difficulty modes. HARD's salt/steps/band are the original v1 values — its daily
+// boards are IDENTICAL to everything published before modes existed (regression-
+// tested in rules.mjs). Do not touch salts/steps/bands of a shipped mode.
+const MODES = {
+  normal: { key: 'normal', steps: 3, parMin: 6, parMax: 10, salt: 0x4E524D4C }, // "NRML"
+  hard:   { key: 'hard',   steps: 2, parMin: 8, parMax: 14, salt: 0x524F4E49 }, // "RONI"
+  // epic: reserved — future mechanics (leap/grapple/sight-lines), solver + lab work first
+};
+
+const START_TILES = [[0,0],[0,6],[0,12],[6,0],[6,12],[12,0],[12,6],[12,12]];
+
+const key = (r, c) => r * 13 + c;
+const cheb = (r1, c1, r2, c2) => Math.max(Math.abs(r1 - r2), Math.abs(c1 - c2));
+const ringOf = (r, c) => Math.max(Math.abs(r - C), Math.abs(c - C));
+// tiers: 0 emperor, 1 inner, 2 middle, 3 bottom
+const tierOf = (r, c) => { const d = ringOf(r, c); return d === 0 ? 0 : d <= 2 ? 1 : d <= 4 ? 2 : 3; };
+
+function hash32(a, b) {
+  let h = 2166136261 >>> 0;
+  h = Math.imul(h ^ (a >>> 0), 16777619);
+  h = Math.imul(h ^ (b >>> 0), 16777619);
+  h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15;
+  return h >>> 0;
+}
+
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function () {
+    t = (t + 0x6D2B79F5) | 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffle(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
   }
-  function mulberry32(seed) {
-    let t = seed >>> 0;
-    return function () {
-      t = (t + 0x6D2B79F5) | 0;
-      let r = Math.imul(t ^ (t >>> 15), 1 | t);
-      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
-      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  function shuffle(arr, rng) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  return arr;
+}
+
+function dayNumber(date) {
+  const d = date || new Date();
+  return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - EPOCH_UTC) / 86400000) + 1;
+}
+
+// Geometry-only step legality (ignores occupancy).
+function stepLegal(fr, fc, tr, tc, stairs) {
+  if (tr < 0 || tr > 12 || tc < 0 || tc > 12) return false;
+  if (cheb(fr, fc, tr, tc) !== 1) return false;
+  if (tr === C && tc === C) return false; // emperor tile unwalkable
+  const a = tierOf(fr, fc), b = tierOf(tr, tc);
+  if (a === b) return true;
+  return stairs.has(key(fr, fc)) || stairs.has(key(tr, tc));
+}
+
+// Deterministic army reply (mode-independent). Returns { army, moves, captured }.
+function armyReply(ronin, army, stairs) {
+  const arr = army.map(p => ({ r: p.r, c: p.c }));
+  const order = arr.map((_, i) => i).sort((x, y) => {
+    const dx = cheb(arr[x].r, arr[x].c, ronin.r, ronin.c);
+    const dy = cheb(arr[y].r, arr[y].c, ronin.r, ronin.c);
+    return dx - dy || x - y;
+  });
+  const occ = new Set(arr.map(p => key(p.r, p.c)));
+  const moves = [];
+  let done = 0;
+  for (const i of order) {
+    if (done >= ARMY_MOVES) break;
+    const a = arr[i];
+    // guards step 8-directionally toward the ronin (chebyshev); if the diagonal
+    // is blocked by a wall or occupant, fall back to the dominant orthogonal axis
+    const dr = Math.sign(ronin.r - a.r), dc = Math.sign(ronin.c - a.c);
+    if (dr === 0 && dc === 0) continue;
+    let tr = a.r + dr, tc = a.c + dc;
+    if (!stepLegal(a.r, a.c, tr, tc, stairs) || occ.has(key(tr, tc))) {
+      const rd = Math.abs(ronin.r - a.r), cd = Math.abs(ronin.c - a.c);
+      const tries = (rd >= cd) ? [[a.r + dr, a.c], [a.r, a.c + dc]] : [[a.r, a.c + dc], [a.r + dr, a.c]];
+      let picked = null;
+      for (const [er, ec] of tries) {
+        if (er === a.r && ec === a.c) continue;
+        if (!stepLegal(a.r, a.c, er, ec, stairs)) continue; // never reach through a wall
+        if (er === ronin.r && ec === ronin.c) { picked = [er, ec]; break; }
+        if (!occ.has(key(er, ec))) { picked = [er, ec]; break; }
+      }
+      if (!picked) continue;
+      tr = picked[0]; tc = picked[1];
     }
-    return arr;
-  }
-  function dayNumber(date) {
-    const d = date || new Date();
-    return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - EPOCH_UTC) / 86400000) + 1;
-  }
-
-  function stepLegal(fr, fc, tr, tc, stairs) {
-    if (tr < 0 || tr > 12 || tc < 0 || tc > 12) return false;
-    if (cheb(fr, fc, tr, tc) !== 1) return false;
-    if (tr === C && tc === C) return false;
-    const a = tierOf(fr, fc), b = tierOf(tr, tc);
-    if (a === b) return true;
-    return stairs.has(key(fr, fc)) || stairs.has(key(tr, tc));
-  }
-
-  function armyReply(ronin, army, stairs) {
-    const arr = army.map(p => ({ r: p.r, c: p.c }));
-    const order = arr.map((_, i) => i).sort((x, y) => {
-      const dx = cheb(arr[x].r, arr[x].c, ronin.r, ronin.c);
-      const dy = cheb(arr[y].r, arr[y].c, ronin.r, ronin.c);
-      return dx - dy || x - y;
-    });
-    const occ = new Set(arr.map(p => key(p.r, p.c)));
-    const moves = [];
-    let done = 0;
-    for (const i of order) {
-      if (done >= ARMY_MOVES) break;
-      const a = arr[i];
-      // guards step 8-directionally toward the ronin (chebyshev); if the diagonal
-      // is blocked by a wall or occupant, fall back to the dominant orthogonal axis
-      const dr = Math.sign(ronin.r - a.r), dc = Math.sign(ronin.c - a.c);
-      if (dr === 0 && dc === 0) continue;
-      let tr = a.r + dr, tc = a.c + dc;
-      if (!stepLegal(a.r, a.c, tr, tc, stairs) || occ.has(key(tr, tc))) {
-        const rd = Math.abs(ronin.r - a.r), cd = Math.abs(ronin.c - a.c);
-        const tries = (rd >= cd) ? [[a.r + dr, a.c], [a.r, a.c + dc]] : [[a.r, a.c + dc], [a.r + dr, a.c]];
-        let picked = null;
-        for (const [er, ec] of tries) {
-          if (er === a.r && ec === a.c) continue;
-          if (!stepLegal(a.r, a.c, er, ec, stairs)) continue; // never reach through a wall
-          if (er === ronin.r && ec === ronin.c) { picked = [er, ec]; break; }
-          if (!occ.has(key(er, ec))) { picked = [er, ec]; break; }
-        }
-        if (!picked) continue;
-        tr = picked[0]; tc = picked[1];
-      }
-      if (tr === ronin.r && tc === ronin.c) {
-        moves.push({ i, from: { r: a.r, c: a.c }, to: { r: tr, c: tc } });
-        a.r = tr; a.c = tc;
-        return { army: arr, moves, captured: true };
-      }
-      if (occ.has(key(tr, tc))) continue;
-      occ.delete(key(a.r, a.c)); occ.add(key(tr, tc));
+    if (tr === ronin.r && tc === ronin.c) {
       moves.push({ i, from: { r: a.r, c: a.c }, to: { r: tr, c: tc } });
-      a.r = tr; a.c = tc; done++;
+      a.r = tr; a.c = tc;
+      return { army: arr, moves, captured: true };
     }
-    return { army: arr, moves, captured: false };
+    if (occ.has(key(tr, tc))) continue;
+    occ.delete(key(a.r, a.c)); occ.add(key(tr, tc));
+    moves.push({ i, from: { r: a.r, c: a.c }, to: { r: tr, c: tc } });
+    a.r = tr; a.c = tc; done++;
   }
+  return { army: arr, moves, captured: false };
+}
 
-  function roninOptions(ronin, army, stairs) {
-    const occ = new Set(army.map(p => key(p.r, p.c)));
-    const seen = new Set([key(ronin.r, ronin.c)]);
-    let frontier = [ronin];
-    const out = [];
-    let anyStep = false;
-    for (let s = 0; s < RONIN_STEPS; s++) {
-      const nxt = [];
-      for (const p of frontier) {
-        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-          if (!dr && !dc) continue;
-          const nr = p.r + dr, nc = p.c + dc;
-          if (!stepLegal(p.r, p.c, nr, nc, stairs)) continue;
-          const k = key(nr, nc);
-          if (occ.has(k) || seen.has(k)) continue;
-          seen.add(k);
-          const q = { r: nr, c: nc };
-          nxt.push(q); out.push(q);
-          anyStep = true;
-        }
-      }
-      frontier = nxt;
-    }
-    if (anyStep) out.push({ r: ronin.r, c: ronin.c, hold: true });
-    return out;
-  }
+const needSteps = (steps) => { if (!Number.isInteger(steps) || steps < 1) throw new Error('steps (per-mode) required'); };
 
-  function pathTo(ronin, army, stairs, target) {
-    if (target.hold || (target.r === ronin.r && target.c === ronin.c)) {
+// All distinct end-tiles the ronin can finish a turn on (1..steps steps),
+// plus a "hold" pseudo-endpoint (step out and back) whenever any step exists.
+function roninOptions(ronin, army, stairs, steps) {
+  needSteps(steps);
+  const occ = new Set(army.map(p => key(p.r, p.c)));
+  const seen = new Set([key(ronin.r, ronin.c)]);
+  let frontier = [ronin];
+  const out = [];
+  let anyStep = false;
+  for (let s = 0; s < steps; s++) {
+    const nxt = [];
+    for (const p of frontier) {
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
         if (!dr && !dc) continue;
-        const nr = ronin.r + dr, nc = ronin.c + dc;
-        if (!stepLegal(ronin.r, ronin.c, nr, nc, stairs)) continue;
-        if (army.some(p => p.r === nr && p.c === nc)) continue;
-        return [{ r: nr, c: nc }, { r: ronin.r, c: ronin.c }];
+        const nr = p.r + dr, nc = p.c + dc;
+        if (!stepLegal(p.r, p.c, nr, nc, stairs)) continue;
+        const k = key(nr, nc);
+        if (occ.has(k) || seen.has(k)) continue;
+        seen.add(k);
+        const q = { r: nr, c: nc };
+        nxt.push(q); out.push(q);
+        anyStep = true;
       }
-      return null;
     }
-    const occ = new Set(army.map(p => key(p.r, p.c)));
-    const prev = new Map([[key(ronin.r, ronin.c), null]]);
-    let frontier = [ronin];
-    for (let s = 0; s < RONIN_STEPS; s++) {
-      const nxt = [];
-      for (const p of frontier) {
-        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-          if (!dr && !dc) continue;
-          const nr = p.r + dr, nc = p.c + dc;
-          if (!stepLegal(p.r, p.c, nr, nc, stairs)) continue;
-          const k = key(nr, nc);
-          if (occ.has(k) || prev.has(k)) continue;
-          prev.set(k, p);
-          if (nr === target.r && nc === target.c) {
-            const path = [];
-            let cur = { r: nr, c: nc };
-            while (cur && !(cur.r === ronin.r && cur.c === ronin.c)) {
-              path.unshift({ r: cur.r, c: cur.c });
-              cur = prev.get(key(cur.r, cur.c));
-            }
-            return path;
-          }
-          nxt.push({ r: nr, c: nc });
-        }
-      }
-      frontier = nxt;
+    frontier = nxt;
+  }
+  if (anyStep) out.push({ r: ronin.r, c: ronin.c, hold: true });
+  return out;
+}
+
+// Shortest legal step-path (<= steps) from ronin to target, or null.
+function pathTo(ronin, army, stairs, target, steps) {
+  needSteps(steps);
+  if (target.hold || (target.r === ronin.r && target.c === ronin.c)) {
+    // out-and-back on any legal neighbour
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const nr = ronin.r + dr, nc = ronin.c + dc;
+      if (!stepLegal(ronin.r, ronin.c, nr, nc, stairs)) continue;
+      if (army.some(p => p.r === nr && p.c === nc)) continue;
+      return [{ r: nr, c: nc }, { r: ronin.r, c: ronin.c }];
     }
     return null;
   }
-
-  // A* over (ronin, army) states; the army reply is deterministic, so this is
-  // single-agent search. par counts ronin turns including the final Ascend.
-  function solveBoard(board, opts = {}) {
-    const stairs = board.stairs instanceof Set ? board.stairs : new Set(board.stairs);
-    const maxNodes = opts.maxNodes ?? 250000;
-    const fLimit = Math.min(opts.fLimit ?? 60, 60);
-    const wantPath = !!opts.wantPath;
-    const h = (r, c) => { const d = ringOf(r, c); return d <= 1 ? 1 : Math.ceil((d - 1) / RONIN_STEPS) + 1; };
-    const sKey = (ro, ar) => { let s = '' + (ro.r * 13 + ro.c); for (const p of ar) s += ',' + (p.r * 13 + p.c); return s; };
-
-    const start = { ro: { r: board.ronin.r, c: board.ronin.c }, army: board.army.map(p => ({ r: p.r, c: p.c })), g: 0 };
-    const f0 = h(start.ro.r, start.ro.c);
-    if (f0 > fLimit) return null;
-
-    const buckets = [];
-    const push = (f, node) => { (buckets[f] || (buckets[f] = [])).push(node); };
-    const visited = new Map();
-    const parent = wantPath ? new Map() : null;
-    const k0 = sKey(start.ro, start.army);
-    visited.set(k0, 0);
-    if (wantPath) parent.set(k0, null);
-    push(f0, start);
-
-    let nodes = 0;
-    for (let f = f0; f <= fLimit; f++) {
-      const bucket = buckets[f];
-      if (!bucket) continue;
-      for (let bi = 0; bi < bucket.length; bi++) {
-        const node = bucket[bi];
-        const kk = sKey(node.ro, node.army);
-        if (visited.get(kk) < node.g) continue;
-        if (ringOf(node.ro.r, node.ro.c) === 1) {
-          const result = { par: node.g + 1, nodes };
-          if (wantPath) {
-            const path = [];
-            let ck = kk;
-            while (ck) {
-              const ent = parent.get(ck);
-              if (ent) path.unshift(ent.ep);
-              ck = ent ? ent.pk : null;
-            }
-            result.path = path;
+  const occ = new Set(army.map(p => key(p.r, p.c)));
+  const prev = new Map([[key(ronin.r, ronin.c), null]]);
+  let frontier = [ronin];
+  for (let s = 0; s < steps; s++) {
+    const nxt = [];
+    for (const p of frontier) {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const nr = p.r + dr, nc = p.c + dc;
+        if (!stepLegal(p.r, p.c, nr, nc, stairs)) continue;
+        const k = key(nr, nc);
+        if (occ.has(k) || prev.has(k)) continue;
+        prev.set(k, p);
+        if (nr === target.r && nc === target.c) {
+          const path = [];
+          let cur = { r: nr, c: nc };
+          while (cur && !(cur.r === ronin.r && cur.c === ronin.c)) {
+            path.unshift({ r: cur.r, c: cur.c });
+            cur = prev.get(key(cur.r, cur.c));
           }
-          return result;
+          return path;
         }
-        if (++nodes > maxNodes) return null;
-        for (const ep of roninOptions(node.ro, node.army, stairs)) {
-          const rep = armyReply(ep, node.army, stairs);
-          if (rep.captured) continue;
-          const g2 = node.g + 1;
-          const f2 = g2 + h(ep.r, ep.c);
-          if (f2 > fLimit) continue;
-          const child = { ro: { r: ep.r, c: ep.c }, army: rep.army, g: g2 };
-          const ck = sKey(child.ro, child.army);
-          const prevG = visited.get(ck);
-          if (prevG !== undefined && prevG <= g2) continue;
-          visited.set(ck, g2);
-          if (wantPath) parent.set(ck, { pk: kk, ep: { r: ep.r, c: ep.c, hold: !!ep.hold } });
-          push(f2, child);
-        }
+        nxt.push({ r: nr, c: nc });
       }
     }
-    return null;
+    frontier = nxt;
   }
+  return null;
+}
 
-  function genCandidate(rng) {
-    const stairs = new Set();
-    const sidesO = shuffle([0, 1, 2, 3], rng).slice(0, 3);
-    for (const s of sidesO) {
-      const off = 3 + Math.floor(rng() * 7);
-      let r, c;
-      if (s === 0) { r = 2; c = off; } else if (s === 1) { r = off; c = 10; }
-      else if (s === 2) { r = 10; c = off; } else { r = off; c = 2; }
-      stairs.add(key(r, c));
-    }
-    const sidesI = shuffle([0, 1, 2, 3], rng).slice(0, 2);
-    for (const s of sidesI) {
-      const off = 5 + Math.floor(rng() * 3);
-      let r, c;
-      if (s === 0) { r = 4; c = off; } else if (s === 1) { r = off; c = 8; }
-      else if (s === 2) { r = 8; c = off; } else { r = off; c = 4; }
-      stairs.add(key(r, c));
-    }
-    const [sr, sc] = START_TILES[Math.floor(rng() * 8)];
-    const ronin = { r: sr, c: sc };
+// A* over (ronin, army) states; army reply is deterministic, so this is
+// single-agent search. opts.steps REQUIRED (per-mode). Returns { par, nodes, path? }
+// or null. par counts ronin turns including the final Ascend.
+function solveBoard(board, opts = {}) {
+  const steps = opts.steps; needSteps(steps);
+  const stairs = board.stairs instanceof Set ? board.stairs : new Set(board.stairs);
+  const maxNodes = opts.maxNodes ?? 250000;
+  const fLimit = Math.min(opts.fLimit ?? 60, 60);
+  const wantPath = !!opts.wantPath;
+  const h = (r, c) => { const d = ringOf(r, c); return d <= 1 ? 1 : Math.ceil((d - 1) / steps) + 1; };
+  const sKey = (ro, ar) => { let s = '' + (ro.r * 13 + ro.c); for (const p of ar) s += ',' + (p.r * 13 + p.c); return s; };
 
-    const bottom = [], middle = [], inner = [];
-    for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
-      const d = ringOf(r, c);
-      if (stairs.has(key(r, c))) continue;
-      if (d >= 5) { if (cheb(r, c, ronin.r, ronin.c) >= 4) bottom.push({ r, c }); }
-      else if (d >= 3) middle.push({ r, c });
-      else if (d === 2) inner.push({ r, c });
+  const start = { ro: { r: board.ronin.r, c: board.ronin.c }, army: board.army.map(p => ({ r: p.r, c: p.c })), g: 0 };
+  const f0 = h(start.ro.r, start.ro.c);
+  if (f0 > fLimit) return null;
+
+  const buckets = [];
+  const push = (f, node) => { (buckets[f] || (buckets[f] = [])).push(node); };
+  const visited = new Map();
+  const parent = wantPath ? new Map() : null;
+  const k0 = sKey(start.ro, start.army);
+  visited.set(k0, 0);
+  if (wantPath) parent.set(k0, null);
+  push(f0, start);
+
+  let nodes = 0;
+  for (let f = f0; f <= fLimit; f++) {
+    const bucket = buckets[f];
+    if (!bucket) continue;
+    for (let bi = 0; bi < bucket.length; bi++) {
+      const node = bucket[bi];
+      const kk = sKey(node.ro, node.army);
+      if (visited.get(kk) < node.g) continue;
+      if (ringOf(node.ro.r, node.ro.c) === 1) {
+        const result = { par: node.g + 1, nodes };
+        if (wantPath) {
+          const path = [];
+          let ck = kk;
+          while (ck) {
+            const ent = parent.get(ck);
+            if (ent) path.unshift(ent.ep);
+            ck = ent ? ent.pk : null;
+          }
+          result.path = path;
+        }
+        return result;
+      }
+      if (++nodes > maxNodes) return null;
+      for (const ep of roninOptions(node.ro, node.army, stairs, steps)) {
+        const rep = armyReply(ep, node.army, stairs);
+        if (rep.captured) continue;
+        const g2 = node.g + 1;
+        const f2 = g2 + h(ep.r, ep.c);
+        if (f2 > fLimit) continue;
+        const child = { ro: { r: ep.r, c: ep.c }, army: rep.army, g: g2 };
+        const ck = sKey(child.ro, child.army);
+        const prevG = visited.get(ck);
+        if (prevG !== undefined && prevG <= g2) continue;
+        visited.set(ck, g2);
+        if (wantPath) parent.set(ck, { pk: kk, ep: { r: ep.r, c: ep.c, hold: !!ep.hold } });
+        push(f2, child);
+      }
     }
-    shuffle(bottom, rng); shuffle(middle, rng); shuffle(inner, rng);
-    const army = [...bottom.slice(0, 6), ...middle.slice(0, 4), ...inner.slice(0, 2)];
-    if (army.length !== 12) return null;
-    return { ronin, army, stairs };
   }
+  return null;
+}
 
-  // Deterministic: same seed → same accepted board on every client.
-  function generateFromSeed(seedBase) {
-    let fallback = null;
-    for (let t = 0; t < GEN_MAX_TRIES; t++) {
-      const rng = mulberry32(hash32(seedBase, t));
-      const cand = genCandidate(rng);
-      if (!cand) continue;
-      const res = solveBoard(cand, { fLimit: PAR_MAX, maxNodes: 60000 });
-      if (!res) continue;
-      if (res.par >= PAR_MIN) return { ...cand, par: res.par, genTries: t + 1 };
-      if (!fallback) fallback = { ...cand, par: res.par, genTries: t + 1 };
-    }
-    return fallback;
+// One candidate layout from an RNG stream: gates, ronin start, army.
+// RNG call order must NEVER change — it defines every published board.
+function genCandidate(rng) {
+  const stairs = new Set();
+  const sidesO = shuffle([0, 1, 2, 3], rng).slice(0, 3);
+  for (const s of sidesO) {
+    const off = 3 + Math.floor(rng() * 7);
+    let r, c;
+    if (s === 0) { r = 2; c = off; } else if (s === 1) { r = off; c = 10; }
+    else if (s === 2) { r = 10; c = off; } else { r = off; c = 2; }
+    stairs.add(key(r, c));
   }
+  const sidesI = shuffle([0, 1, 2, 3], rng).slice(0, 2);
+  for (const s of sidesI) {
+    const off = 5 + Math.floor(rng() * 3);
+    let r, c;
+    if (s === 0) { r = 4; c = off; } else if (s === 1) { r = off; c = 8; }
+    else if (s === 2) { r = 8; c = off; } else { r = off; c = 4; }
+    stairs.add(key(r, c));
+  }
+  const [sr, sc] = START_TILES[Math.floor(rng() * 8)];
+  const ronin = { r: sr, c: sc };
 
-  const dailyBoard = (dayNum) => generateFromSeed(hash32(0x524F4E49, dayNum));
-  const practiceBoard = (seed) => generateFromSeed(hash32(0x50524143, seed));
+  const bottom = [], middle = [], inner = [];
+  for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
+    const d = ringOf(r, c);
+    if (stairs.has(key(r, c))) continue;
+    if (d >= 5) { if (cheb(r, c, ronin.r, ronin.c) >= 4) bottom.push({ r, c }); }
+    else if (d >= 3) middle.push({ r, c });
+    else if (d === 2) inner.push({ r, c });
+  }
+  shuffle(bottom, rng); shuffle(middle, rng); shuffle(inner, rng);
+  const army = [...bottom.slice(0, 6), ...middle.slice(0, 4), ...inner.slice(0, 2)];
+  if (army.length !== 12) return null;
+  return { ronin, army, stairs };
+}
+
+// Deterministic: same seed + mode → same accepted board on every client.
+function generateFromSeed(seedBase, mc) {
+  if (!mc || !mc.steps) throw new Error('mode config required');
+  let fallback = null;
+  for (let t = 0; t < GEN_MAX_TRIES; t++) {
+    const rng = mulberry32(hash32(seedBase, t));
+    const cand = genCandidate(rng);
+    if (!cand) continue;
+    const res = solveBoard(cand, { fLimit: mc.parMax, maxNodes: 60000, steps: mc.steps });
+    if (!res) continue;
+    if (res.par >= mc.parMin) return { ...cand, par: res.par, genTries: t + 1 };
+    if (!fallback) fallback = { ...cand, par: res.par, genTries: t + 1 };
+  }
+  return fallback;
+}
+
+const dailyBoard = (dayNum, mc) => generateFromSeed(hash32(mc.salt, dayNum), mc);
+const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, mc.salt), seed), mc);
 
   return {
-    N, C, RONIN_STEPS, ARMY_MOVES, PAR_MIN, PAR_MAX, START_TILES,
+    N, C, ARMY_MOVES, MODES, START_TILES,
     key, cheb, ringOf, tierOf, hash32, mulberry32, dayNumber,
     stepLegal, armyReply, roninOptions, pathTo, solveBoard,
     genCandidate, generateFromSeed, dailyBoard, practiceBoard,
@@ -469,6 +502,7 @@ const RoninEngine = (() => {
   // ---------- game state ----------
   const G = {
     mode: 'daily', dayNum: 1, layout: null,
+    diff: 'normal', diffCfg: null, // difficulty mode (normal/hard) — set before any board loads
     ronin: null, army: null,
     attempt: 1, squares: [null, null, null],
     moveCount: 0, finalMoves: null, queue: [],
@@ -479,24 +513,37 @@ const RoninEngine = (() => {
 
   // ---------- storage ----------
   const SKEY = 'ronin.daily.v1';
-  const readStore = () => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch { return {}; } };
+  // schema v2: per-difficulty results/hints under s.modes; legacy v1 data was all
+  // played under what is now HARD mode, so it migrates there (streaks preserved).
+  function migrate(s) {
+    if (s.modes) return s;
+    s.modes = { normal: { results: {}, hints: {} }, hard: { results: s.results || {}, hints: s.hints || {} } };
+    if (s.results && Object.keys(s.results).length) s.diff = s.diff || 'hard';
+    delete s.results; delete s.hints; delete s.board;
+    return s;
+  }
+  const readStore = () => { try { return migrate(JSON.parse(localStorage.getItem(SKEY)) || {}); } catch { return migrate({}); } };
   const writeStore = (s) => { try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch {} };
+  const modeState = (s) => s.modes[G.diff];
   function saveDay(done) {
     if (G.mode !== 'daily') return;
     const s = readStore();
-    s.results = s.results || {};
-    s.results[G.dayNum] = { squares: G.squares, moves: G.finalMoves, par: G.layout.par, done: !!done };
+    modeState(s).results[G.dayNum] = { squares: G.squares, moves: G.finalMoves, par: G.layout.par, done: !!done };
     writeStore(s);
   }
-  // Daily boards are deterministic, so cache the generated layout per day —
+  // Daily boards are deterministic, so cache the generated layout per day+mode —
   // avoids re-running the solver (up to a few seconds on hard days) on every load.
-  function cachedDailyBoard(dayNum) {
+  function cachedDailyBoard(dayNum, mc) {
     const s = readStore();
-    const cached = s.board && s.board.day === dayNum ? s.board.layout : null;
-    if (cached) return { ronin: cached.ronin, army: cached.army.map(p => ({ ...p })), stairs: new Set(cached.stairs), par: cached.par };
-    const layout = RE.dailyBoard(dayNum);
+    const slot = s.boardCache && s.boardCache[mc.key];
+    if (slot && slot.day === dayNum) {
+      const c = slot.layout;
+      return { ronin: c.ronin, army: c.army.map(p => ({ ...p })), stairs: new Set(c.stairs), par: c.par };
+    }
+    const layout = RE.dailyBoard(dayNum, mc);
     try {
-      s.board = { day: dayNum, layout: { ronin: layout.ronin, army: layout.army, stairs: [...layout.stairs], par: layout.par } };
+      s.boardCache = s.boardCache || {};
+      s.boardCache[mc.key] = { day: dayNum, layout: { ronin: layout.ronin, army: layout.army, stairs: [...layout.stairs], par: layout.par } };
       writeStore(s);
     } catch {}
     return layout;
@@ -723,7 +770,7 @@ const RoninEngine = (() => {
     preview = null;
     if (!G.layout || G.phase !== 'play') { updateButtons(); return; }
     const head = G.queue.length ? G.queue[G.queue.length - 1] : G.ronin;
-    if (G.queue.length < RE.RONIN_STEPS) {
+    if (G.queue.length < G.diffCfg.steps) {
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
         if (!dr && !dc) continue;
         const nr = head.r + dr, nc = head.c + dc;
@@ -748,6 +795,7 @@ const RoninEngine = (() => {
     $('dayChip').textContent = G.mode === 'daily' ? `#${G.dayNum}` : 'random castle';
     $('practiceChip').style.display = G.mode === 'practice' ? 'inline-block' : 'none';
     $('moveChip').textContent = `moves ${G.moveCount} · par ${G.layout ? G.layout.par : '—'}`;
+    document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.diff === G.diff));
     const dots = $('attemptDots');
     dots.innerHTML = '';
     for (let i = 0; i < 3; i++) {
@@ -793,7 +841,7 @@ const RoninEngine = (() => {
 
   function hold() {
     if (G.phase !== 'play' || G.busy || G.queue.length || modalOpen()) return;
-    if (!RE.roninOptions(G.ronin, G.army, G.layout.stairs).length) return;
+    if (!RE.roninOptions(G.ronin, G.army, G.layout.stairs, G.diffCfg.steps).length) return;
     G.busy = true;
     G.moveCount++;
     const rep = RE.armyReply(G.ronin, G.army, G.layout.stairs);
@@ -820,11 +868,11 @@ const RoninEngine = (() => {
   // the current position. Costs your only lantern; stamps 🏮 on the share result.
   function hintAvailable() {
     if (G.phase !== 'play' || !G.layout) return false;
-    if (G.mode === 'daily') { const s = readStore(); return !(s.hints && s.hints[G.dayNum]); }
+    if (G.mode === 'daily') { const s = readStore(); return !modeState(s).hints[G.dayNum]; }
     return !G.hintUsed;
   }
   function markHintUsed() {
-    if (G.mode === 'daily') { const s = readStore(); s.hints = s.hints || {}; s.hints[G.dayNum] = true; writeStore(s); }
+    if (G.mode === 'daily') { const s = readStore(); modeState(s).hints[G.dayNum] = true; writeStore(s); }
     else G.hintUsed = true;
   }
   async function useHint() {
@@ -835,7 +883,7 @@ const RoninEngine = (() => {
     updateButtons();
     await new Promise(r => setTimeout(r, 40)); // let the status paint before the solve
     const res = RE.solveBoard({ ronin: G.ronin, army: G.army, stairs: G.layout.stairs },
-      { fLimit: RE.PAR_MAX, maxNodes: 500000, wantPath: true });
+      { fLimit: G.diffCfg.parMax, maxNodes: 500000, wantPath: true, steps: G.diffCfg.steps });
     markHintUsed();
     G.busy = false;
     if (!res) {
@@ -848,7 +896,7 @@ const RoninEngine = (() => {
       refreshHints(); updateHud();
       return;
     }
-    const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, res.path[0]);
+    const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, res.path[0], G.diffCfg.steps);
     if (!steps) { setMsg('The maps are smudged here — trust your instincts. 🏮'); refreshHints(); updateHud(); return; }
     G.queue = steps;
     refreshHints(); updateHud();
@@ -867,11 +915,11 @@ const RoninEngine = (() => {
     setMsg('Consulting the old maps…');
     await new Promise(r => setTimeout(r, 60)); // let the status paint before the solve
     const res = RE.solveBoard({ ronin: G.ronin, army: G.army, stairs: G.layout.stairs },
-      { fLimit: RE.PAR_MAX, maxNodes: 500000, wantPath: true });
+      { fLimit: G.diffCfg.parMax, maxNodes: 500000, wantPath: true, steps: G.diffCfg.steps });
     if (!res || !res.path) { setMsg('The path is lost to history.'); G.busy = false; G.revealing = false; return; }
     let moveNo = 0;
     for (const ep of res.path) {
-      const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, ep);
+      const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, ep, G.diffCfg.steps);
       if (!steps) break;
       for (const s of steps) queueTween(vis.ronin, s, 260);
       G.ronin = { r: ep.r, c: ep.c };
@@ -892,7 +940,7 @@ const RoninEngine = (() => {
   }
 
   function postChecks() {
-    const opts = RE.roninOptions(G.ronin, G.army, G.layout.stairs);
+    const opts = RE.roninOptions(G.ronin, G.army, G.layout.stairs, G.diffCfg.steps);
     if (canAscend()) setMsg('Beside the Emperor — tap him (or RESCUE) to finish! ⛩');
     else if (!opts.length) { attemptFailed('cornered'); return; }
     else setMsg('');
@@ -949,8 +997,9 @@ const RoninEngine = (() => {
   function shareText() {
     const w = G.squares.indexOf('w');
     const s = readStore();
-    const lantern = (s.hints && s.hints[G.dayNum]) ? ' 🏮' : '';
-    const head = `浪人 RONIN #${G.dayNum} ${squaresStr()}${lantern}`;
+    const lantern = modeState(s).hints[G.dayNum] ? ' 🏮' : '';
+    const tag = G.diff === 'hard' ? ' ⚔HARD' : '';
+    const head = `浪人 RONIN #${G.dayNum}${tag} ${squaresStr()}${lantern}`;
     const line = w >= 0
       ? `Rescued on attempt ${w + 1} · ${G.finalMoves} moves (par ${G.layout.par})${G.finalMoves === G.layout.par ? ' — perfect ⚔️' : ''}`
       : `The Emperor waits… (par ${G.layout.par})`;
@@ -958,7 +1007,7 @@ const RoninEngine = (() => {
   }
 
   function calcStats() {
-    const results = readStore().results || {};
+    const results = modeState(readStore()).results;
     const today = RE.dayNumber();
     let played = 0, wins = 0, dist = [0, 0, 0];
     for (const d of Object.keys(results)) {
@@ -1056,7 +1105,7 @@ const RoninEngine = (() => {
       <h2>浪人 RONIN</h2>
       <p style="margin:4px 0;color:var(--ink-soft);font-size:14px">The Emperor is held at the heart of the castle. You are the only one coming for him.</p>
       <ul>
-        <li>🥷 <b>Move:</b> tap tiles to plan up to <b>2 steps</b> (any direction), then hit <b>MOVE</b>. Or <b>HOLD</b> to wait in place.</li>
+        <li>🥷 <b>Move:</b> tap tiles to plan your steps (any direction) — <b>3 per turn</b> on normal, <b>2</b> on hard, then hit <b>MOVE</b>. Or <b>HOLD</b> to wait in place.</li>
         <li>🏯 <b>Walls:</b> the castle has three rings. Cross between rings only at the <b>golden stairs</b>.</li>
         <li>⚔️ <b>Guards:</b> after each of your moves, the two nearest guards step toward you. Orange arrows show who will move. If a guard reaches your tile — <b>captured</b>.</li>
         <li>👑 <b>Rescue:</b> reach a tile beside the Emperor, then tap him. Fewer moves is better — match <b>par</b> for a perfect rescue.</li>
@@ -1086,7 +1135,7 @@ const RoninEngine = (() => {
     }
     const head = G.queue.length ? G.queue[G.queue.length - 1] : G.ronin;
     if (G.queue.length && r === head.r && c === head.c) { G.queue.pop(); refreshHints(); return; }
-    if (G.queue.length >= RE.RONIN_STEPS) { setMsg('Two steps max — MOVE, or tap your last step to undo.'); return; }
+    if (G.queue.length >= G.diffCfg.steps) { setMsg(`${G.diffCfg.steps} steps max — MOVE, or tap your last step to undo.`); return; }
     if (!RE.stepLegal(head.r, head.c, r, c, G.layout.stairs)) {
       if (RE.cheb(head.r, head.c, r, c) === 1) setMsg('A wall blocks that step — find the golden stairs.');
       else setMsg('Plan one step at a time, from where your path ends.');
@@ -1129,7 +1178,7 @@ const RoninEngine = (() => {
     G.ronin = { ...layout.ronin };
     G.army = layout.army.map(p => ({ ...p }));
     syncVis(); refreshHints(); updateHud();
-    setMsg('Reach the Emperor. Tap tiles to plan up to 2 steps, then MOVE.');
+    setMsg(`Reach the Emperor. Tap tiles to plan up to ${G.diffCfg.steps} steps, then MOVE.`);
   }
 
   function startPractice(seed) {
@@ -1138,7 +1187,7 @@ const RoninEngine = (() => {
     $('veil').textContent = 'forging a random castle…';
     setTimeout(() => {
       const s = seed ?? Math.floor(Math.random() * 2 ** 31);
-      const layout = RE.practiceBoard(s);
+      const layout = RE.practiceBoard(s, G.diffCfg);
       beginBoard(layout, 'practice');
       G.practiceSeed = s;
       $('veil').style.display = 'none';
@@ -1146,11 +1195,16 @@ const RoninEngine = (() => {
   }
 
   function startDaily() {
+    const s0 = readStore();
+    writeStore(s0); // persist migration once at boot
+    G.diff = (s0.diff === 'hard' || s0.diff === 'normal') ? s0.diff : 'normal';
+    G.diffCfg = RE.MODES[G.diff];
     const dayNum = Math.max(1, RE.dayNumber());
     G.dayNum = dayNum;
+    $('veil').style.display = 'flex';
     setTimeout(() => {
-      const layout = cachedDailyBoard(dayNum);
-      const saved = (readStore().results || {})[dayNum];
+      const layout = cachedDailyBoard(dayNum, G.diffCfg);
+      const saved = modeState(readStore()).results[dayNum];
       beginBoard(layout, 'daily');
       if (saved) {
         G.squares = saved.squares.slice(0, 3);
@@ -1173,6 +1227,15 @@ const RoninEngine = (() => {
     }, 30);
   }
 
+  // difficulty switcher
+  function setDiff(key) {
+    if (!RE.MODES[key] || key === G.diff || G.busy || tweens.length || G.revealing) return;
+    const s = readStore(); s.diff = key; writeStore(s);
+    closeModal();
+    startDaily();
+  }
+  document.querySelectorAll('#modeSeg button').forEach(b => { b.onclick = () => setDiff(b.dataset.diff); });
+
   // day rollover notice
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && G.mode === 'daily' && RE.dayNumber() !== G.dayNum) {
@@ -1186,15 +1249,15 @@ const RoninEngine = (() => {
     const t = setInterval(() => { if (!G.busy && !tweens.length) { clearInterval(t); res(); } }, 25);
   });
   window.RoninDebug = {
-    G, RE, vis, startPractice, executeMove, hold, ascend, revealSolution, useHint, shareText,
+    G, RE, vis, startPractice, executeMove, hold, ascend, revealSolution, useHint, shareText, setDiff,
     async autoWin() {
       while (G.phase === 'play') {
         await waitIdle();
         if (G.phase !== 'play') break;
         if (canAscend()) { ascend(); break; }
-        const res = RE.solveBoard({ ronin: G.ronin, army: G.army, stairs: G.layout.stairs }, { fLimit: 40, maxNodes: 400000, wantPath: true });
+        const res = RE.solveBoard({ ronin: G.ronin, army: G.army, stairs: G.layout.stairs }, { fLimit: 40, maxNodes: 400000, wantPath: true, steps: G.diffCfg.steps });
         if (!res || !res.path || !res.path.length) return 'no solution from here';
-        const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, res.path[0]);
+        const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, res.path[0], G.diffCfg.steps);
         if (!steps) return 'unwalkable endpoint';
         G.queue = steps;
         executeMove();

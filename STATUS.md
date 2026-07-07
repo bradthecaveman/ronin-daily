@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-05 (difficulty investigation — DECISION PENDING, see below)*
+*Last updated: 2026-07-07 (v1.6 — difficulty modes shipped: normal/hard, epic reserved)*
 
 ## Live
 
@@ -132,11 +132,17 @@ Changes:
 
 No engine/logic touched — `tests/rules.mjs` and `tests/parity.mjs` re-run clean after this pass.
 
-## Difficulty modes — APPROVED spec (Brad, 2026-07-05)
+## Difficulty modes — SHIPPED v1.6 (2026-07-07; spec approved by Brad 2026-07-05)
 
-Resolves the difficulty investigation below. Instead of replacing the live game, ship
-**selectable modes**. If a session dies mid-build, this spec + release gate is everything
-needed to finish.
+Resolves the difficulty investigation below. Instead of replacing the live game, shipped
+**selectable modes**. All checklist items below completed and browser-verified 2026-07-07:
+hard-board continuity (snapshot test in rules.mjs, days 1-5 byte-identical), legacy storage
+migration (v1 results/hints → modes.hard, legacy players boot into hard, fresh users into
+normal), per-mode hints/stats/streaks/board-cache, share tag ⚔HARD, mode switcher in chip row,
+practice inherits mode, 3-step queue, mobile 375px. Embedded engine now GENERATED 1:1 from
+tests/engine.mjs (python splice) — parity is by construction. Gate: rules 20/20, parity 40/40
+(both modes), bench both modes 0 fallbacks + replay 10/10 each. Normal-mode 10-year horizon
+running at ship time — result to be appended here.
 
 - **normal** (new default): 3-step ronin, par band [6,10], seed salt `0x4E524D4C` ("NRML").
   The benchmarked 73%-naive-win variant.

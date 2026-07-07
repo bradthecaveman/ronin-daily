@@ -1,5 +1,5 @@
 // Extract the engine embedded in ronin_daily_v1.html and verify it produces
-// identical daily boards to the benchmarked engine.mjs.
+// identical daily boards to the mirror in tests/engine.mjs — for EVERY mode.
 import { readFileSync } from 'fs';
 import * as E from './engine.mjs';
 
@@ -8,17 +8,19 @@ const m = html.match(/<script id="engine">([\s\S]*?)<\/script>/);
 if (!m) { console.error('engine block not found'); process.exit(1); }
 const RoninEngine = new Function(m[1] + '; return RoninEngine;')();
 
-let ok = 0, bad = 0;
-for (let d = 1; d <= 40; d++) {
-  const a = E.dailyBoard(d);
-  const b = RoninEngine.dailyBoard(d);
-  const same =
-    a.par === b.par &&
-    a.genTries === b.genTries &&
-    a.ronin.r === b.ronin.r && a.ronin.c === b.ronin.c &&
-    JSON.stringify([...a.stairs].sort((x, y) => x - y)) === JSON.stringify([...b.stairs].sort((x, y) => x - y)) &&
-    JSON.stringify(a.army) === JSON.stringify(b.army);
-  if (same) ok++; else { bad++; console.log(`day ${d}: MISMATCH`, a.par, b.par); }
+const sig = (b) => b.par + ':' + b.genTries + ':' + b.ronin.r + ',' + b.ronin.c + ':'
+  + [...b.stairs].sort((x, y) => x - y).join('.') + ':' + JSON.stringify(b.army);
+
+let ok = 0, bad = 0, total = 0;
+for (const modeKey of Object.keys(E.MODES)) {
+  if (!RoninEngine.MODES || !RoninEngine.MODES[modeKey]) { bad++; console.log(`mode ${modeKey}: MISSING in embedded engine`); continue; }
+  for (let d = 1; d <= 20; d++) {
+    total++;
+    const a = E.dailyBoard(d, E.MODES[modeKey]);
+    const b = RoninEngine.dailyBoard(d, RoninEngine.MODES[modeKey]);
+    if (sig(a) === sig(b)) ok++;
+    else { bad++; console.log(`${modeKey} day ${d}: MISMATCH`); }
+  }
 }
-console.log(`parity: ${ok}/40 identical, ${bad} mismatches`);
-console.log('day 1 board: par', RoninEngine.dailyBoard(1).par, '· constants:', RoninEngine.RONIN_STEPS, 'steps, band', RoninEngine.PAR_MIN, '-', RoninEngine.PAR_MAX);
+console.log(`parity: ${ok}/${total} identical across modes [${Object.keys(E.MODES).join(', ')}], ${bad} mismatches`);
+process.exit(bad ? 1 : 0);
