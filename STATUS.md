@@ -142,7 +142,10 @@ normal), per-mode hints/stats/streaks/board-cache, share tag ⚔HARD, mode switc
 practice inherits mode, 3-step queue, mobile 375px. Embedded engine now GENERATED 1:1 from
 tests/engine.mjs (python splice) — parity is by construction. Gate: rules 20/20, parity 40/40
 (both modes), bench both modes 0 fallbacks + replay 10/10 each. Normal-mode 10-year horizon
-running at ship time — result to be appended here.
+completed post-ship: **all 3,650 boards clean — 0 unsolvable, 0 below band.** Par distribution
+across the decade: 6×2354, 7×877, 8×322, 9×84, 10×13 (skews easy by design — it's the default
+mode). Slowest gen 4.2s (day 2584), no day over 5s, absorbed by the per-day cache. Hard mode's
+decade was validated 2026-07-05 and its boards are unchanged (continuity test).
 
 - **normal** (new default): 3-step ronin, par band [6,10], seed salt `0x4E524D4C` ("NRML").
   The benchmarked 73%-naive-win variant.
