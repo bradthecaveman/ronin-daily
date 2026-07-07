@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-05 (v1.5 — visual pass: less clutter, less intimidating)*
+*Last updated: 2026-07-05 (difficulty investigation — DECISION PENDING, see below)*
 
 ## Live
 
@@ -131,6 +131,35 @@ Changes:
   source CSS.
 
 No engine/logic touched — `tests/rules.mjs` and `tests/parity.mjs` re-run clean after this pass.
+
+## Difficulty investigation (2026-07-05) — ⚠ DECISION PENDING
+
+Player feedback (via Brad): **too hard**, especially getting trapped in corners with a guard.
+Benchmarked with `tests/lab.mjs` (parameterized engine variants) + `tests/runlab.mjs`. Key metric:
+**naive-bot win %** — a greedy 1-ply player (heads for the Emperor, dodges only immediate
+captures). Proxy floor for how a casual human fares; humans do better (3 attempts, recon, arrows,
+hint).
+
+| Variant | naive win % | par spread |
+|---|---|---|
+| LIVE game (2-step, band [8,14]) | **14%** | 8–13 |
+| B: 2-step, easier band [6,10] | 26% | 6–10 |
+| C: strip outer ring (9×9, army 4+2) | 42% | 5–9 |
+| **A: 3-step ronin, 13×13, band [6,10]** | **73%** | 6–10 |
+| D: 3-step + 9×9 combo | 98% (trivial) | ~4 |
+
+Findings: corner-trap diagnosis confirmed — easier board *selection* (B) barely helps; the issue
+is escape velocity (2 steps vs guards closing 1/turn diagonally). The 3rd ronin step is the
+dominant lever. 3-deep rings (Brad's option 2) vetoed on mobile tap-size grounds (19×19 ≈ 19px
+cells). Stripping the outer ring (option 3) helps less than expected and shrinks the game's
+identity; combo (D) collapses the puzzle entirely.
+
+**Recommendation (proposed, NOT yet approved by Brad): variant A** — RONIN_STEPS 2→3,
+PAR band [8,14]→[6,10], help-text update ("up to 3 steps"). Expected human daily win rate
+~85–95% (Wordle-like). ⚠ This regenerates ALL daily boards incl. already-published days —
+acceptable now (day 3, no real audience), unacceptable later once streaks exist.
+If approved: apply to HTML engine + tests/engine.mjs mirror, run full release gate, re-run
+`tests/horizon.mjs` (10-year revalidation, ~25 min), browser-verify, deploy, update this section.
 
 ## Roadmap / open
 
