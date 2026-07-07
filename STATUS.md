@@ -132,7 +132,35 @@ Changes:
 
 No engine/logic touched — `tests/rules.mjs` and `tests/parity.mjs` re-run clean after this pass.
 
-## Difficulty investigation (2026-07-05) — ⚠ DECISION PENDING
+## Difficulty modes — APPROVED spec (Brad, 2026-07-05)
+
+Resolves the difficulty investigation below. Instead of replacing the live game, ship
+**selectable modes**. If a session dies mid-build, this spec + release gate is everything
+needed to finish.
+
+- **normal** (new default): 3-step ronin, par band [6,10], seed salt `0x4E524D4C` ("NRML").
+  The benchmarked 73%-naive-win variant.
+- **hard**: the exact current live game — 2-step, band [8,14], seed salt `0x524F4E49`
+  ("RONI", UNCHANGED so all published hard boards/days stay identical; verify with a
+  board-continuity regression test snapshotted BEFORE refactor).
+- **epic**: reserved, NOT in UI yet. Future: leap-capture / grapple / sight-line mechanics,
+  each solver-integrated + lab-benchmarked one at a time.
+
+Implementation checklist:
+1. Engine: `MODES` table; `roninOptions/pathTo/solveBoard` take explicit `steps`;
+   `generateFromSeed(seedBase, modeCfg)`; `dailyBoard(day, modeCfg)` = hash32(salt, day);
+   practice salt = hash32(0x50524143, modeCfg.salt) combined. armyReply unchanged.
+2. Storage v2 + migration: legacy `results/hints` → `s.modes.hard.*` (they were played on hard);
+   `s.mode` remembered, default 'normal' for fresh users, 'hard' if legacy data exists.
+   Board cache per mode. Per-mode stats/streaks/attempts/lantern.
+3. UI: two-segment mode switcher in chip row (guard against switching while busy);
+   share string gains ` ⚔ HARD` tag (normal untagged); help copy mentions steps per mode.
+4. Tests: parity both modes; rules.mjs + hard-continuity snapshot; bench both modes;
+   horizon takes mode arg — re-run 10-year for NORMAL (hard's already validated).
+5. Full release gate + browser verify (both modes, switch mid-day, migration, mobile),
+   sync index.html, deploy, update this section to "shipped".
+
+## Difficulty investigation (2026-07-05) — resolved by modes spec above
 
 Player feedback (via Brad): **too hard**, especially getting trapped in corners with a guard.
 Benchmarked with `tests/lab.mjs` (parameterized engine variants) + `tests/runlab.mjs`. Key metric:
