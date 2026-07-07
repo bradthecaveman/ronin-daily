@@ -7,13 +7,16 @@
 <meta name="description" content="One ronin. One castle. One rescue a day. Cross the walls, slip the guards, reach the Emperor — in as few moves as you can."/>
 <meta property="og:title" content="RONIN 浪人 — a daily rescue puzzle"/>
 <meta property="og:description" content="Slip past the guards and rescue the Emperor. New castle every day."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700;800&display=swap" rel="stylesheet"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f4efe4'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23b7382f'/%3E%3C/svg%3E"/>
 <style>
   :root{
-    --paper:#f4efe4; --paper-2:#ece5d3; --ink:#22252d; --ink-soft:#5a5e6b;
-    --indigo:#2b3a67; --indigo-bright:#3f5aa8;
-    --vermillion:#b7382f; --gold:#d9a544; --pine:#4d6b57; --slate:#33445d;
-    --win:#3f7d4e;
+    --paper:#ece4cf; --paper-2:#e0d6bd; --ink:#3a322b; --ink-soft:#6e6355;
+    --indigo:#8c2f27; --indigo-bright:#a63b31; /* action colour is now brick red */
+    --vermillion:#a63b31; --gold:#d8a065; --pine:#7d9b74; --slate:#4a403a;
+    --win:#5f8c58;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; padding:0; }
@@ -26,12 +29,17 @@
     width:100%; max-width:560px; display:flex; align-items:center; justify-content:space-between;
     padding:12px 14px 6px;
   }
-  .brand{ display:flex; align-items:baseline; gap:10px; }
-  .brand .kanji{ font-size:26px; color:var(--vermillion); font-weight:700; }
-  .brand h1{
-    margin:0; font-family:"Iowan Old Style",Palatino,Georgia,serif;
-    font-size:26px; letter-spacing:6px; font-weight:700;
+  .brand{ display:flex; flex-direction:column; align-items:center; gap:1px; }
+  .brand .kanji{
+    font-family:"Shippori Mincho B1","Iowan Old Style",serif;
+    font-size:15px; color:var(--vermillion); font-weight:700; letter-spacing:10px; margin-left:10px;
   }
+  .brand h1{
+    margin:0; font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif;
+    font-size:30px; letter-spacing:9px; font-weight:800; margin-left:9px; line-height:1.05;
+  }
+  #attemptDots{ display:flex; gap:9px; align-items:center; justify-content:center; margin-top:7px; }
+  .adot{ width:16px; height:16px; border-radius:50%; border:2.5px solid var(--ink-soft); }
   .icon-btn{
     border:1.5px solid var(--ink); background:transparent; color:var(--ink);
     width:34px; height:34px; border-radius:50%; font-size:16px; font-weight:700;
@@ -42,12 +50,11 @@
     width:100%; max-width:560px; display:flex; align-items:center; justify-content:space-between;
     padding:0 16px 8px; font-size:14px; color:var(--ink-soft);
   }
-  #attemptDots{ display:flex; gap:6px; align-items:center; }
-  .adot{ width:12px; height:12px; border-radius:50%; border:2px solid var(--ink-soft); }
   .adot.cur{ border-color:var(--ink); }
   .adot.f{ background:var(--vermillion); border-color:var(--vermillion); }
   .adot.w{ background:var(--win); border-color:var(--win); }
-  #modeSeg{ display:inline-flex; border:1.5px solid var(--ink-soft); border-radius:12px; overflow:hidden; }
+  #modeSeg{ display:inline-flex; border:1.5px solid var(--ink-soft); border-radius:12px; overflow:hidden; margin:10px auto 0; }
+  .modeRow{ text-align:center; margin-top:12px; font-size:12px; color:var(--ink-soft); }
   #modeSeg button{ border:none; background:transparent; color:var(--ink-soft); font-size:11px; letter-spacing:1px; padding:3px 9px; cursor:pointer; text-transform:uppercase; font-weight:700; }
   #modeSeg button.on{ background:var(--ink); color:var(--paper); }
   #practiceChip{
@@ -68,15 +75,15 @@
     max-width:560px; min-height:22px; padding:8px 16px 0; font-size:14px;
     color:var(--ink-soft); text-align:center;
   }
-  #controls{ display:flex; gap:8px; padding:10px 14px 6px; flex-wrap:wrap; justify-content:center; align-items:center; }
+  #controls{ display:flex; gap:6px; padding:10px 10px 6px; flex-wrap:wrap; justify-content:center; align-items:center; }
   #controls button{
-    font-size:14px; font-weight:700; letter-spacing:1px; cursor:pointer;
-    padding:11px 16px; border-radius:10px; border:1.5px solid transparent;
-    background:transparent; color:var(--ink-soft); min-width:76px;
+    font-size:12.5px; font-weight:700; letter-spacing:.5px; cursor:pointer;
+    padding:9px 11px; border-radius:9px; border:1.5px solid transparent;
+    background:transparent; color:var(--ink-soft); min-width:0;
   }
   #controls button:disabled{ opacity:.3; cursor:default; }
   #controls #holdBtn, #controls #undoBtn{ border-color:var(--paper-2); background:var(--paper-2); }
-  #controls #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; min-width:120px; font-size:15px; }
+  #controls #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; min-width:86px; font-size:13.5px; }
   #controls #moveBtn.danger{ background:var(--vermillion); border-color:var(--vermillion); }
   #controls #rescueBtn{ display:none; background:var(--gold); border-color:var(--gold); color:var(--ink); }
   #controls #hintBtn{ border-color:var(--gold); color:var(--ink); }
@@ -121,15 +128,13 @@
 
 <header>
   <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
-  <div class="brand"><span class="kanji">浪人</span><h1>RONIN</h1></div>
+  <div class="brand"><h1>RONIN</h1><span class="kanji">浪人</span><span id="attemptDots"></span></div>
   <button class="icon-btn" id="statsBtn" aria-label="Statistics">≡</button>
 </header>
 
 <div id="chipRow">
   <span id="dayChip">#—</span>
-  <span id="modeSeg"><button data-diff="normal">normal</button><button data-diff="hard">hard</button></span>
   <span id="practiceChip">PRACTICE</span>
-  <span id="attemptDots"></span>
   <span id="moveChip">moves 0 · par —</span>
 </div>
 
@@ -138,7 +143,7 @@
   <div id="veil">forging today's castle…</div>
 </div>
 
-<div id="status">Reach the Emperor.</div>
+<div id="status"><b><i>Rescue the Emperor in the tower.</i></b></div>
 
 <div id="controls">
   <button id="holdBtn">HOLD</button>
@@ -487,16 +492,19 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   const ctx = canvas.getContext('2d');
 
   // ---------- palette ----------
+  // Palette from the traditional card: 蕉鹃 forest / 唐茶 rooftops / 粉白 palace /
+  // 砖红 emperor+ronin / 幽冥 guards+ink.
   const COL = {
-    bottom: '#6c86a3', middle: '#7fa189', inner: '#eee5cd', emperorTile: '#a63028',
-    stair: '#d9a544', stairLine: 'rgba(40,30,10,.5)',
-    wall: '#454b57', goldWall: '#c9a13f',
-    gridDark: 'rgba(255,255,255,.10)', gridLight: 'rgba(0,0,0,.07)',
-    ronin: '#e3b23c', roninRing: '#b7382f', roninMark: '#3a2f28',
-    guard: '#454b57', guardRing: '#8a3b34', guardEye: '#8a3b34',
-    emperor: '#e3b23c', emperorSun: '#b7382f',
-    path: '#2b3a67', hint: 'rgba(43,58,103,.38)',
-    intent: '#ff9d1a', danger: '#d33125',
+    outer: '#a9c8a1', middle: '#d8a065', inner: '#f6efdc', emperorTile: '#a63b31',
+    stair: '#7a5a39', stairLine: 'rgba(246,239,220,.75)',
+    wall: '#42382f',
+    grid: 'rgba(58,50,43,.10)',
+    ronin: '#c1443a', roninRing: '#8c2f27', roninMark: '#f6efdc',
+    guard: '#453c37', guardRing: 'rgba(236,228,207,.55)', guardEye: '#a63b31',
+    emperor: '#e3b23c', emperorSun: '#f6efdc',
+    path: '#42382f', pip: '#a63b31',
+    hint: 'rgba(66,56,47,.35)',
+    intent: '#42382f', danger: '#c1443a',
   };
 
   // ---------- game state ----------
@@ -604,52 +612,70 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     ctx.clearRect(0, 0, px, px);
     const stairs = G.layout ? G.layout.stairs : new Set();
 
-    for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
-      const d = RE.ringOf(r, c);
-      let fill = d === 0 ? COL.emperorTile : d <= 2 ? COL.inner : d <= 4 ? COL.middle : COL.bottom;
-      if (stairs.has(RE.key(r, c))) fill = COL.stair;
-      ctx.fillStyle = fill;
-      ctx.fillRect(c * cell, r * cell, cell, cell);
-      ctx.strokeStyle = d <= 2 ? COL.gridLight : COL.gridDark;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(c * cell + .5, r * cell + .5, cell - 1, cell - 1);
-      if (stairs.has(RE.key(r, c))) {
-        ctx.strokeStyle = COL.stairLine; ctx.lineWidth = 2;
-        // steps run across the direction of travel: N/S gates flow vertically
-        // (horizontal treads), E/W gates flow horizontally (vertical treads)
-        const northSouth = Math.abs(r - 6) > Math.abs(c - 6);
-        for (let i = 1; i <= 3; i++) {
-          ctx.beginPath();
-          if (northSouth) {
-            const y = r * cell + (cell * i) / 4;
-            ctx.moveTo(c * cell + cell * .22, y); ctx.lineTo(c * cell + cell * .78, y);
-          } else {
-            const x = c * cell + (cell * i) / 4;
-            ctx.moveTo(x, r * cell + cell * .22); ctx.lineTo(x, r * cell + cell * .78);
-          }
-          ctx.stroke();
+    // Elevation: paint each ring as a raised block (bottom-up) with a soft drop
+    // shadow, so the castle reads as terraces — forest, rooftops, palace, throne.
+    ctx.fillStyle = COL.outer;
+    ctx.fillRect(0, 0, px, px);
+    ctx.save();
+    ctx.shadowColor = 'rgba(40,32,24,.35)'; ctx.shadowBlur = cell * .45; ctx.shadowOffsetY = cell * .12;
+    ctx.fillStyle = COL.middle;
+    ctx.fillRect(2 * cell, 2 * cell, 9 * cell, 9 * cell);
+    ctx.fillStyle = COL.inner;
+    ctx.fillRect(4 * cell, 4 * cell, 5 * cell, 5 * cell);
+    ctx.restore();
+
+    // grid — one subtle tone across all rings
+    ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
+    for (let i = 1; i < 13; i++) {
+      ctx.beginPath(); ctx.moveTo(i * cell + .5, 0); ctx.lineTo(i * cell + .5, px); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * cell + .5); ctx.lineTo(px, i * cell + .5); ctx.stroke();
+    }
+
+    // stair tiles — inset inside their cell so they never cut the wall keyline
+    const inset = Math.max(2, cell * .07);
+    for (const k of stairs) {
+      const r = Math.floor(k / 13), c = k % 13;
+      const x = c * cell + inset, y = r * cell + inset, w = cell - 2 * inset;
+      ctx.fillStyle = COL.stair;
+      ctx.beginPath(); ctx.roundRect(x, y, w, w, 3); ctx.fill();
+      ctx.strokeStyle = COL.stairLine; ctx.lineWidth = 2;
+      const northSouth = Math.abs(r - 6) > Math.abs(c - 6);
+      for (let i = 1; i <= 3; i++) {
+        ctx.beginPath();
+        if (northSouth) {
+          const yy = y + (w * i) / 4;
+          ctx.moveTo(x + w * .18, yy); ctx.lineTo(x + w * .82, yy);
+        } else {
+          const xx = x + (w * i) / 4;
+          ctx.moveTo(xx, y + w * .18); ctx.lineTo(xx, y + w * .82);
         }
+        ctx.stroke();
       }
     }
 
-    // walls on tier boundaries (gaps at stairs)
-    ctx.lineCap = 'round';
+    // emperor tile — inset red tile, fully inside its cell
+    {
+      const x = 6 * cell + inset, y = 6 * cell + inset, w = cell - 2 * inset;
+      ctx.fillStyle = COL.emperorTile;
+      ctx.beginPath(); ctx.roundRect(x, y, w, w, 3); ctx.fill();
+    }
+
+    // walls — uniform 2px keylines on every tier boundary (gaps at stairs) + outer edge
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = COL.wall; ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, px - 2, px - 2); // outer wall
     for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
       const a = RE.tierOf(r, c);
       if (c < 12) {
         const b = RE.tierOf(r, c + 1);
         if (a !== b && !stairs.has(RE.key(r, c)) && !stairs.has(RE.key(r, c + 1))) {
-          ctx.strokeStyle = (a === 0 || b === 0) ? COL.goldWall : COL.wall;
-          ctx.lineWidth = 3.5;
-          ctx.beginPath(); ctx.moveTo((c + 1) * cell, r * cell + 1); ctx.lineTo((c + 1) * cell, (r + 1) * cell - 1); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo((c + 1) * cell, r * cell); ctx.lineTo((c + 1) * cell, (r + 1) * cell); ctx.stroke();
         }
       }
       if (r < 12) {
         const b = RE.tierOf(r + 1, c);
         if (a !== b && !stairs.has(RE.key(r, c)) && !stairs.has(RE.key(r + 1, c))) {
-          ctx.strokeStyle = (a === 0 || b === 0) ? COL.goldWall : COL.wall;
-          ctx.lineWidth = 3.5;
-          ctx.beginPath(); ctx.moveTo(c * cell + 1, (r + 1) * cell); ctx.lineTo((c + 1) * cell - 1, (r + 1) * cell); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(c * cell, (r + 1) * cell); ctx.lineTo((c + 1) * cell, (r + 1) * cell); ctx.stroke();
         }
       }
     }
@@ -664,7 +690,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       for (const q of G.queue) ctx.lineTo(cx(q.c), cy(q.r));
       ctx.stroke(); ctx.setLineDash([]);
       G.queue.forEach((q, i) => {
-        ctx.fillStyle = COL.path;
+        ctx.fillStyle = COL.pip;
         ctx.beginPath(); ctx.arc(cx(q.c), cy(q.r), cell * .17, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.floor(cell * .22)}px sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -693,7 +719,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
         ctx.lineWidth = 3;
         const x1 = cx(m.from.c), y1 = cy(m.from.r), x2 = cx(m.to.c), y2 = cy(m.to.r);
         const ang = Math.atan2(y2 - y1, x2 - x1);
-        const sx = x1 + Math.cos(ang) * cell * .3, sy = y1 + Math.sin(ang) * cell * .3;
+        const sx = x1 + Math.cos(ang) * cell * .46, sy = y1 + Math.sin(ang) * cell * .46;
         const ex = x1 + Math.cos(ang) * cell * .78, ey = y1 + Math.sin(ang) * cell * .78;
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
         ctx.beginPath();
@@ -704,48 +730,52 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       }
     }
 
-    // emperor
+    // emperor — red disc filling the inset tile, small pale sun crest
     const ex0 = cx(6), ey0 = cy(6);
-    ctx.fillStyle = COL.emperor;
-    ctx.beginPath(); ctx.arc(ex0, ey0, cell * .32, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = COL.emperorSun;
-    ctx.beginPath(); ctx.arc(ex0, ey0, cell * .16, 0, Math.PI * 2); ctx.fill();
+    {
+      // gold sun disc with red core — the throne should be impossible to miss
+      ctx.fillStyle = COL.emperor;
+      ctx.beginPath(); ctx.arc(ex0, ey0, cell * .27, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = COL.emperorTile;
+      ctx.beginPath(); ctx.arc(ex0, ey0, cell * .13, 0, Math.PI * 2); ctx.fill();
+    }
     if (canAscend() && !G.queue.length && !G.busy && G.phase === 'play') {
-      const pulse = .42 + .1 * Math.sin(now / 260);
-      ctx.strokeStyle = COL.emperor; ctx.lineWidth = 3; ctx.globalAlpha = .55 + .4 * Math.sin(now / 260);
-      ctx.beginPath(); ctx.arc(ex0, ey0, cell * pulse + 4, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = COL.emperor; ctx.lineWidth = 2.5; ctx.globalAlpha = .55 + .4 * Math.sin(now / 260);
+      ctx.beginPath(); ctx.arc(ex0, ey0, cell * (.30 + .05 * Math.sin(now / 260)), 0, Math.PI * 2); ctx.stroke();
       ctx.globalAlpha = 1;
     }
 
-    // guards — flat and quiet, so they read as present but secondary
+    // pieces fill their square with a small even gap all round
+    const pieceR = cell * .5 - Math.max(2.5, cell * .08);
+
+    // guards — dark, quiet
     for (const g of vis.army) {
       const x = cx(g.c), y = cy(g.r);
       ctx.fillStyle = COL.guard;
-      ctx.beginPath(); ctx.arc(x, y, cell * .25, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, pieceR, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = COL.guardRing; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(x, y, cell * .25, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, pieceR, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = COL.guardEye;
-      ctx.beginPath(); ctx.arc(x, y, cell * .07, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, pieceR * .16, 0, Math.PI * 2); ctx.fill();
     }
-    // ronin — the only piece with lift (shadow + larger radius) so the eye finds it first
+    // ronin — red like the Emperor's line, marked by a curved katana slash
     {
       const x = cx(vis.ronin.c), y = cy(vis.ronin.r);
-      const r = cell * .33;
+      const r = pieceR;
       ctx.save();
-      ctx.shadowColor = 'rgba(183,56,47,.45)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 1;
+      ctx.shadowColor = 'rgba(140,47,39,.5)'; ctx.shadowBlur = 9; ctx.shadowOffsetY = 1;
       ctx.fillStyle = COL.ronin;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
-      ctx.strokeStyle = COL.roninRing; ctx.lineWidth = 2.5;
+      ctx.strokeStyle = COL.roninRing; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-      // hooded-figure silhouette — reads as a person, not a "no entry" slash
-      ctx.fillStyle = COL.roninMark;
+      // curved slash — a katana arc, cream on red
+      ctx.strokeStyle = COL.roninMark; ctx.lineWidth = Math.max(2.5, r * .18); ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(x, y - r * 0.55);
-      ctx.lineTo(x + r * 0.42, y + r * 0.42);
-      ctx.lineTo(x - r * 0.42, y + r * 0.42);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(x - r * .48, y + r * .52);
+      ctx.quadraticCurveTo(x + r * .38, y + r * .28, x + r * .52, y - r * .48);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
     }
 
     // capture flash — time-based decay so it fades correctly even if frames were skipped
@@ -795,7 +825,6 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     $('dayChip').textContent = G.mode === 'daily' ? `#${G.dayNum}` : 'random castle';
     $('practiceChip').style.display = G.mode === 'practice' ? 'inline-block' : 'none';
     $('moveChip').textContent = `moves ${G.moveCount} · par ${G.layout ? G.layout.par : '—'}`;
-    document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.diff === G.diff));
     const dots = $('attemptDots');
     dots.innerHTML = '';
     for (let i = 0; i < 3; i++) {
@@ -1165,7 +1194,15 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   $('undoBtn').onclick = () => { if (G.queue.length) { G.queue.pop(); refreshHints(); } };
   $('rescueBtn').onclick = ascend;
   $('helpBtn').onclick = showHelp;
-  $('statsBtn').onclick = () => { openModal(`<h2>Statistics</h2>${statsHtml()}${countdownHtml()}`); startCountdown(); };
+  const modeSegHtml = () => `
+    <div class="modeRow">difficulty<br/>
+      <span id="modeSeg">
+        <button data-diff="normal" class="${G.diff === 'normal' ? 'on' : ''}">normal</button>
+        <button data-diff="hard" class="${G.diff === 'hard' ? 'on' : ''}">hard</button>
+      </span>
+    </div>`;
+  const wireModeSeg = () => document.querySelectorAll('#modeSeg button').forEach(b => { b.onclick = () => setDiff(b.dataset.diff); });
+  $('statsBtn').onclick = () => { openModal(`<h2>Statistics</h2>${statsHtml()}${modeSegHtml()}${countdownHtml()}`); wireModeSeg(); startCountdown(); };
   $('practiceLink').onclick = () => startPractice();
 
   // ---------- game setup ----------
@@ -1178,7 +1215,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     G.ronin = { ...layout.ronin };
     G.army = layout.army.map(p => ({ ...p }));
     syncVis(); refreshHints(); updateHud();
-    setMsg(`Reach the Emperor. Tap tiles to plan up to ${G.diffCfg.steps} steps, then MOVE.`);
+    $('status').innerHTML = `<b><i>Rescue the Emperor in the tower.</i></b><br>Tap tiles to plan up to ${G.diffCfg.steps} steps, then hit MOVE.`;
   }
 
   function startPractice(seed) {
@@ -1234,8 +1271,6 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     closeModal();
     startDaily();
   }
-  document.querySelectorAll('#modeSeg button').forEach(b => { b.onclick = () => setDiff(b.dataset.diff); });
-
   // day rollover notice
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && G.mode === 'daily' && RE.dayNumber() !== G.dayNum) {

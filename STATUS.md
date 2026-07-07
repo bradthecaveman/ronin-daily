@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-07 (v1.6 — difficulty modes shipped: normal/hard, epic reserved)*
+*Last updated: 2026-07-07 (v1.7 — full visual redesign to traditional palette)*
 
 ## Live
 
@@ -197,6 +197,32 @@ PAR band [8,14]→[6,10], help-text update ("up to 3 steps"). Expected human dai
 acceptable now (day 3, no real audience), unacceptable later once streaks exist.
 If approved: apply to HTML engine + tests/engine.mjs mirror, run full release gate, re-run
 `tests/horizon.mjs` (10-year revalidation, ~25 min), browser-verify, deploy, update this section.
+
+## Visual redesign v1.7 (2026-07-07, Brad's 9-point brief + reference images)
+
+Brad supplied reference images: a traditional Japanese pigment card (粉白 cream / 砖红 brick red /
+唐茶 tang tea / 蕉鹃 celadon / 幽冥 dark), a red-sun ronin poster, and a shadowed 3D tile grid.
+
+- **Palette**: rings now tell the infiltration story — celadon forest (outer), tang-tea rooftops
+  (middle), cream palace (inner), brick-red throne. Emperor + Ronin are the red faction; guards
+  the dark 幽冥 charcoal. All UI chrome (buttons, modals, dots) re-derived from the same card;
+  primary action colour is brick red.
+- **Elevation**: rings painted as raised blocks with soft drop shadows (terraces), per reference.
+- **Walls**: uniform 2px charcoal keylines on all boundaries INCLUDING the outer perimeter
+  (was 3.5px, mixed gold/ink, no outer wall).
+- **Stairs + emperor tile inset** ~7% inside their cells (rounded corners) so they no longer
+  bleed across wall keylines. Stairs are now wood-brown with cream treads.
+- **Pieces fill their cells** (radius = cell/2 minus ~2.5px gap). Ronin back to a slash mark per
+  Brad — now a *curved* katana arc, cream on red. Emperor: gold sun ring with red core.
+- **Typography**: 'Shippori Mincho B1' (Google Fonts — first external dependency; graceful serif
+  fallback offline) for RONIN + 浪人, stacked vertically with the three attempt dots (16px)
+  centred beneath.
+- **Mode switcher moved out of the chip row into the ≡ stats modal** ("difficulty" segment).
+- **Instructions**: bold-italic headline "Rescue the Emperor in the tower." + plain second line.
+- **Buttons compacted to fit one row on 375px mobile.**
+
+Gate: rules 20/20, parity 40/40 both modes (engine untouched). Browser-verified desktop + mobile,
+stats-modal mode switch, hard continuity (day 4 par 8).
 
 ## Roadmap / open
 
