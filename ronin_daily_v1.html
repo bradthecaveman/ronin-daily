@@ -120,7 +120,12 @@
   .dist{ margin:10px 0 2px; }
   .dist .row{ display:flex; align-items:center; gap:8px; margin:4px 0; font-size:12px; }
   .dist .bar{ background:var(--indigo); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; min-width:18px; text-align:right; }
-  #countdown{ text-align:center; font-size:13px; color:var(--ink-soft); margin-top:12px; }
+  #countdown{ text-align:center; font-size:13px; color:var(--ink-soft); margin-top:14px; }
+  .splashSub{ text-align:center; color:var(--ink-soft); font-size:11.5px; letter-spacing:2.5px; margin:0 0 10px; }
+  .resDots{ display:flex; gap:10px; justify-content:center; margin:12px 0 6px; }
+  .resDots span{ width:18px; height:18px; border-radius:50%; border:2.5px solid var(--ink-soft); }
+  .resDots span.w{ background:var(--win); border-color:var(--win); }
+  .resDots span.f{ background:var(--vermillion); border-color:var(--vermillion); }
   #shareFeedback{ text-align:center; font-size:13px; color:var(--win); min-height:16px; margin-top:6px; font-weight:700; }
 </style>
 </head>
@@ -493,7 +498,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   // Palette from the traditional card: 蕉鹃 forest / 唐茶 rooftops / 粉白 palace /
   // 砖红 emperor+ronin / 幽冥 guards+ink.
   const COL = {
-    outer: '#a9c8a1', middle: '#d8a065', inner: '#f6efdc', emperorTile: '#a63b31',
+    outer: '#dbcfae', middle: '#e9e0c4', inner: '#f7f1de', emperorTile: '#a63b31',
     stair: '#7a5a39', stairLine: 'rgba(246,239,220,.75)',
     wall: '#42382f',
     grid: 'rgba(58,50,43,.10)',
@@ -615,8 +620,8 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     ctx.fillStyle = COL.outer;
     ctx.fillRect(0, 0, px, px);
     ctx.save();
-    ctx.shadowColor = 'rgba(46,38,30,.5)'; ctx.shadowBlur = cell * .55;
-    ctx.shadowOffsetX = cell * .18; ctx.shadowOffsetY = cell * .22;
+    ctx.shadowColor = 'rgba(46,38,30,.55)'; ctx.shadowBlur = cell * .75;
+    ctx.shadowOffsetX = cell * .26; ctx.shadowOffsetY = cell * .32;
     ctx.fillStyle = COL.middle;
     ctx.fillRect(2 * cell, 2 * cell, 9 * cell, 9 * cell);
     ctx.fillStyle = COL.inner;
@@ -632,16 +637,44 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 
     // stair tiles — inset inside their cell so they never cut the wall keyline
     const inset = Math.max(2, cell * .07);
-    ctx.save();
-    ctx.shadowColor = 'rgba(46,38,30,.4)'; ctx.shadowBlur = cell * .18;
-    ctx.shadowOffsetX = cell * .07; ctx.shadowOffsetY = cell * .09;
     for (const k of stairs) {
       const r = Math.floor(k / 13), c = k % 13;
-      const x = c * cell + inset, y = r * cell + inset, w = cell - 2 * inset;
-      ctx.fillStyle = COL.stair;
-      ctx.beginPath(); ctx.roundRect(x, y, w, w, 3); ctx.fill();
+      const x = c * cell, y = r * cell;
+      // the stair IS the transition: its gradient runs from the colour of the
+      // tier it leaves (foot) to the colour of the tier it climbs into (top)
+      const ring = RE.ringOf(r, c);
+      // foot starts a few shades below the source tier (depth), top lands exactly
+      // on the destination tier's colour — the stair climbs INTO the next terrace
+      const from = ring === 4 ? '#b3a179' : '#c8bb93';
+      const to = ring === 4 ? COL.middle : COL.inner;
+      const vertical = Math.abs(r - 6) > Math.abs(c - 6);
+      let g;
+      if (vertical) g = (r < 6)
+        ? ctx.createLinearGradient(x, y, x, y + cell)
+        : ctx.createLinearGradient(x, y + cell, x, y);
+      else g = (c < 6)
+        ? ctx.createLinearGradient(x, y, x + cell, y)
+        : ctx.createLinearGradient(x + cell, y, x, y);
+      g.addColorStop(0, from);
+      g.addColorStop(1, to);
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, cell, cell);
+      // 4 thin treads running across the climb, lightening as they ascend
+      let foot0, sign;
+      if (vertical) { if (r < 6) { foot0 = y; sign = 1; } else { foot0 = y + cell; sign = -1; } }
+      else { if (c < 6) { foot0 = x; sign = 1; } else { foot0 = x + cell; sign = -1; } }
+      const fracs = [0.2, 0.4, 0.6, 0.8];
+      const treadCols = ['rgba(74,58,38,.5)', 'rgba(98,79,53,.42)', 'rgba(126,106,73,.34)', 'rgba(154,133,98,.28)'];
+      ctx.lineWidth = 1; // match the board grid
+      for (let i = 0; i < 4; i++) {
+        const a = foot0 + sign * fracs[i] * cell;
+        ctx.strokeStyle = treadCols[i];
+        ctx.beginPath();
+        if (vertical) { ctx.moveTo(x + inset, a); ctx.lineTo(x + cell - inset, a); }
+        else { ctx.moveTo(a, y + inset); ctx.lineTo(a, y + cell - inset); }
+        ctx.stroke();
+      }
     }
-    ctx.restore();
 
     // emperor tile — inset red tile, fully inside its cell
     {
@@ -728,8 +761,17 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const ex0 = cx(6), ey0 = cy(6);
     {
       // gold sun disc with red core — the throne should be impossible to miss
-      ctx.fillStyle = COL.emperor;
+      ctx.save();
+      ctx.shadowColor = 'rgba(46,38,30,.38)'; ctx.shadowBlur = cell * .12;
+      ctx.shadowOffsetX = cell * .05; ctx.shadowOffsetY = cell * .07;
+      const eg = ctx.createRadialGradient(ex0, ey0, 0, ex0, ey0, cell * .27);
+      eg.addColorStop(0, '#c3922f');
+      eg.addColorStop(.6, '#cd9c39');
+      eg.addColorStop(.88, '#f2cd6f');
+      eg.addColorStop(1, '#d3a344');
+      ctx.fillStyle = eg;
       ctx.beginPath(); ctx.arc(ex0, ey0, cell * .27, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
       ctx.fillStyle = COL.emperorTile;
       ctx.beginPath(); ctx.arc(ex0, ey0, cell * .13, 0, Math.PI * 2); ctx.fill();
     }
@@ -742,32 +784,40 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     // pieces fill their square with a small even gap all round
     const pieceR = cell * .5 - Math.max(2.5, cell * .08);
 
-    // guards — dark, quiet
+    // guards — backgammon stones: flat dark body, bright bevel ring at the rim
+    ctx.save();
+    ctx.shadowColor = 'rgba(46,38,30,.38)'; ctx.shadowBlur = cell * .12;
+    ctx.shadowOffsetX = cell * .05; ctx.shadowOffsetY = cell * .07;
     for (const g of vis.army) {
       const x = cx(g.c), y = cy(g.r);
-      ctx.fillStyle = COL.guard;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, pieceR);
+      grad.addColorStop(0, '#332b26');
+      grad.addColorStop(.6, '#332b26');
+      grad.addColorStop(1, '#483e35');
+      ctx.fillStyle = grad;
       ctx.beginPath(); ctx.arc(x, y, pieceR, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = COL.guardEye;
-      ctx.beginPath(); ctx.arc(x, y, pieceR * .16, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
     // ronin — red like the Emperor's line, marked by a curved katana slash
     {
       const x = cx(vis.ronin.c), y = cy(vis.ronin.r);
       const r = pieceR;
       ctx.save();
-      ctx.shadowColor = 'rgba(46,38,30,.45)'; ctx.shadowBlur = 8;
-      ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
-      ctx.fillStyle = COL.ronin;
+      ctx.shadowColor = 'rgba(46,38,30,.4)'; ctx.shadowBlur = cell * .12;
+      ctx.shadowOffsetX = cell * .05; ctx.shadowOffsetY = cell * .07;
+      const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+      rg.addColorStop(0, '#9c352d');
+      rg.addColorStop(.6, '#9c352d');
+      rg.addColorStop(1, '#bf4e44');
+      ctx.fillStyle = rg;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
-      ctx.strokeStyle = COL.roninRing; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-      // curved katana slash with tapered points — a filled crescent, cream on red
-      ctx.fillStyle = COL.roninMark;
+      // curved katana slash, tapered points — gold, echoing the Emperor
+      ctx.fillStyle = '#e6ba48';
       ctx.beginPath();
-      ctx.moveTo(x - r * .5, y + r * .54);
-      ctx.quadraticCurveTo(x + r * .44, y + r * .34, x + r * .54, y - r * .5);
-      ctx.quadraticCurveTo(x + r * .2, y + r * .1, x - r * .5, y + r * .54);
+      ctx.moveTo(x - r * .62, y + r * .66);
+      ctx.quadraticCurveTo(x + r * .52, y + r * .42, x + r * .66, y - r * .62);
+      ctx.quadraticCurveTo(x + r * .24, y + r * .12, x - r * .62, y + r * .66);
       ctx.closePath(); ctx.fill();
     }
 
@@ -975,8 +1025,10 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     if (G.attempt < 3) {
       saveDay(false);
       openModal(`
-        <h2>${capturedMsg} 💀</h2>
-        <p style="text-align:center;color:var(--ink-soft)">Attempt ${G.attempt} of 3 — the castle resets, the guards return to their posts.<br/>You know their ways a little better now.</p>
+        <h2 style="text-align:center">You have been overwhelmed</h2>
+        <div style="text-align:center;color:var(--ink-soft);font-size:13px;letter-spacing:2px;margin-top:2px">attempt ${G.attempt} of 3</div>
+        <p style="text-align:center;color:var(--ink-soft);margin:14px 0 4px">The castle resets, the guards return to their posts.</p>
+        <p style="text-align:center;margin:4px 0 2px"><b><i>You know their ways a little better now.</i></b></p>
         <button class="primary" id="retryBtn">Attempt ${G.attempt + 1}</button>
       `);
       $('retryBtn').onclick = (e) => {
@@ -1014,6 +1066,8 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   $('overlay').onclick = (e) => { if (e.target === $('overlay')) closeModal(); };
 
   function squaresStr() { return G.squares.map(s => s === 'w' ? '🟩' : s === 'f' ? '🟥' : '⬜').join(''); }
+  const resDots = () => `<div class="resDots">${G.squares.map(s =>
+    `<span class="${s === 'w' ? 'w' : s === 'f' ? 'f' : ''}"></span>`).join('')}</div>`;
   function shareText() {
     const w = G.squares.indexOf('w');
     const s = readStore();
@@ -1050,7 +1104,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     return { played, wins, cur, max, dist };
   }
 
-  function statsHtml() {
+  function statsHtml(includeDist = true) {
     const s = calcStats();
     const pc = s.played ? Math.round(100 * s.wins / s.played) : 0;
     const maxD = Math.max(1, ...s.dist);
@@ -1061,11 +1115,11 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
         <div><div class="n">${s.cur}</div><div class="l">streak</div></div>
         <div><div class="n">${s.max}</div><div class="l">best</div></div>
       </div>
-      <div class="dist">
+      ${includeDist ? `<div class="dist">
         ${[0, 1, 2].map(i => `
           <div class="row"><span>attempt ${i + 1}</span>
           <span class="bar" style="width:${Math.max(8, 90 * s.dist[i] / maxD)}%">${s.dist[i]}</span></div>`).join('')}
-      </div>`;
+      </div>` : ''}`;
   }
 
   let cdTimer = null;
@@ -1096,16 +1150,15 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       : `The Emperor waits… <b>(par ${G.layout.par})</b>`;
     const isDaily = G.mode === 'daily';
     openModal(`
-      <h2 style="text-align:center">${won ? 'Emperor rescued! ⛩' : 'Captured 💀'}</h2>
-      <div style="text-align:center;color:var(--ink-soft);font-size:13px;letter-spacing:2px">
-        ${isDaily ? 'RONIN #' + G.dayNum : 'PRACTICE'}${G.diff === 'hard' ? ' · ⚔ HARD' : ''}</div>
-      <div class="squares">${squaresStr()}</div>
-      <div class="headline">${headline}</div>
+      <h2 style="text-align:center;margin-bottom:1px">${won ? 'The Emperor is free' : 'You have been overwhelmed'}</h2>
+      <div class="splashSub">${isDaily ? 'RONIN #' + G.dayNum : 'PRACTICE'}${G.diff === 'hard' ? ' · ⚔ HARD' : ''}</div>
+      ${resDots()}
+      <div class="headline" style="margin:2px 0 12px">${headline}</div>
       ${!won ? `<button class="primary" id="revealBtn" style="background:var(--gold);color:var(--ink)">REVEAL THE WAY IN ⛩</button>` : ''}
       ${isDaily ? `<button class="primary" id="shareBtn">SHARE RESULT</button><div id="shareFeedback"></div>` : ''}
-      ${isDaily ? statsHtml() : ''}
+      ${isDaily ? statsHtml(false) : ''}
       ${isDaily ? countdownHtml() : ''}
-      <div style="text-align:center;margin-top:12px;font-size:13px">
+      <div style="text-align:center;margin-top:3px;font-size:13px">
         <a id="practiceLink2" style="color:var(--indigo);cursor:pointer;text-decoration:underline">
           ${isDaily ? 'practice on a random castle' : 'another random castle'}</a>
       </div>

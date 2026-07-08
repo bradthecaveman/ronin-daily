@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-07 (v1.7.1 — flat-refinement pass: no keylines on pieces/stairs, sun top-left, minimal front screen)*
+*Last updated: 2026-07-07 (v1.8 — monochrome art direction: cream terraces, lacquered stones, carved stair ramps, redesigned modals)*
 
 ## Live
 
@@ -255,6 +255,35 @@ Gate: rules 20/20, parity 40/40. Browser-verified mobile + splash content.
 why." Working hypothesis: the lift shadow makes gates read as solid raised blocks (obstacles)
 when they should read as openings/passages. Candidate fixes when revisited: recess them
 (inner shadow, carved-into-the-wall look), restore treads without the lift, or an arch mark.
+
+## Monochrome art direction v1.8 (2026-07-07, Brad, extended iteration)
+
+Dropped the coloured rings entirely — they carried no mechanical meaning and fought the
+reference poster (cream + ink + red). The board is now a single cream luminance ramp; structure
+is read from shadows, keylines, and stair gradients alone. Net effect: the red faction (Ronin +
+Emperor) is the only saturated thing on the board, so the eye connects "get this red to that red"
+instantly.
+
+- **Terraces**: three cream shades (outer→inner lightening toward the throne) with a strong
+  top-left sun (shadows fall bottom-right, blur/offset bumped).
+- **Pieces** (all): matte lacquered-stone look — soft low-contrast radial bevel (dark core →
+  slightly lighter rim, NO bright edge highlight or outline ring), plus a small drop shadow so
+  they sit like backgammon stones. Guards lost their red dot (they're the only dark discs, so
+  "enemy" already reads). Ronin's slash is now gold (echoes the Emperor — "carries the mission"),
+  longer, tapered crescent.
+- **Stairs**: full-cell squares (no rounded inset, no drop shadow). Gradient runs up the climb —
+  a few shades below the source tier at the foot, landing on the destination tier's exact cream at
+  the top (illusion of height, and the stair visually belongs to where it leads). Plus 4 hairline
+  treads (1px, matching grid) running across the climb, lightening as they ascend.
+- **Captured modal**: "You have been overwhelmed" / "attempt N of 3" / reset line / bold-italic
+  "You know their ways a little better now" / button. Centred.
+- **Success splash**: header "The Emperor is free" (no emoji); RONIN #N tucked small beneath it;
+  result shown as circles matching the board/header dots (green win / red fail), grouped with the
+  moves·par line; attempt-distribution bars removed (kept in ≡ stats menu only); countdown +
+  practice link grouped.
+
+Engine untouched. Gate: rules 20/20, parity 40/40 both modes. Browser-verified desktop + both
+modals + captured/success flows.
 
 ## Roadmap / open
 
