@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>RONIN — ring reference (stepping-stone, lozenge v2)</title>
+<style>
+  :root{ --paper:#ece4cf; --ink:#3a322b; --ink-soft:#6e6355; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:var(--paper); color:var(--ink); font-family:"Iowan Old Style",Palatino,Georgia,serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:22px 12px 40px; }
+  h1{ font-size:26px; letter-spacing:8px; font-weight:800; }
+  .sub{ color:var(--ink-soft); font-size:13px; margin:6px 0 16px; max-width:540px; text-align:center; line-height:1.5; }
+  canvas{ display:block; }
+  .legend{ margin-top:16px; font-size:11.5px; letter-spacing:.06em; color:var(--ink-soft); text-align:center; line-height:1.9; max-width:540px; }
+  .legend b{ color:var(--ink); }
+</style>
+</head>
+<body>
+<h1>RONIN</h1>
+<div class="sub">Stepping-stone model. Orbit any ring freely; cross inward only where two stones are joined into a gate — <b>two gates per ring</b>. Orbit round to find one, then descend.</div>
+<canvas id="c"></canvas>
+<div class="legend">
+  <b>colour gradient</b> = distance in (darkest edge → lightest throne) &nbsp;·&nbsp;
+  <b>joined stones</b> = gates (two per ring) &nbsp;·&nbsp;
+  <b>red</b> = ronin &amp; emperor &nbsp;·&nbsp; <b>dark</b> = guards
+</div>
+
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const SIZE = Math.min(540, (window.innerWidth||540) - 24), DPR = window.devicePixelRatio || 1;
+cv.width = SIZE*DPR; cv.height = SIZE*DPR; cv.style.width = SIZE+'px'; cv.style.height = SIZE+'px'; ctx.scale(DPR, DPR);
+const CX = SIZE/2, CY = SIZE/2, TAU = Math.PI*2;
+
+const ringShade = [null,'#f7f2e2','#efe8d2','#e6dcc2','#ddd0b0','#d4c5a1','#cbb992']; // ring1 inner → ring6 outer
+const darken = (hex,f)=>{ const n=parseInt(hex.slice(1),16); return `rgb(${Math.round((n>>16&255)*f)},${Math.round((n>>8&255)*f)},${Math.round((n&255)*f)})`; };
+let _s = 20260707; const rnd = () => { _s = (_s*1103515245 + 12345) & 0x7fffffff; return _s/0x7fffffff; };
+
+// ---- geometry: emperor sits in a slightly larger central chamber; rings evenly spaced outward ----
+const RINGS = 6;
+const step = (SIZE*0.445) / 6.5;          // ring-to-ring spacing
+const offset = step * 1.5;                // push ring 1 out → a proper throne chamber
+const EMP_R = step * 0.72;                // bigger emperor
+const nodes = [], byRing = [];
+for (let k = 1; k <= RINGS; k++){
+  const R = offset + (k-1)*step;
+  const count = Math.max(8, Math.round((TAU*R/step)/2)*2);
+  const arc = TAU*R/count;
+  const stoneR = Math.min(arc*0.47, step*0.46);
+  const ring = [];
+  for (let s = 0; s < count; s++){
+    const a = (s/count)*TAU - Math.PI/2;
+    const n = { x: CX + R*Math.cos(a), y: CY + R*Math.sin(a), ring:k, idx:s, count, R, a, r:stoneR };
+    nodes.push(n); ring.push(n);
+  }
+  byRing[k] = ring;
+}
+
+// signed angular difference of node n from angle a, in (-PI, PI]
+const sdiff = (n,a) => { let d=n.a-a; while(d<=-Math.PI)d+=TAU; while(d>Math.PI)d-=TAU; return d; };
+const nearestInner = (k,a) => { let best=null,bd=1e9; for(const n of byRing[k-1]){ const d=Math.abs(sdiff(n,a)); if(d<bd){bd=d;best=n;} } return best; };
+const straddleInner = (k,a) => { // the nearest inner stone on each angular side (a real left/right fork)
+  let cw=null,ccw=null,cwd=1e9,ccwd=1e9;
+  for(const n of byRing[k-1]){ const d=sdiff(n,a); if(d>=0){ if(d<cwd){cwd=d;cw=n;} } else { if(-d<ccwd){ccwd=-d;ccw=n;} } }
+  return [cw||ccw, ccw||cw];
+};
+
+// ---- crossings: exactly TWO entry points per ring boundary, each a simple 2-stone join (no forks) ----
+const edges = [], ek = new Set();
+const addEdge = (a,b) => { if(!a||!b||a===b) return; const k=[a.ring+'.'+a.idx, b.ring+'.'+b.idx].sort().join('|'); if(ek.has(k))return; ek.add(k); edges.push([a,b]); };
+let roninNode = null;
+for (let k=RINGS; k>1; k--){
+  const rg=byRing[k], cnt=rg.length;
+  const i0=Math.floor(rnd()*cnt);
+  const i1=(i0 + Math.floor(cnt*(0.35+rnd()*0.3)))%cnt;   // two spread entry points
+  for(const i of [i0,i1]){ const n=rg[i]; addEdge(n, nearestInner(k, n.a)); }
+  if(k===RINGS) roninNode = rg[i0];
+}
+
+// joined stones = ONE merged darker silhouette (stones + neck fused). Built on an
+// offscreen so the whole figure-8 casts a single clean drop shadow, not per-part seams.
+const joinStones = new Set(); edges.forEach(([a,b])=>{ joinStones.add(a); joinStones.add(b); });
+const DARKF = 0.87, WAIST = 1.05;   // waist as a fraction of stone width
+const oc = document.createElement('canvas'); oc.width = cv.width; oc.height = cv.height;
+const octx = oc.getContext('2d'); octx.scale(DPR, DPR);
+// ONE radial gradient (darkened, by radius) painted across the whole network, so every
+// lozenge is a single continuous piece — no visible inner-circle seams.
+const maxR = offset + (RINGS-1)*step + step*0.46;
+const ng = octx.createRadialGradient(CX,CY,0, CX,CY, maxR);
+ng.addColorStop(0, darken(ringShade[1], DARKF));
+for(let k=1;k<=RINGS;k++) ng.addColorStop((offset+(k-1)*step)/maxR, darken(ringShade[k], DARKF));
+ng.addColorStop(1, darken(ringShade[RINGS], DARKF));
+// A crossing is a true peanut: the neck is pinched at the middle and flares out
+// tangentially into each stone's perimeter — no straight-bar-between-circles look.
+const TH = 50*Math.PI/180, ST = Math.sin(TH), CT = Math.cos(TH);
+function tracePeanuts(c){
+  for(const [a,b] of edges){
+    const dx=b.x-a.x, dy=b.y-a.y, L=Math.hypot(dx,dy);
+    const ux=dx/L, uy=dy/L, px=-uy, py=ux, al=Math.atan2(uy,ux);
+    const r1=a.r, r2=b.r, w=Math.min(r1,r2)*WAIST/2;
+    const d = Math.max(0, (4*(r1+r2)*ST - 8*w) / (6*CT));   // pull that lands the waist at w
+    const P=(o,rr,su,sp)=>({x:o.x+rr*(su*ux+sp*px), y:o.y+rr*(su*uy+sp*py)});
+    const V=(pt,su,sp)=>({x:pt.x+d*(su*ux+sp*px), y:pt.y+d*(su*uy+sp*py)});
+    const Pap=P(a,r1,CT,ST), Pam=P(a,r1,CT,-ST), Pbp=P(b,r2,-CT,ST), Pbm=P(b,r2,-CT,-ST);
+    const Cam=V(Pam,ST,CT), Cbm=V(Pbm,-ST,CT), Cbp=V(Pbp,-ST,-CT), Cap=V(Pap,ST,-CT);
+    c.beginPath();
+    c.moveTo(Pap.x,Pap.y);
+    c.arc(a.x,a.y,r1, al+TH, al-TH, false);                     // far side of stone A
+    c.bezierCurveTo(Cam.x,Cam.y, Cbm.x,Cbm.y, Pbm.x,Pbm.y);     // pinched neck, one side
+    c.arc(b.x,b.y,r2, al+Math.PI+TH, al+Math.PI-TH, false);     // far side of stone B
+    c.bezierCurveTo(Cbp.x,Cbp.y, Cap.x,Cap.y, Pap.x,Pap.y);     // pinched neck, other side
+    c.closePath(); c.fill();
+  }
+}
+octx.fillStyle = ng; tracePeanuts(octx);
+
+// Singles read crisply because they have BOTH a darker core and a hard-edged rim.
+// Darken the whole merged shape a touch; the rim then has something to push against.
+octx.save();
+octx.globalCompositeOperation='source-atop';
+octx.fillStyle='rgba(0,0,0,.05)';
+octx.fillRect(0,0,SIZE,SIZE);
+octx.restore();
+
+// Crisp inset rim = union MINUS (union eroded by RIMW). A blur would feather the
+// edge; eroding keeps the hard inner boundary that makes the singles read as stones.
+const newCv=()=>{ const c=document.createElement('canvas'); c.width=oc.width; c.height=oc.height;
+  const x=c.getContext('2d'); x.scale(DPR,DPR); return [c,x]; };
+const [mk,mctx]=newCv(); mctx.fillStyle='#fff'; tracePeanuts(mctx);         // union mask
+const complement = src => { const [c,x]=newCv(); x.fillStyle='#fff'; x.fillRect(0,0,SIZE,SIZE);
+  x.globalCompositeOperation='destination-out'; x.drawImage(src,0,0,SIZE,SIZE); return c; };
+const dilate = (src,w) => { const [c,x]=newCv(); x.drawImage(src,0,0,SIZE,SIZE);
+  for(let i=0;i<20;i++){ const a=i/20*TAU; x.drawImage(src, w*Math.cos(a), w*Math.sin(a), SIZE, SIZE); } return c; };
+const RIMW = step*0.11;
+const eroded = complement(dilate(complement(mk), RIMW));                     // union shrunk by RIMW
+const [band,bctx]=newCv();
+bctx.drawImage(mk,0,0,SIZE,SIZE);
+bctx.globalCompositeOperation='destination-out'; bctx.drawImage(eroded,0,0,SIZE,SIZE);  // the rim band
+octx.save(); octx.globalCompositeOperation='source-atop'; octx.globalAlpha=0.17;
+octx.drawImage(band,0,0,SIZE,SIZE); octx.restore();
+ctx.save(); ctx.shadowColor='rgba(46,38,30,.32)'; ctx.shadowBlur=step*0.16; ctx.shadowOffsetX=step*0.07; ctx.shadowOffsetY=step*0.1;
+ctx.drawImage(oc, 0, 0, SIZE, SIZE); ctx.restore();
+
+// single (non-join) stones — normal light stone with its own shadow + bevel
+for(const n of nodes){
+  if(joinStones.has(n)) continue;
+  ctx.save(); ctx.shadowColor='rgba(46,38,30,.3)'; ctx.shadowBlur=n.r*0.55; ctx.shadowOffsetX=n.r*0.22; ctx.shadowOffsetY=n.r*0.3;
+  ctx.fillStyle=ringShade[n.ring]; ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,TAU); ctx.fill(); ctx.restore();
+  const bg=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);
+  bg.addColorStop(0,'rgba(0,0,0,.05)'); bg.addColorStop(.7,'rgba(0,0,0,0)'); bg.addColorStop(1,'rgba(255,255,255,.18)');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,TAU); ctx.fill();
+}
+
+function disc(x,y,r,fill){ ctx.save(); ctx.shadowColor='rgba(46,38,30,.3)'; ctx.shadowBlur=r*0.55; ctx.shadowOffsetX=r*0.22; ctx.shadowOffsetY=r*0.3;
+  ctx.fillStyle=fill; ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill(); ctx.restore(); }
+
+// guards
+{ const pool = nodes.filter(n=>n.ring>=2 && n!==roninNode); for(let i=0;i<11;i++){ const n=pool[Math.floor(rnd()*pool.length)];
+  const r=n.r*0.82; disc(n.x,n.y,r,'#332b26');
+  const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r); g.addColorStop(0,'#332b26'); g.addColorStop(.6,'#332b26'); g.addColorStop(1,'#4a3f37');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(n.x,n.y,r,0,TAU); ctx.fill(); } }
+
+// ronin
+{ const rn=roninNode, R=rn.r*0.92;
+  ctx.save(); ctx.shadowColor='rgba(46,38,30,.4)'; ctx.shadowBlur=R*0.6; ctx.shadowOffsetX=R*0.2; ctx.shadowOffsetY=R*0.28;
+  const g=ctx.createRadialGradient(rn.x,rn.y,0,rn.x,rn.y,R); g.addColorStop(0,'#9c352d'); g.addColorStop(.6,'#9c352d'); g.addColorStop(1,'#bf4e44');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(rn.x,rn.y,R,0,TAU); ctx.fill(); ctx.restore();
+  ctx.fillStyle='#e6ba48'; ctx.beginPath();
+  ctx.moveTo(rn.x-R*.6, rn.y+R*.64); ctx.quadraticCurveTo(rn.x+R*.5, rn.y+R*.4, rn.x+R*.64, rn.y-R*.6);
+  ctx.quadraticCurveTo(rn.x+R*.22, rn.y+R*.12, rn.x-R*.6, rn.y+R*.64); ctx.closePath(); ctx.fill(); }
+
+// emperor (bigger)
+disc(CX,CY,EMP_R,'#a6392f');
+const eg=ctx.createRadialGradient(CX,CY,2,CX,CY,EMP_R*0.64); eg.addColorStop(0,'#c3922f'); eg.addColorStop(1,'#e9c56a');
+ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(CX,CY,EMP_R*0.64,0,TAU); ctx.fill();
+ctx.fillStyle='#a6392f'; ctx.beginPath(); ctx.arc(CX,CY,EMP_R*0.28,0,TAU); ctx.fill();
+</script>
+</body>
+</html>

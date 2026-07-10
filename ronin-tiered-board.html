@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ronin — Tiered Board</title>
+<style>
+  :root{
+    --sumi:#16151a;
+    --paper:#e8e2d4;
+    --t1:#55555f;   /* outer tier — lightest */
+    --t2:#45454f;   /* middle tier */
+    --t3:#36363f;   /* inner tier — darkest, closest to Emperor */
+    --vermillion:#c8452c;
+    --gold:#c9a04e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--sumi);color:var(--paper);
+    font-family:Georgia,'Times New Roman',serif;
+    min-height:100vh;padding:32px 16px 64px;
+  }
+  header{max-width:700px;margin:0 auto 24px;text-align:center;}
+  .eyebrow{font-family:'Courier New',monospace;font-size:11px;letter-spacing:.35em;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+  h1{font-size:clamp(24px,5vw,36px);font-weight:400;}
+  .sub{margin-top:8px;color:#9a95a8;font-size:14.5px;line-height:1.5;}
+  .card{
+    max-width:640px;margin:0 auto;
+    background:linear-gradient(180deg,#1d1c23,#17161c);
+    border:1px solid #2c2b34;border-radius:6px;
+    padding:22px 20px 26px;
+  }
+  .svgwrap{display:flex;justify-content:center;}
+  svg{max-width:100%;height:auto;}
+  .hint{
+    text-align:center;font-family:'Courier New',monospace;font-size:12px;
+    letter-spacing:.15em;color:var(--gold);margin-bottom:14px;text-transform:uppercase;
+  }
+  .stone{cursor:pointer;transition:fill .12s;}
+  .notes{
+    max-width:640px;margin:22px auto 0;
+    font-size:13.5px;line-height:1.65;color:#b5b0c2;
+  }
+  .notes b{color:var(--paper);font-weight:600;}
+  .notes p{margin-bottom:10px;}
+  .legend{
+    max-width:640px;margin:18px auto 0;text-align:center;
+    font-family:'Courier New',monospace;font-size:11.5px;letter-spacing:.08em;color:#8a8598;
+  }
+  .legend span{display:inline-block;margin:0 10px;}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:middle;margin-right:5px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Chess Ronin — Tiered Board</div>
+  <h1>Three Tiers, Six Rings</h1>
+  <p class="sub">Outer / middle / inner tiers of two rings each, Emperor at the heart. Stones grow with radius so the gaps stay even from centre to edge.</p>
+</header>
+
+<div class="card">
+  <div class="hint">Tap or hover a stone — gold shows its neighbours</div>
+  <div class="svgwrap"><svg id="board" viewBox="-235 -235 470 470"></svg></div>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:var(--t1)"></span>OUTER TIER · R1–2</span>
+  <span><span class="dot" style="background:var(--t2)"></span>MIDDLE · R3–4</span>
+  <span><span class="dot" style="background:var(--t3)"></span>INNER · R5–6</span>
+  <span><span class="dot" style="background:var(--vermillion)"></span>EMPEROR</span>
+</div>
+
+<div class="notes">
+  <p><b>The sizing trick:</b> each ring's stone radius is a fixed fraction of <i>that ring's own arc spacing</i> — the actual distance between neighbouring stones on that ring. Because outer rings round their counts to multiples of 4, their spacing varies slightly, and the stones now absorb that variance instead of leaving uneven gaps.</p>
+  <p><b>Tier logic maps straight onto your square game:</b> outer tier = outer wall, middle tier = courtyard, inner tier = keep. Guards could be bound to a tier, gates could sit at tier boundaries, and the ronin's journey reads as three escalating zones — exactly the structure your current board implies, bent into a circle.</p>
+</div>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('board');
+const RINGS = 6, BOARD_R = 218;
+const gap = BOARD_R / (RINGS + 0.6);
+const FILL = 0.42; // stone radius as fraction of local spacing
+
+const tierFill = ring => ring <= 2 ? 'var(--t3)' : ring <= 4 ? 'var(--t2)' : 'var(--t1)';
+// note: ring 1–2 innermost = darkest (t3), 5–6 outermost = lightest (t1)
+
+const stones = [];
+for(let k=1; k<=RINGS; k++){
+  const R = k * gap;
+  const count = Math.max(8, Math.round((2 * Math.PI * R / gap) / 4) * 4);
+  const arcSpacing = 2 * Math.PI * R / count;          // true neighbour distance on this ring
+  const stoneR = Math.min(arcSpacing, gap) * FILL;     // absorb whichever gap is tighter
+  for(let s=0; s<count; s++){
+    const a = (s / count) * 2 * Math.PI - Math.PI / 2;
+    stones.push({ x:R*Math.cos(a), y:R*Math.sin(a), ring:k, idx:s, count, r:stoneR });
+  }
+}
+
+// neighbours: ring left/right + nearest in adjacent rings
+stones.forEach(s => {
+  s.neigh = stones.filter(t => {
+    if (t === s) return false;
+    if (t.ring === s.ring){
+      const d = Math.abs(t.idx - s.idx);
+      return d === 1 || d === s.count - 1;
+    }
+    if (Math.abs(t.ring - s.ring) === 1){
+      return Math.hypot(t.x-s.x, t.y-s.y) < gap * 1.25;
+    }
+    return false;
+  });
+});
+
+stones.forEach(s => {
+  const c = document.createElementNS(NS,'circle');
+  c.setAttribute('cx', s.x); c.setAttribute('cy', s.y);
+  c.setAttribute('r', s.r);
+  c.setAttribute('class','stone');
+  const base = tierFill(s.ring);
+  c.setAttribute('fill', base);
+  c.setAttribute('stroke','var(--sumi)');
+  c.setAttribute('stroke-width','1');
+  s.el = c; s.base = base;
+  svg.appendChild(c);
+
+  const highlight = on => {
+    s.el.setAttribute('fill', on ? 'var(--vermillion)' : s.base);
+    s.neigh.forEach(t => t.el.setAttribute('fill', on ? 'var(--gold)' : t.base));
+  };
+  c.addEventListener('mouseenter', () => highlight(true));
+  c.addEventListener('mouseleave', () => highlight(false));
+  c.addEventListener('touchstart', e => { e.preventDefault(); highlight(true); }, {passive:false});
+  c.addEventListener('touchend', () => setTimeout(() => highlight(false), 900));
+});
+
+// Emperor
+const emp = document.createElementNS(NS,'circle');
+emp.setAttribute('r', gap * 0.5);
+emp.setAttribute('fill','var(--vermillion)');
+svg.appendChild(emp);
+const t = document.createElementNS(NS,'text');
+t.textContent='皇';
+t.setAttribute('text-anchor','middle');
+t.setAttribute('dominant-baseline','central');
+t.setAttribute('fill','var(--paper)');
+t.setAttribute('font-size', gap*0.55);
+t.setAttribute('font-family','serif');
+svg.appendChild(t);
+</script>
+</body>
+</html>

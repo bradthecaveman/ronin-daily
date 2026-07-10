@@ -4,7 +4,16 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-07 (v1.8 — monochrome art direction: cream terraces, lacquered stones, carved stair ramps, redesigned modals)*
+*Last updated: 2026-07-08 (exploring a circular ring-graph board — see BOARD_REDESIGN_BRIEF.md)*
+
+## ⮕ Active exploration: circular board redesign
+
+**See `BOARD_REDESIGN_BRIEF.md`** (self-contained) + reference files `ronin-ring-reference-1b.html`
+(Option 1, stepping-stone) and `ronin-ring-reference-2c.html` (Option 2, tier-gate). We're
+exploring replacing the square grid with a concentric ring graph (6 rings + Emperor, 3 tiers).
+Leading difficulty-ladder proposal: easy = Option 2 + 3 moves; normal = Option 1 + 3 moves;
+hard = Option 1 + 2 moves; epic = hard + mechanics. Not built yet — design/planning stage, to be
+built in Fable. The live square game below is unchanged and still deployed.
 
 ## Live
 
