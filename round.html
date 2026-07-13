@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>RONIN ◯ — a daily rescue puzzle</title>
+<meta name="description" content="One ronin. One castle. One rescue a day. Orbit the rings, slip the guards, climb the stair gates to the Emperor — in as few moves as you can."/>
+<meta property="og:title" content="RONIN ◯ — a daily rescue puzzle"/>
+<meta property="og:description" content="Slip past the guards and rescue the Emperor at the heart of the ring castle. New castle every day."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700;800&display=swap" rel="stylesheet"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f4efe4'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23b7382f' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23b7382f'/%3E%3C/svg%3E"/>
+<style>
+  :root{
+    --paper:#ece4cf; --paper-2:#e0d6bd; --ink:#3a322b; --ink-soft:#6e6355;
+    --indigo:#8c2f27; --indigo-bright:#a63b31; /* action colour is brick red */
+    --vermillion:#a63b31; --gold:#d8a065; --pine:#7d9b74; --slate:#4a403a;
+    --win:#5f8c58;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  }
+  header{
+    width:100%; max-width:560px; display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px 6px;
+  }
+  .brand{ display:flex; flex-direction:column; align-items:center; gap:1px; }
+  .brand h1{
+    margin:0; font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif;
+    font-size:30px; letter-spacing:9px; font-weight:800; margin-left:9px; line-height:1.05;
+  }
+  .roundTag{ font-size:10px; letter-spacing:3px; color:var(--vermillion); font-weight:700; margin-left:3px; }
+  #attemptDots{ display:flex; gap:9px; align-items:center; justify-content:center; margin-top:8px; }
+  .adot{ width:16px; height:16px; border-radius:50%; border:2.5px solid var(--ink-soft); }
+  .icon-btn{
+    border:1.5px solid var(--ink); background:transparent; color:var(--ink);
+    width:34px; height:34px; border-radius:50%; font-size:16px; font-weight:700;
+    cursor:pointer; line-height:1;
+  }
+  .icon-btn:active{ background:var(--paper-2); }
+  #chipRow{
+    width:100%; max-width:560px; display:flex; align-items:center; justify-content:center;
+    padding:0 16px 4px; font-size:14px; color:var(--ink-soft);
+  }
+  .adot.cur{ border-color:var(--ink); }
+  .adot.f{ background:var(--vermillion); border-color:var(--vermillion); }
+  .adot.w{ background:var(--win); border-color:var(--win); }
+  #modeSeg{ display:inline-flex; border:1.5px solid var(--ink-soft); border-radius:12px; overflow:hidden; margin:10px auto 0; }
+  .modeRow{ text-align:center; margin-top:12px; font-size:12px; color:var(--ink-soft); }
+  #modeSeg button{ border:none; background:transparent; color:var(--ink-soft); font-size:11px; letter-spacing:1px; padding:3px 9px; cursor:pointer; text-transform:uppercase; font-weight:700; }
+  #modeSeg button.on{ background:var(--ink); color:var(--paper); }
+  #practiceChip{
+    display:none; background:var(--indigo); color:#fff; font-size:11px; letter-spacing:2px;
+    padding:2px 8px; border-radius:10px;
+  }
+  #boardFrame{ position:relative; padding:0; background:transparent; }
+  canvas{ display:block; }
+  #veil{
+    position:absolute; inset:0; background:rgba(58,50,43,.92);
+    display:flex; align-items:center; justify-content:center; color:var(--paper);
+    font-size:15px; letter-spacing:1px; z-index:5; border-radius:50%;
+  }
+  #status{
+    max-width:560px; min-height:22px; padding:8px 16px 0; font-size:14px;
+    color:var(--ink-soft); text-align:center;
+  }
+  #controls{ display:flex; gap:6px; padding:10px 10px 6px; flex-wrap:wrap; justify-content:center; align-items:center; }
+  #controls button{
+    font-size:12.5px; font-weight:700; letter-spacing:.5px; cursor:pointer;
+    padding:9px 11px; border-radius:9px; border:1.5px solid transparent;
+    background:transparent; color:var(--ink-soft); min-width:0;
+  }
+  #controls button:disabled{ opacity:.3; cursor:default; }
+  #controls #holdBtn, #controls #undoBtn{ border-color:var(--paper-2); background:var(--paper-2); }
+  #controls #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; min-width:86px; font-size:13.5px; }
+  #controls #moveBtn.danger{ background:var(--vermillion); border-color:var(--vermillion); }
+  #controls #rescueBtn{ display:none; background:var(--gold); border-color:var(--gold); color:var(--ink); }
+  #controls #hintBtn{ border-color:var(--gold); color:var(--ink); }
+  #footer{ padding:8px 14px 20px; font-size:12px; color:var(--ink-soft); text-align:center; line-height:1.9; }
+  #footer a{ color:var(--indigo); cursor:pointer; text-decoration:underline; }
+  /* modals */
+  #overlay{
+    position:fixed; inset:0; background:rgba(24,26,33,.55); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:16px;
+  }
+  #overlay.open{ display:flex; }
+  .modal{
+    background:var(--paper); border-radius:14px; max-width:420px; width:100%;
+    padding:22px 22px 18px; box-shadow:0 18px 50px rgba(0,0,0,.35);
+    max-height:88vh; overflow-y:auto; position:relative;
+  }
+  .modal h2{ margin:0 0 6px; font-family:"Iowan Old Style",Palatino,Georgia,serif; letter-spacing:1px; }
+  .modal .x{
+    position:absolute; top:10px; right:12px; border:none; background:none;
+    font-size:20px; cursor:pointer; color:var(--ink-soft);
+  }
+  .modal ul{ padding-left:20px; margin:10px 0; }
+  .modal li{ margin:9px 0; font-size:14.5px; line-height:1.45; }
+  .modal .primary{
+    width:100%; margin-top:12px; padding:12px; font-size:16px; font-weight:700;
+    background:var(--indigo); color:#fff; border:none; border-radius:10px; cursor:pointer;
+  }
+  .squares{ font-size:30px; letter-spacing:4px; text-align:center; margin:10px 0 4px; }
+  .headline{ text-align:center; font-size:16px; margin:2px 0 10px; }
+  .headline b{ color:var(--vermillion); }
+  .statgrid{ display:flex; justify-content:space-around; text-align:center; margin:14px 0 4px; }
+  .statgrid .n{ font-size:26px; font-weight:800; }
+  .statgrid .l{ font-size:11px; color:var(--ink-soft); letter-spacing:1px; text-transform:uppercase; }
+  .dist{ margin:10px 0 2px; }
+  .dist .row{ display:flex; align-items:center; gap:8px; margin:4px 0; font-size:12px; }
+  .dist .bar{ background:var(--indigo); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; min-width:18px; text-align:right; }
+  #countdown{ text-align:center; font-size:13px; color:var(--ink-soft); margin-top:14px; }
+  .splashSub{ text-align:center; color:var(--ink-soft); font-size:11.5px; letter-spacing:2.5px; margin:0 0 10px; }
+  .resDots{ display:flex; gap:10px; justify-content:center; margin:12px 0 6px; }
+  .resDots span{ width:18px; height:18px; border-radius:50%; border:2.5px solid var(--ink-soft); }
+  .resDots span.w{ background:var(--win); border-color:var(--win); }
+  .resDots span.f{ background:var(--vermillion); border-color:var(--vermillion); }
+  #shareFeedback{ text-align:center; font-size:13px; color:var(--win); min-height:16px; margin-top:6px; font-weight:700; }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
+  <div class="brand"><h1>RONIN</h1><span class="roundTag">◯ ROUND · BETA</span><span id="attemptDots"></span></div>
+  <button class="icon-btn" id="statsBtn" aria-label="Statistics">≡</button>
+</header>
+
+<div id="chipRow">
+  <span id="practiceChip">PRACTICE</span>
+</div>
+
+<div id="boardFrame">
+  <canvas id="board"></canvas>
+  <div id="veil">forging today’s castle…</div>
+</div>
+
+<div id="status"><b><i>Rescue the Emperor at the heart of the castle.</i></b></div>
+
+<div id="controls">
+  <button id="holdBtn">HOLD</button>
+  <button id="undoBtn">UNDO</button>
+  <button id="moveBtn">MOVE</button>
+  <button id="hintBtn">🏮 HINT</button>
+  <button id="rescueBtn">RESCUE ⛩</button>
+</div>
+
+<div id="footer">
+  <a id="practiceLink">practice on a random castle</a><br/>
+  <a href="index.html">⬅ back to the classic square castle</a>
+</div>
+
+<div id="overlay">
+  <div class="modal" id="modal">
+    <button class="x" id="modalX">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script id="engine">
+// ===== RONIN ring engine (pure logic, no DOM) =====
+// Generated 1:1 from tests/ring-engine.mjs + tests/ring-config.mjs (exports/imports
+// stripped, engine then config) — keep in sync (tests/ring-parity.mjs enforces).
+const RingEngine = (() => {
+// RONIN — ring-graph engine (Node, no DOM). The next-generation board: a concentric
+// ring GRAPH instead of a square grid. Mirrors the shipped square engine's methodology
+// (deterministic guards, A* par/solver, seeded gen with a par-band accept/reject, naive-bot
+// difficulty proxy) so tests/lab.mjs-style benchmarking applies unchanged.
+//
+// Cells are indexed by a flat integer id. Geometry: RINGS rings (1 = innermost, adjacent to
+// the Emperor at centre; RINGS = outermost) each with counts[k] cells evenly spaced. Movement
+// is along graph EDGES: an ORBIT step (±1 around a ring, wraps) or a RADIAL step (cross to the
+// nearest cell of the neighbouring ring) — the radial step is legal only where the boundary is
+// open (tier-gate model, within a tier) or where that specific cell is a gate (a single stair).
+//
+// Two gating models, one generation parameter (per the board brief):
+//   'stepping' — every ring boundary is a wall; gatesPerBoundary gates on each (→ normal/hard).
+//   'tier'     — only the two tier boundaries are walls with gates; open within a 2-ring tier (→ easy).
+
+const TAU = Math.PI * 2;
+
+function hash32(a, b) {
+  let h = 2166136261 >>> 0;
+  h = Math.imul(h ^ (a >>> 0), 16777619);
+  h = Math.imul(h ^ (b >>> 0), 16777619);
+  h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15;
+  return h >>> 0;
+}
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function () {
+    t = (t + 0x6D2B79F5) | 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffle(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+  return arr;
+}
+
+// counts matching the visual reference: max(8, round(TAU*R/step /2)*2), R = 1.5 + (k-1) step units
+function refCounts(rings) {
+  const out = [];
+  for (let k = 1; k <= rings; k++) { const R = 1.5 + (k - 1); out.push(Math.max(8, Math.round((TAU * R) / 2) * 2)); }
+  return out; // rings=6 -> [10,16,22,28,34,40]
+}
+
+function makeRingEngine(cfg) {
+  const RINGS = cfg.rings;
+  const counts = cfg.counts || refCounts(RINGS);
+  const STEPS = cfg.roninSteps, ARMY_MOVES = cfg.armyMoves;
+  const tierOf = k => cfg.tierOf ? cfg.tierOf(k) : (k <= 2 ? 1 : k <= 4 ? 2 : 3);
+
+  // ---- build cells + static adjacency (orbit + radial-nearest), gating-independent ----
+  const cells = [];          // {id, ring, idx, ang}
+  const byRing = [];         // byRing[k] = [ids...]
+  for (let k = 1; k <= RINGS; k++) {
+    byRing[k] = [];
+    for (let i = 0; i < counts[k - 1]; i++) {
+      const id = cells.length;
+      cells.push({ id, ring: k, idx: i, ang: (i / counts[k - 1]) * TAU - Math.PI / 2 });
+      byRing[k].push(id);
+    }
+  }
+  const angDiff = (a, b) => { let d = a - b; while (d <= -Math.PI) d += TAU; while (d > Math.PI) d -= TAU; return d; };
+  const nearestIn = (k, ang) => { // nearest cell of ring k-1 by angle
+    let best = -1, bd = 1e9;
+    for (const id of byRing[k - 1]) { const d = Math.abs(angDiff(cells[id].ang, ang)); if (d < bd) { bd = d; best = id; } }
+    return best;
+  };
+  const orbitCW = [], orbitCCW = [], radialIn = [], radialOut = [];
+  for (const c of cells) { orbitCW[c.id] = orbitCCW[c.id] = radialIn[c.id] = -1; radialOut[c.id] = []; }
+  for (let k = 1; k <= RINGS; k++) {
+    const rg = byRing[k], n = rg.length;
+    for (let i = 0; i < n; i++) { orbitCW[rg[i]] = rg[(i + 1) % n]; orbitCCW[rg[i]] = rg[(i - 1 + n) % n]; }
+    if (k > 1) for (const id of rg) { const inn = nearestIn(k, cells[id].ang); radialIn[id] = inn; radialOut[inn].push(id); }
+  }
+  const boundaryIsTier = k => tierOf(k) !== tierOf(k - 1); // boundary between ring k and k-1
+
+  // ---- per-board adjacency: fix which radial edges are open (gates), build adj[] ----
+  // openInward: Set of OUTER cell ids whose radial-inward edge is legal.
+  function buildAdj(openInward) {
+    const adj = cells.map(() => []);
+    for (const c of cells) {
+      adj[c.id].push(orbitCW[c.id], orbitCCW[c.id]);          // orbit always legal
+      if (c.ring > 1 && openInward.has(c.id)) adj[c.id].push(radialIn[c.id]); // step inward through open edge
+      for (const o of radialOut[c.id]) if (openInward.has(o)) adj[c.id].push(o); // step outward where the outer cell's edge is open
+    }
+    return adj;
+  }
+
+  // ---- BFS graph-distance from a source cell over adj (walls/gates respected) ----
+  function distFrom(src, adj) {
+    const d = new Int16Array(cells.length).fill(-1); d[src] = 0;
+    let frontier = [src];
+    while (frontier.length) { const nxt = []; for (const u of frontier) for (const v of adj[u]) if (d[v] < 0) { d[v] = d[u] + 1; nxt.push(v); } frontier = nxt; }
+    return d;
+  }
+
+  // ---- ronin move options: distinct cells reachable in 1..STEPS edges, plus HOLD ----
+  function roninOptions(ronin, army, adj) {
+    const occ = new Set(army);
+    const seen = new Set([ronin]);
+    let frontier = [ronin]; const out = []; let anyStep = false;
+    for (let s = 0; s < STEPS; s++) {
+      const nxt = [];
+      for (const u of frontier) for (const v of adj[u]) { if (occ.has(v) || seen.has(v)) continue; seen.add(v); nxt.push(v); out.push(v); anyStep = true; }
+      frontier = nxt;
+    }
+    if (anyStep) out.push(-1 - ronin); // encode HOLD as -(ronin+1)
+    return out;
+  }
+  const decodeEnd = (ep, ronin) => ep < 0 ? ronin : ep; // resolve HOLD to the ronin's cell
+
+  // ---- deterministic guard reply: the ARMY_MOVES nearest guards each take one graph-step
+  // that strictly reduces distance to the ronin; tiebreak inward then lowest cell id ----
+  function armyReply(roninEnd, army, adj) {
+    const R = roninEnd < 0 ? (-1 - roninEnd) : roninEnd; // resolve HOLD encoding to the ronin's cell
+    const dist = distFrom(R, adj);
+    const occ = new Set(army);
+    const order = army.slice().sort((x, y) => (dist[x] - dist[y]) || (x - y));
+    const out = army.slice(); const outSet = new Set(out);
+    let done = 0, captured = false;
+    for (const g of order) {
+      if (done >= ARMY_MOVES) break;
+      if (dist[g] < 0) continue;
+      let best = -1, bestD = dist[g], bestRing = 99, bestId = 1e9;
+      for (const v of adj[g]) {
+        if (v === R) { best = v; captured = true; break; } // step onto ronin = capture
+        if (outSet.has(v)) continue;
+        const dv = dist[v]; if (dv < 0 || dv >= dist[g]) continue; // must strictly progress
+        const ring = cells[v].ring;
+        if (dv < bestD || (dv === bestD && (ring < bestRing || (ring === bestRing && v < bestId)))) { bestD = dv; best = v; bestRing = ring; bestId = v; }
+      }
+      if (captured) { return { army: out, captured: true }; }
+      if (best < 0) continue;
+      outSet.delete(g); outSet.add(best);
+      out[out.indexOf(g)] = best; done++;
+    }
+    out.sort((a, b) => a - b);
+    return { army: out, captured: false };
+  }
+
+  // ---- A* over (ronin, army) states; deterministic reply → single-agent search ----
+  const hOf = ring => ring <= 1 ? 1 : Math.ceil((ring - 1) / STEPS) + 1; // admissible: turns to reach ring1 + ascend
+  function solveBoard(board, opts = {}) {
+    const adj = board.adj;
+    const maxNodes = opts.maxNodes ?? 200000;
+    const fLimit = Math.min(opts.fLimit ?? 40, 40);
+    const wantPath = !!opts.wantPath;   // reconstruct the optimal line (for hints / reveal-the-way-in)
+    const sKey = (ro, ar) => ro + ':' + ar.join(',');
+    const start = { ro: board.ronin, army: board.army.slice().sort((a, b) => a - b), g: 0 };
+    const f0 = hOf(cells[start.ro].ring);
+    if (f0 > fLimit) return null;
+    const buckets = []; const push = (f, n) => { (buckets[f] || (buckets[f] = [])).push(n); };
+    const visited = new Map(); const k0 = sKey(start.ro, start.army); visited.set(k0, 0);
+    const parent = wantPath ? new Map([[k0, null]]) : null;
+    push(f0, start);
+    let nodes = 0;
+    for (let f = f0; f <= fLimit; f++) {
+      const bucket = buckets[f]; if (!bucket) continue;
+      for (let bi = 0; bi < bucket.length; bi++) {
+        const node = bucket[bi];
+        const kk = sKey(node.ro, node.army);
+        if (visited.get(kk) < node.g) continue;
+        if (cells[node.ro].ring === 1) {
+          const out = { par: node.g + 1, nodes };
+          if (wantPath) { const path = []; let ck = kk;   // walk parents → the ronin's move sequence
+            while (parent.get(ck)) { const e = parent.get(ck); path.unshift(e.ep); ck = e.pk; }
+            out.path = path; }                              // path = end-cells per turn; the final Ascend is implicit (+1)
+          return out;
+        }
+        if (++nodes > maxNodes) return null;
+        for (const ep of roninOptions(node.ro, node.army, adj)) {
+          const end = decodeEnd(ep, node.ro);
+          const rep = armyReply(ep < 0 ? ep : end, node.army, adj);
+          if (rep.captured) continue;
+          const g2 = node.g + 1, f2 = g2 + hOf(cells[end].ring);
+          if (f2 > fLimit) continue;
+          const ck = sKey(end, rep.army);
+          const prevG = visited.get(ck); if (prevG !== undefined && prevG <= g2) continue;
+          visited.set(ck, g2);
+          if (wantPath) parent.set(ck, { pk: kk, ep: { cell: end, hold: ep < 0 } });
+          push(f2, { ro: end, army: rep.army, g: g2 });
+        }
+      }
+    }
+    return null;
+  }
+
+  // Shortest legal edge-path (<= STEPS) from the ronin to a chosen destination cell, for the move
+  // animation. Returns the cell sequence [ronin, ..., target], or null. HOLD/no-move → [ronin].
+  function pathTo(ronin, army, adj, target) {
+    if (target < 0 || target === ronin) return [ronin];
+    const occ = new Set(army);
+    const prev = new Map([[ronin, -1]]);
+    let frontier = [ronin];
+    for (let s = 0; s < STEPS; s++) {
+      const nxt = [];
+      for (const u of frontier) for (const v of adj[u]) {
+        if (occ.has(v) || prev.has(v)) continue;
+        prev.set(v, u);
+        if (v === target) { const path = []; let c = v; while (c !== -1) { path.unshift(c); c = prev.get(c); } return path; }
+        nxt.push(v);
+      }
+      frontier = nxt;
+    }
+    return null;
+  }
+
+  // ---- generator: choose gates per gating model, ronin start (outer ring), army by tier ----
+  function chooseGates(rng) {
+    const openInward = new Set();
+    for (let k = 2; k <= RINGS; k++) {
+      const gated = cfg.gating === 'stepping' ? true : boundaryIsTier(k);
+      if (!gated) { for (const id of byRing[k]) openInward.add(id); continue; } // open boundary: every cell crosses
+      const rg = byRing[k], n = rg.length, g = cfg.gatesPerBoundary;
+      const start = Math.floor(rng() * n);
+      for (let j = 0; j < g; j++) openInward.add(rg[(start + Math.round(j * n / g)) % n]); // g gates spread around
+    }
+    return openInward;
+  }
+  function genCandidate(rng) {
+    const openInward = chooseGates(rng);
+    const adj = buildAdj(openInward);
+    const ronin = byRing[RINGS][Math.floor(rng() * counts[RINGS - 1])];
+    // army by tier (outer→inner counts), keep ronin's neighbourhood and the ascend ring clear
+    const nTiers = 3;
+    const tierCells = [[], [], []]; // index 0 = outer tier(3), 1 = middle(2), 2 = inner(1)
+    const clear = new Set([ronin, ...adj[ronin]]);
+    for (const c of cells) {
+      if (c.ring === 1) continue;                 // ascend ring stays clear
+      if (clear.has(c.id)) continue;              // don't spawn on/next to the ronin
+      const t = tierOf(c.ring); tierCells[3 - t].push(c.id);
+    }
+    const army = [];
+    for (let i = 0; i < nTiers; i++) { shuffle(tierCells[i], rng); if (tierCells[i].length < cfg.armyCounts[i]) return null; army.push(...tierCells[i].slice(0, cfg.armyCounts[i])); }
+    return { ronin, army: army.sort((a, b) => a - b), adj, openInward };
+  }
+  function generateFromSeed(seedBase) {
+    let fallback = null;
+    for (let t = 0; t < (cfg.genMaxTries ?? 400); t++) {
+      const rng = mulberry32(hash32(seedBase, t));
+      const cand = genCandidate(rng);
+      if (!cand) continue;
+      const res = solveBoard(cand, { fLimit: cfg.parMax, maxNodes: cfg.genMaxNodes ?? 200000 });
+      if (!res) continue;   // unsolvable-in-band OR too expensive → re-roll the seed
+      if (res.par >= cfg.parMin) return { ...cand, par: res.par, genTries: t + 1 };
+      if (!fallback) fallback = { ...cand, par: res.par, genTries: t + 1 };
+    }
+    return fallback;
+  }
+
+  // ---- naive 1-ply bot: greedy toward the throne, refuses immediate capture (difficulty proxy) ----
+  function naiveBot(board, maxTurns = 40) {
+    let ronin = board.ronin, army = board.army.slice(), moves = 0;
+    for (let turn = 0; turn < maxTurns; turn++) {
+      if (cells[ronin].ring === 1) return { win: true, moves: moves + 1 };
+      let best = null, bestScore = Infinity;
+      for (const ep of roninOptions(ronin, army, board.adj)) {
+        const end = decodeEnd(ep, ronin);
+        const rep = armyReply(ep < 0 ? ep : end, army, board.adj);
+        if (rep.captured) continue;
+        const score = hOf(cells[end].ring) * 100 + cells[end].ring;
+        if (score < bestScore) { bestScore = score; best = { end, army: rep.army }; }
+      }
+      if (!best) return { win: false, moves };
+      ronin = best.end; army = best.army; moves++;
+    }
+    return { win: false, moves };
+  }
+
+  return { cfg, RINGS, counts, cells, byRing, tierOf, boundaryIsTier, buildAdj, distFrom,
+    roninOptions, armyReply, solveBoard, pathTo, genCandidate, generateFromSeed, naiveBot, hash32, mulberry32 };
+}
+
+// RONIN ring board — LOCKED difficulty ladder (2026-07-12), from the lab gradient.
+// All rungs at 3 moves except epic; difficulty walked down by guard count (smooth lever) then
+// gating (medium step), keeping the 3→2 cliff for epic. Naive-bot win% is a ranking floor;
+// humans do better (3 attempts + hint). Par bands are accept/reject targets for the generator.
+// Board density is LOCKED at the reference 150 cells (shrink-to-fit on mobile, don't reduce cells).
+
+// genMaxNodes caps the solver during generation: a board whose solve would blow past it is
+// abandoned and the generator re-rolls, instead of grinding for 20s. This bounds worst-case gen
+// time AND guarantees every shipped board is cheap for the in-browser solver (hints/reveal) too.
+// Part of the locked, deterministic config — same cap → same boards on every client.
+const common = { rings: 6, counts: refCounts(6), armyMoves: 2, genMaxTries: 400, genMaxNodes: 60000 };
+
+// Player-facing names: easy / normal / hard / brutal (2026-07-13). "easy" is the DAILY DEFAULT
+// (the ~60%-naive board Brad tuned as "sometimes it beats you"); the rest are opt-in steps up.
+// Salts stay bound to their exact configs, so these are the SAME decade-validated boards, relabelled.
+const RING_MODES = {
+  // DAILY default. tier board, ~60% naive (~85% human): quick, usually win, sometimes it beats you.
+  easy:   { key: 'easy',   daily: true, ...common, gating: 'tier',     roninSteps: 3, gatesPerBoundary: 2, armyCounts: [8, 5, 3],  parMin: 6,  parMax: 12, salt: 0x52494E31 }, // "RIN1"
+  // same tier board, more guards (~43% naive). You lose a fair bit.
+  normal: { key: 'normal',              ...common, gating: 'tier',     roninSteps: 3, gatesPerBoundary: 2, armyCounts: [10, 6, 4], parMin: 7,  parMax: 13, salt: 0x52494E32 }, // "RIN2"
+  // every-ring walls @ 4 gates (~31% naive) — chokepoint puzzle, real teeth.
+  hard:   { key: 'hard',                ...common, gating: 'stepping', roninSteps: 3, gatesPerBoundary: 4, armyCounts: [6, 4, 2],  parMin: 7,  parMax: 14, salt: 0x52494E33 }, // "RIN3"
+  // every-ring @ 4 gates + the 2-step cliff (~21% naive). Brutal marathon; mechanics layer on later.
+  brutal: { key: 'brutal',              ...common, gating: 'stepping', roninSteps: 2, gatesPerBoundary: 4, armyCounts: [6, 4, 2],  parMin: 10, parMax: 18, salt: 0x52494E34 }, // "RIN4"
+};
+
+return { hash32, mulberry32, shuffle, refCounts, makeRingEngine, RING_MODES };
+})();
+</script>
+
+<script>
+(() => {
+  const RE = RingEngine;
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const TAU = Math.PI * 2;
+
+  // EPOCH stamped at launch (2026-07-13 = puzzle #1). round.html's OWN
+  // day-numbering, independent of the square game's epoch. NEVER change this —
+  // it would silently renumber every player's days and regenerate their boards.
+  const EPOCH_UTC = Date.UTC(2026, 6, 13);
+  function dayNumber(date) {
+    const d = date || new Date();
+    return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - EPOCH_UTC) / 86400000) + 1;
+  }
+
+  // One engine per mode, built lazily from the frozen config.
+  const ENGINES = {};
+  const engineFor = (k) => ENGINES[k] || (ENGINES[k] = RE.makeRingEngine(RE.RING_MODES[k]));
+  let E = null; // current mode's engine
+
+  // Daily/practice seeding — mirrors v1's dailyBoard/practiceBoard (practice salt
+  // = hash32(hash32('PRAC', salt), seed)), pointed at the ring engine.
+  const dailyBoardFor = (Eng, day) => Eng.generateFromSeed(RE.hash32(Eng.cfg.salt, day));
+  const practiceBoardFor = (Eng, seed) => Eng.generateFromSeed(RE.hash32(RE.hash32(0x50524143, Eng.cfg.salt), seed));
+
+  // ---------- palette (monochrome-cream art direction: red faction only saturated) ----------
+  const COL = {
+    tierShade: [null, '#f4edd8', '#e3d8ba', '#d3c39c'],   // tier board: tier1 inner lightest → tier3 outer darkest
+    ringShade: [null, '#f7f2e2', '#efe8d2', '#e6dcc2', '#ddd0b0', '#d4c5a1', '#cbb992'], // every-ring board
+    gridTier: 'rgba(58,50,43,.13)', wallTier: 'rgba(58,50,43,.32)',
+    gridStep: 'rgba(58,50,43,.14)', wallStep: 'rgba(58,50,43,.26)',
+    emperorTile: '#a6392f',
+    path: '#42382f', pip: '#a63b31',
+    hint: 'rgba(66,56,47,.35)',
+    intent: '#42382f', danger: '#c1443a',
+    emperorPulse: '#e3b23c',
+  };
+  const treadCols = ['rgba(74,58,38,.50)', 'rgba(98,79,53,.42)', 'rgba(126,106,73,.34)', 'rgba(154,133,98,.28)', 'rgba(170,150,112,.22)'];
+  const darken = (hex, f) => { const n = parseInt(hex.slice(1), 16); return `rgb(${Math.round((n >> 16 & 255) * f)},${Math.round((n >> 8 & 255) * f)},${Math.round((n & 255) * f)})`; };
+  const angDiff = (a, b) => { let d = a - b; while (d <= -Math.PI) d += TAU; while (d > Math.PI) d -= TAU; return d; };
+
+  // ---------- game state ----------
+  const G = {
+    mode: 'daily', dayNum: 1, board: null,
+    diff: 'easy', // difficulty mode key (easy/normal/hard/brutal) — easy is the daily default
+    ronin: null, army: null,       // cell id / sorted array of cell ids
+    attempt: 1, squares: [null, null, null],
+    moveCount: 0, finalMoves: null,
+    sel: null,                     // pending endpoint: cell id, or -(ronin+1) for HOLD, or null
+    selPath: null,                 // cell-id path for the dashed preview line
+    opts: [],                      // current legal endpoints from roninOptions
+    busy: false, phase: 'play',    // 'play' | 'done'
+  };
+  const vis = { ronin: { x: 0, y: 0 }, guards: [] }; // guards: [{cell,x,y}]
+  let preview = null, flashT = 0, fx = null, snapCv = null;
+
+  // ---------- storage (DISTINCT root key from the square game — same origin, no sharing) ----------
+  const SKEY = 'ronin.round.v1';
+  function initStore(s) {
+    s.v = s.v || 1;
+    s.modes = s.modes || {};
+    for (const k of Object.keys(RE.RING_MODES)) s.modes[k] = s.modes[k] || { results: {}, hints: {} };
+    return s;
+  }
+  const readStore = () => { try { return initStore(JSON.parse(localStorage.getItem(SKEY)) || {}); } catch { return initStore({}); } };
+  const writeStore = (s) => { try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch {} };
+  const modeState = (s) => s.modes[G.diff];
+  function saveDay(done) {
+    if (G.mode !== 'daily') return;
+    const s = readStore();
+    modeState(s).results[G.dayNum] = { squares: G.squares, moves: G.finalMoves, par: G.board.par, done: !!done };
+    writeStore(s);
+  }
+  // Daily boards are deterministic, so cache the generated layout per day+mode —
+  // avoids re-running the solver (up to a few seconds on unlucky days) on every load.
+  function cachedDailyBoard(day) {
+    const s = readStore();
+    const slot = s.boardCache && s.boardCache[G.diff];
+    if (slot && slot.day === day) {
+      const b = slot.board;
+      const openInward = new Set(b.openInward);
+      return { ronin: b.ronin, army: b.army.slice(), openInward, adj: E.buildAdj(openInward), par: b.par };
+    }
+    const board = dailyBoardFor(E, day);
+    try {
+      s.boardCache = s.boardCache || {};
+      s.boardCache[G.diff] = { day, board: { ronin: board.ronin, army: board.army, openInward: [...board.openInward], par: board.par } };
+      writeStore(s);
+    } catch {}
+    return board;
+  }
+
+  // ---------- geometry (matches the reference + engine: same angles, same radii) ----------
+  let SIZE = 351, DPR = 1, geo = null, staticCv = null;
+  function makeGeo() {
+    const step = (SIZE * 0.445) / 6.5;   // ring-to-ring spacing = full cell height
+    const offset = step * 1.5;           // push ring 1 out → a proper throne chamber
+    const CX = SIZE / 2, CY = SIZE / 2;
+    const rIn = (k) => offset + (k - 1) * step - step / 2;
+    const rOut = (k) => offset + (k - 1) * step + step / 2;
+    const sr = [null]; // stone radius per ring
+    for (let k = 1; k <= 6; k++) {
+      const R = offset + (k - 1) * step;
+      sr.push(Math.min((TAU * R / E.counts[k - 1]) * 0.47, step * 0.46));
+    }
+    geo = { step, offset, CX, CY, rIn, rOut, sr, EMP_R: step * 0.72 };
+  }
+  const pos = (id) => {
+    const c = E.cells[id], R = geo.offset + (c.ring - 1) * geo.step;
+    return { x: geo.CX + R * Math.cos(c.ang), y: geo.CY + R * Math.sin(c.ang) };
+  };
+
+  function resize() {
+    // layout viewport beats innerWidth (emulated/rotating viewports can report innerWidth stale);
+    // guard against 0-width reports (hidden tabs, bfcache restores)
+    const w = Math.min(window.innerWidth || 1e9, document.documentElement.clientWidth || 1e9);
+    const availW = w >= 200 && w < 1e9 ? w : 562;
+    SIZE = Math.min(540, availW - 24);   // keep all 150 cells; shrink the whole board to fit
+    DPR = window.devicePixelRatio || 1;
+    canvas.width = SIZE * DPR; canvas.height = SIZE * DPR;
+    canvas.style.width = SIZE + 'px'; canvas.style.height = SIZE + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (E) {
+      makeGeo();
+      if (G.board) buildStatic();
+      // pixel-space tweens don't survive a rescale — snap everything into place
+      tweens = []; const fns = afterFns; afterFns = []; fns.forEach(f => f());
+      if (G.ronin != null) syncVis();
+      fx = null; snapCv = null; // win wash is scale-bound; drop it rather than stretch it
+    }
+  }
+  let rzT = null; // emulated/rotating viewports can fire resize before the final size settles
+  window.addEventListener('resize', () => { resize(); clearTimeout(rzT); rzT = setTimeout(resize, 150); });
+
+  // ---------- static board layer (lifted from the ring references) ----------
+  // Tier board (easy/normal) = ronin-ring-reference-3-tier.html; every-ring board
+  // (hard/brutal) = ronin-ring-reference-3.html. Rendered once per board into an
+  // offscreen canvas; the rAF loop composites pieces/overlays on top.
+  function keptArcs(gaps) {
+    if (!gaps.length) return [[0, TAU]];
+    let g = [];
+    for (let [lo, hi] of gaps) {
+      lo = ((lo % TAU) + TAU) % TAU; hi = ((hi % TAU) + TAU) % TAU;
+      if (hi < lo) { g.push([lo, TAU]); g.push([0, hi]); } else g.push([lo, hi]);
+    }
+    g.sort((p, q) => p[0] - q[0]);
+    let m = [g[0].slice()];
+    for (let i = 1; i < g.length; i++) { const last = m[m.length - 1];
+      if (g[i][0] <= last[1]) last[1] = Math.max(last[1], g[i][1]); else m.push(g[i].slice()); }
+    let kept = [], c = 0;
+    for (const [lo, hi] of m) { if (lo > c) kept.push([c, lo]); c = Math.max(c, hi); }
+    if (c < TAU) kept.push([c, TAU]);
+    return kept;
+  }
+
+  function buildStatic() {
+    staticCv = document.createElement('canvas');
+    staticCv.width = SIZE * DPR; staticCv.height = SIZE * DPR;
+    const c = staticCv.getContext('2d');
+    c.scale(DPR, DPR);
+    const { step, CX, CY, rIn, rOut, EMP_R } = geo;
+    const tierMode = E.cfg.gating === 'tier';
+    const GRID = tierMode ? COL.gridTier : COL.gridStep;
+    const WALL = tierMode ? COL.wallTier : COL.wallStep;
+    const shadeOf = (k) => tierMode ? COL.tierShade[E.tierOf(k)] : COL.ringShade[k];
+
+    // gates = openInward cells on GATED boundaries (tier walls only on the tier
+    // board; every boundary on the stepping board). Within-tier open boundaries
+    // are not stairs — they're free crossings drawn as faint lines.
+    const gateCells = [...G.board.openInward].filter(id =>
+      E.cfg.gating === 'stepping' ? true : E.boundaryIsTier(E.cells[id].ring));
+    const gates = gateCells.map(id => {
+      const a = E.cells[id];
+      const bId = G.board.adj[id].find(v => E.cells[v].ring === a.ring - 1); // its inward edge
+      const b = E.cells[bId];
+      const halfA = Math.PI / E.counts[a.ring - 1], halfB = Math.PI / E.counts[b.ring - 1];
+      const bc = a.ang + angDiff(b.ang, a.ang);
+      let lo = Math.max(a.ang - halfA, bc - halfB), hi = Math.min(a.ang + halfA, bc + halfB);
+      if (hi <= lo) { const m = (a.ang + bc) / 2, w = Math.min(halfA, halfB) * 0.8; lo = m - w; hi = m + w; }
+      return { ring: a.ring, ang: a.ang, half: halfA, wallR: rIn(a.ring), lo, hi };
+    });
+
+    // terraces — ascending plateaus with drop shadows, drawn outer→inner
+    const bandPath = (ri, ro) => { c.beginPath(); c.arc(CX, CY, ro, 0, TAU, false); c.arc(CX, CY, ri, 0, TAU, true); };
+    if (tierMode) {
+      const tierIn = (t) => t === 1 ? rIn(1) : t === 2 ? rIn(3) : rIn(5);
+      const tierOut = (t) => t === 1 ? rOut(2) : t === 2 ? rOut(4) : rOut(6);
+      const LIFT = (t) => 1 + (3 - t) * 1.5;         // tier3 lowest → tier1 highest
+      for (let t = 3; t >= 1; t--) {
+        const L = LIFT(t);
+        c.save();
+        c.shadowColor = `rgba(46,38,30,${Math.min(0.42, 0.16 + 0.05 * (L - 1)).toFixed(3)})`;
+        c.shadowBlur = step * 0.16 * L; c.shadowOffsetX = step * 0.07 * L; c.shadowOffsetY = step * 0.09 * L;
+        c.fillStyle = COL.tierShade[t]; bandPath(tierIn(t), tierOut(t)); c.fill('evenodd'); c.restore();
+      }
+    } else {
+      const LIFT = (k) => 1 + (6 - k) * 0.5;         // ring6 lowest → ring1 highest
+      for (let k = 6; k >= 1; k--) {
+        const L = LIFT(k);
+        c.save();
+        c.shadowColor = `rgba(46,38,30,${Math.min(0.4, 0.15 + 0.05 * (L - 1)).toFixed(3)})`;
+        c.shadowBlur = step * 0.13 * L; c.shadowOffsetX = step * 0.06 * L; c.shadowOffsetY = step * 0.08 * L;
+        c.fillStyle = COL.ringShade[k]; bandPath(rIn(k), rOut(k)); c.fill('evenodd'); c.restore();
+      }
+    }
+
+    // gates: single stair cells — gradient from a darker foot up to the
+    // destination ring's own colour, with tread arcs lightening as they climb
+    const sectorPath = (k, ac, half) => { const a0 = ac - half, a1 = ac + half;
+      c.beginPath(); c.arc(CX, CY, rOut(k), a0, a1, false); c.arc(CX, CY, rIn(k), a1, a0, true); c.closePath(); };
+    const FOOTF = 0.86;
+    for (const g of gates) {
+      const shadeA = shadeOf(g.ring), shadeB = shadeOf(g.ring - 1);
+      const rFoot = rOut(g.ring), rTop = rIn(g.ring);
+      const grad = c.createRadialGradient(CX, CY, rTop, CX, CY, rFoot);
+      grad.addColorStop(0, shadeB);                 // top meets the destination colour
+      grad.addColorStop(1, darken(shadeA, FOOTF));  // foot dips darker for depth
+      c.fillStyle = grad;
+      sectorPath(g.ring, g.ang, g.half); c.fill();
+      c.lineWidth = 1;
+      for (let i = 0; i < treadCols.length; i++) {
+        const f = (i + 1) / (treadCols.length + 1), r = rFoot + f * (rTop - rFoot);
+        const pad = Math.min(g.half * 0.25, (step * 0.12) / r);
+        c.strokeStyle = treadCols[i];
+        c.beginPath(); c.arc(CX, CY, r, g.ang - g.half + pad, g.ang + g.half - pad); c.stroke();
+      }
+    }
+
+    // keylines — radial spokes on every cell edge
+    c.strokeStyle = GRID; c.lineWidth = 1;
+    for (let k = 1; k <= 6; k++) {
+      const ri = rIn(k), ro = rOut(k), half = Math.PI / E.counts[k - 1];
+      for (const id of E.byRing[k]) {
+        const e = E.cells[id].ang - half;
+        c.beginPath(); c.moveTo(CX + ri * Math.cos(e), CY + ri * Math.sin(e)); c.lineTo(CX + ro * Math.cos(e), CY + ro * Math.sin(e)); c.stroke();
+      }
+    }
+    // ring circles: walls open where a gate passes; free crossings are faint lines
+    let wallRadii;
+    if (tierMode) {
+      for (const r of [rOut(1), rOut(3), rOut(5)]) { c.beginPath(); c.arc(CX, CY, r, 0, TAU); c.stroke(); } // passable within-tier lines
+      wallRadii = [rIn(1), rIn(3), rIn(5), rOut(6)];   // chamber, two tier walls, outer edge
+      c.lineWidth = 1.3;
+    } else {
+      wallRadii = [rIn(1)];
+      for (let k = 1; k <= 6; k++) wallRadii.push(rOut(k));
+      c.lineWidth = 1.1;
+    }
+    c.strokeStyle = WALL;
+    for (const rr of wallRadii) {
+      const gaps = gates.filter(g => Math.abs(g.wallR - rr) < 0.5).map(g => [g.lo, g.hi]);
+      for (const [lo, hi] of keptArcs(gaps)) { c.beginPath(); c.arc(CX, CY, rr, lo, hi, false); c.stroke(); }
+    }
+
+    // emperor — red tile + gold sun at the centre
+    c.save();
+    c.shadowColor = 'rgba(46,38,30,.3)'; c.shadowBlur = EMP_R * 0.55; c.shadowOffsetX = EMP_R * 0.22; c.shadowOffsetY = EMP_R * 0.3;
+    c.fillStyle = COL.emperorTile; c.beginPath(); c.arc(CX, CY, EMP_R, 0, TAU); c.fill();
+    c.restore();
+    const eg = c.createRadialGradient(CX, CY, 2, CX, CY, EMP_R * 0.64);
+    eg.addColorStop(0, '#c3922f'); eg.addColorStop(1, '#e9c56a');
+    c.fillStyle = eg; c.beginPath(); c.arc(CX, CY, EMP_R * 0.64, 0, TAU); c.fill();
+    c.fillStyle = COL.emperorTile; c.beginPath(); c.arc(CX, CY, EMP_R * 0.28, 0, TAU); c.fill();
+  }
+
+  // ---------- tween machinery (pixel-space) ----------
+  let tweens = [], afterFns = [];
+  const ease = (k) => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+  function queueTween(target, to, dur) {
+    if (document.hidden) { target.x = to.x; target.y = to.y; return; } // no animation on hidden tabs
+    tweens.push({ target, to: { x: to.x, y: to.y }, dur, from: null, t0: null });
+  }
+  function afterTweens(fn) { if (!tweens.length) fn(); else afterFns.push(fn); }
+  function stepTweens(now) {
+    if (document.hidden) {
+      // rAF is paused on hidden tabs — snap animations so game logic never stalls
+      while (tweens.length) {
+        const t0 = tweens.shift();
+        t0.target.x = t0.to.x; t0.target.y = t0.to.y;
+        if (!tweens.length) { const fns = afterFns; afterFns = []; fns.forEach(f => f()); }
+      }
+      return;
+    }
+    const t = tweens[0];
+    if (!t) return;
+    if (!t.t0) { t.t0 = now; t.from = { x: t.target.x, y: t.target.y }; }
+    const k = Math.min(1, (now - t.t0) / t.dur);
+    const e = ease(k);
+    t.target.x = t.from.x + (t.to.x - t.from.x) * e;
+    t.target.y = t.from.y + (t.to.y - t.from.y) * e;
+    if (k >= 1) {
+      t.target.x = t.to.x; t.target.y = t.to.y;
+      tweens.shift();
+      if (!tweens.length) { const fns = afterFns; afterFns = []; fns.forEach(f => f()); }
+    }
+  }
+  function syncVis() {
+    vis.ronin = pos(G.ronin);
+    vis.guards = G.army.map(id => ({ cell: id, ...pos(id) }));
+  }
+
+  // ---------- guard-move derivation (display only — the engine result stays authoritative) ----------
+  // The ring engine's armyReply returns final positions but not per-guard moves; the
+  // arrows/animation need {from,to}. This mirrors the engine's selection loop 1:1
+  // (same order, tiebreaks, occupancy) and is cross-checked against the real reply
+  // every call — on any drift we warn and the engine's positions still win.
+  function armyReplyMoves(roninEnd, army, adj, rep) {
+    const R = roninEnd < 0 ? (-1 - roninEnd) : roninEnd;
+    const dist = E.distFrom(R, adj);
+    const order = army.slice().sort((x, y) => (dist[x] - dist[y]) || (x - y));
+    const out = army.slice(); const outSet = new Set(out);
+    const moves = [];
+    let done = 0;
+    for (const g of order) {
+      if (done >= E.cfg.armyMoves) break;
+      if (dist[g] < 0) continue;
+      let best = -1, bestD = dist[g], bestRing = 99, bestId = 1e9, captured = false;
+      for (const v of adj[g]) {
+        if (v === R) { best = v; captured = true; break; }
+        if (outSet.has(v)) continue;
+        const dv = dist[v]; if (dv < 0 || dv >= dist[g]) continue;
+        const ring = E.cells[v].ring;
+        if (dv < bestD || (dv === bestD && (ring < bestRing || (ring === bestRing && v < bestId)))) { bestD = dv; best = v; bestRing = ring; bestId = v; }
+      }
+      if (captured) { moves.push({ from: g, to: R, capture: true }); return moves; }
+      if (best < 0) continue;
+      outSet.delete(g); outSet.add(best);
+      out[out.indexOf(g)] = best; done++;
+      moves.push({ from: g, to: best });
+    }
+    if (rep && !rep.captured) {
+      out.sort((a, b) => a - b);
+      if (out.join(',') !== rep.army.join(',')) console.warn('RONIN: guard-move mirror drifted from engine reply', out, rep.army);
+    }
+    return moves;
+  }
+
+  // ---------- drawing ----------
+  function stone(c, x, y, r, core, edge) {
+    c.save();
+    c.shadowColor = 'rgba(46,38,30,.3)'; c.shadowBlur = r * 0.55; c.shadowOffsetX = r * 0.22; c.shadowOffsetY = r * 0.3;
+    c.fillStyle = core; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+    c.restore();
+    const g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, core); g.addColorStop(.6, core); g.addColorStop(1, edge);
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+  }
+  function drawRonin(c, x, y, R) {
+    c.save();
+    c.shadowColor = 'rgba(46,38,30,.4)'; c.shadowBlur = R * 0.6; c.shadowOffsetX = R * 0.2; c.shadowOffsetY = R * 0.28;
+    const g = c.createRadialGradient(x, y, 0, x, y, R);
+    g.addColorStop(0, '#9c352d'); g.addColorStop(.6, '#9c352d'); g.addColorStop(1, '#bf4e44');
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill();
+    c.restore();
+    // curved katana slash, tapered points — gold, echoing the Emperor
+    c.fillStyle = '#e6ba48'; c.beginPath();
+    c.moveTo(x - R * .6, y + R * .64); c.quadraticCurveTo(x + R * .5, y + R * .4, x + R * .64, y - R * .6);
+    c.quadraticCurveTo(x + R * .22, y + R * .12, x - R * .6, y + R * .64); c.closePath(); c.fill();
+  }
+
+  function draw(now) {
+    if (fx) { drawWinFrame(now); return; }
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    if (staticCv) ctx.drawImage(staticCv, 0, 0, SIZE, SIZE);
+    if (!G.board) return;
+    const { step, CX, CY, EMP_R, sr } = geo;
+
+    // legal-endpoint dots
+    if (G.phase === 'play' && !G.busy) {
+      ctx.fillStyle = COL.hint;
+      for (const o of G.opts) {
+        if (o < 0) continue;
+        const p = pos(o);
+        ctx.beginPath(); ctx.arc(p.x, p.y, step * .11, 0, TAU); ctx.fill();
+      }
+    }
+
+    // pending move: dashed path along the shortest legal route + endpoint pip
+    if (G.sel != null && G.phase === 'play' && !G.busy) {
+      if (G.sel >= 0 && G.selPath && G.selPath.length > 1) {
+        ctx.strokeStyle = COL.path; ctx.lineWidth = 2.5; ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        const p0 = pos(G.selPath[0]); ctx.moveTo(p0.x, p0.y);
+        for (let i = 1; i < G.selPath.length; i++) { const p = pos(G.selPath[i]); ctx.lineTo(p.x, p.y); }
+        ctx.stroke(); ctx.setLineDash([]);
+        const pe = pos(G.sel);
+        ctx.fillStyle = COL.pip;
+        ctx.beginPath(); ctx.arc(pe.x, pe.y, step * .17, 0, TAU); ctx.fill();
+        if (preview && preview.captured) {
+          ctx.strokeStyle = COL.danger; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(pe.x, pe.y, step * .38, 0, TAU); ctx.stroke();
+        }
+      } else if (G.sel < 0) {
+        // HOLD pending (from a hint) — ring the ronin
+        ctx.strokeStyle = COL.pip; ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.arc(vis.ronin.x, vis.ronin.y, sr[E.cells[G.ronin].ring] * 1.25, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // guards — dark charcoal stones
+    for (const g of vis.guards) stone(ctx, g.x, g.y, sr[E.cells[g.cell].ring] * 0.82, '#332b26', '#4a3f37');
+    // ronin — red lacquer stone with the gold katana slash
+    drawRonin(ctx, vis.ronin.x, vis.ronin.y, sr[E.cells[G.ronin].ring] * 0.92);
+
+    // ascend pulse on the Emperor when the rescue is one tap away
+    if (canAscend() && G.sel == null && !G.busy && G.phase === 'play') {
+      ctx.strokeStyle = COL.emperorPulse; ctx.lineWidth = 2.5; ctx.globalAlpha = .55 + .4 * Math.sin(now / 260);
+      ctx.beginPath(); ctx.arc(CX, CY, EMP_R * (1.12 + .08 * Math.sin(now / 260)), 0, TAU); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // guard-intent arrows — deterministic AI means it's fair to telegraph
+    if (preview && G.sel != null && G.phase === 'play' && !G.busy) {
+      for (const m of preview.moves) {
+        const isCap = !!m.capture;
+        ctx.strokeStyle = ctx.fillStyle = isCap ? COL.danger : COL.intent;
+        ctx.lineWidth = 3;
+        const a = pos(m.from), b = pos(m.to);
+        const ang = Math.atan2(b.y - a.y, b.x - a.x);
+        const sx = a.x + Math.cos(ang) * step * .42, sy = a.y + Math.sin(ang) * step * .42;
+        const ex2 = a.x + Math.cos(ang) * step * .72, ey2 = a.y + Math.sin(ang) * step * .72;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex2, ey2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(ex2 + Math.cos(ang) * 7, ey2 + Math.sin(ang) * 7);
+        ctx.lineTo(ex2 + Math.cos(ang + 2.5) * 6, ey2 + Math.sin(ang + 2.5) * 6);
+        ctx.lineTo(ex2 + Math.cos(ang - 2.5) * 6, ey2 + Math.sin(ang - 2.5) * 6);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    // capture flash — time-based decay so it fades correctly even if frames were skipped
+    if (flashT > 0) {
+      const left = flashT - performance.now();
+      if (left > 0) {
+        ctx.fillStyle = `rgba(211,49,37,${Math.min(.4, left / 500 * .4)})`;
+        ctx.fillRect(0, 0, SIZE, SIZE);
+      } else flashT = 0;
+    }
+  }
+
+  // ---------- win flourish (lifted from ronin-win-flourish.html) ----------
+  // On Ascend a red pulse floods out from the freed Emperor up the terraces and
+  // settles as a ~26% translucent wash — an allusion to the rising sun, not a disc.
+  const FX_HI = '#bc002d', FX_REST = 0.26, FX_FLASH = 0.20, FX_DUR = 1150, FX_SPREAD = 0.38;
+  function playWinFlourish() {
+    snapCv = document.createElement('canvas');
+    snapCv.width = canvas.width; snapCv.height = canvas.height;
+    snapCv.getContext('2d').drawImage(canvas, 0, 0);
+    fx = { t0: performance.now() };
+  }
+  function washRing(s, alpha) {
+    const { CX, CY, rIn, rOut } = geo;
+    ctx.save(); ctx.globalAlpha = Math.min(0.85, alpha); ctx.fillStyle = FX_HI; ctx.beginPath();
+    if (s === 0) ctx.arc(CX, CY, rIn(1), 0, TAU);                                     // throne chamber disc
+    else { ctx.arc(CX, CY, rOut(s), 0, TAU); ctx.arc(CX, CY, rIn(s), 0, TAU, true); } // ring annulus
+    ctx.fill('evenodd'); ctx.restore();
+  }
+  function drawWinFrame(now) {
+    const p = Math.min(1, (now - fx.t0) / FX_DUR);
+    const { step, CX, CY, rOut } = geo;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore();
+    ctx.drawImage(snapCv, 0, 0, SIZE, SIZE);                       // board stays visible underneath
+    const stops = [0, 1, 2, 3, 4, 5, 6];
+    for (let i = 0; i < stops.length; i++) {
+      const ti = (i / stops.length) * FX_SPREAD;                   // when the pulse reaches this ring
+      const age = p - ti; if (age < 0) continue;
+      const decay = Math.max(0, 1 - age / 0.16);                   // the passing flash fades over ~0.16 of the run
+      washRing(stops[i], FX_REST + FX_FLASH * decay);
+      if (decay > 0.05 && stops[i] > 0) {                          // gold corona riding the pulse edge
+        ctx.save(); ctx.globalAlpha = decay * 0.5; ctx.strokeStyle = '#f0c250';
+        ctx.lineWidth = step * 0.3; ctx.beginPath(); ctx.arc(CX, CY, rOut(stops[i]), 0, TAU); ctx.stroke(); ctx.restore();
+      }
+    }
+    if (p > 0.78) {                                                // caption over the still-visible board
+      ctx.save(); ctx.globalAlpha = (p - 0.78) / 0.22; ctx.fillStyle = '#f6eeda';
+      ctx.shadowColor = 'rgba(50,15,15,.75)'; ctx.shadowBlur = 8;
+      ctx.font = `600 ${Math.max(15, Math.round(SIZE * 0.037))}px "Iowan Old Style", Palatino, Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('The Emperor is free', CX, CY + 6); ctx.restore();
+    }
+  }
+
+  function loop(now) { stepTweens(now); draw(now); requestAnimationFrame(loop); }
+  // guarantees tween/turn progress even when the tab is hidden and rAF is paused
+  setInterval(() => { if (document.hidden) stepTweens(performance.now()); }, 120);
+
+  // ---------- rules helpers ----------
+  const canAscend = () => G.board && E.cells[G.ronin].ring === 1;
+  function refreshHints() {
+    preview = null;
+    if (!G.board || G.phase !== 'play') { G.opts = []; G.sel = null; G.selPath = null; updateButtons(); return; }
+    G.opts = E.roninOptions(G.ronin, G.army, G.board.adj);
+    if (G.sel != null && !G.opts.includes(G.sel)) { G.sel = null; G.selPath = null; }
+    if (G.sel != null) {
+      const rep = E.armyReply(G.sel, G.army, G.board.adj);
+      preview = { captured: rep.captured, moves: armyReplyMoves(G.sel, G.army, G.board.adj, rep) };
+      G.selPath = G.sel < 0 ? [G.ronin] : E.pathTo(G.ronin, G.army, G.board.adj, G.sel);
+    } else G.selPath = null;
+    updateButtons();
+  }
+
+  // ---------- HUD ----------
+  const $ = (id) => document.getElementById(id);
+  function setMsg(m) { $('status').textContent = m; }
+  function updateHud() {
+    $('practiceChip').style.display = G.mode === 'practice' ? 'inline-block' : 'none';
+    const dots = $('attemptDots');
+    dots.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const d = document.createElement('span');
+      d.className = 'adot' + (G.squares[i] === 'f' ? ' f' : G.squares[i] === 'w' ? ' w' : (i === G.attempt - 1 && G.phase === 'play') ? ' cur' : '');
+      dots.appendChild(d);
+    }
+  }
+  function updateButtons() {
+    const play = G.phase === 'play' && !G.busy;
+    $('moveBtn').disabled = !play || G.sel == null;
+    $('undoBtn').disabled = !play || G.sel == null;
+    $('holdBtn').disabled = !play || G.sel != null || !G.opts.some(o => o < 0);
+    $('moveBtn').classList.toggle('danger', !!(preview && preview.captured));
+    $('moveBtn').textContent = preview && preview.captured ? 'MOVE ⚠' : 'MOVE';
+    $('rescueBtn').style.display = (play && canAscend() && G.sel == null) ? 'inline-block' : 'none';
+    $('hintBtn').style.display = hintAvailable() ? 'inline-block' : 'none';
+    $('hintBtn').disabled = !play;
+  }
+
+  // ---------- turn flow ----------
+  function executeMove() {
+    if (G.phase !== 'play' || G.busy || G.sel == null || modalOpen()) return;
+    G.busy = true;
+    const ep = G.sel;
+    const end = ep < 0 ? G.ronin : ep;
+    const rep = E.armyReply(ep, G.army, G.board.adj);
+    const mv = armyReplyMoves(ep, G.army, G.board.adj, rep);
+    const path = ep < 0 ? [G.ronin] : (E.pathTo(G.ronin, G.army, G.board.adj, ep) || [G.ronin, ep]);
+    for (let i = 1; i < path.length; i++) queueTween(vis.ronin, pos(path[i]), 150);
+    G.ronin = end;
+    G.moveCount++;
+    G.sel = null; G.selPath = null; G.opts = []; preview = null;
+    if (ep < 0) setMsg('You hold your ground…');
+    updateHud(); updateButtons();
+    afterTweens(() => {
+      for (const m of mv) {
+        const g = vis.guards.find(v => v.cell === m.from);
+        if (g) { queueTween(g, pos(m.to), 170); g.cell = m.to; }
+      }
+      afterTweens(() => {
+        G.army = rep.army.slice(); syncVis();
+        if (rep.captured) { flashT = performance.now() + 500; attemptFailed('captured'); return; }
+        G.busy = false;
+        postChecks();
+      });
+    });
+  }
+
+  function hold() {
+    if (G.phase !== 'play' || G.busy || G.sel != null || modalOpen()) return;
+    if (!G.opts.some(o => o < 0)) return;
+    G.sel = -(1 + G.ronin);
+    executeMove();
+  }
+
+  function ascend() {
+    if (G.phase !== 'play' || G.busy || G.sel != null || !canAscend() || modalOpen()) return;
+    G.moveCount++;
+    G.finalMoves = G.moveCount;
+    G.squares[G.attempt - 1] = 'w';
+    finalizeDay(true);
+  }
+
+  // One hint per castle: the old maps mark the solver's optimal next move from
+  // the current position. Costs your only lantern; stamps 🏮 on the share result.
+  function hintAvailable() {
+    if (G.phase !== 'play' || !G.board) return false;
+    if (G.mode === 'daily') { const s = readStore(); return !modeState(s).hints[G.dayNum]; }
+    return !G.hintUsed;
+  }
+  function markHintUsed() {
+    if (G.mode === 'daily') { const s = readStore(); modeState(s).hints[G.dayNum] = true; writeStore(s); }
+    else G.hintUsed = true;
+  }
+  async function useHint() {
+    if (!hintAvailable() || G.busy || modalOpen()) return;
+    G.busy = true;
+    G.sel = null; G.selPath = null; preview = null;
+    setMsg('Consulting the old maps… 🏮');
+    updateButtons();
+    await new Promise(r => setTimeout(r, 40)); // let the status paint before the solve
+    const res = E.solveBoard({ ronin: G.ronin, army: G.army, adj: G.board.adj },
+      { fLimit: 40, maxNodes: 500000, wantPath: true });
+    markHintUsed();
+    G.busy = false;
+    if (!res) {
+      setMsg('The maps show no way in from here — learn what you can, and fall back. 🏮');
+      refreshHints(); updateHud();
+      return;
+    }
+    if (!res.path.length) {
+      setMsg('The way is open — tap the Emperor and end this. 🏮');
+      refreshHints(); updateHud();
+      return;
+    }
+    G.sel = res.path[0].hold ? -(1 + G.ronin) : res.path[0].cell;
+    refreshHints(); updateHud();
+    setMsg(res.path[0].hold
+      ? `The old maps say: hold your ground — rescue in ${res.par} from here. MOVE to follow. 🏮`
+      : `The old maps mark a route — rescue in ${res.par} from here. Take it, or find your own. 🏮`);
+  }
+
+  // After a lost day: animate the solver's optimal line so the player sees the way in.
+  async function revealSolution() {
+    if (G.phase !== 'done' || G.busy || G.revealing) return;
+    G.revealing = true; G.busy = true;
+    closeModal();
+    fx = null; snapCv = null;
+    G.ronin = G.board.ronin;
+    G.army = G.board.army.slice();
+    G.sel = null; G.selPath = null; G.opts = []; preview = null;
+    syncVis(); updateHud();
+    setMsg('Consulting the old maps…');
+    await new Promise(r => setTimeout(r, 60)); // let the status paint before the solve
+    const res = E.solveBoard({ ronin: G.ronin, army: G.army, adj: G.board.adj },
+      { fLimit: E.cfg.parMax, maxNodes: 500000, wantPath: true });
+    if (!res || !res.path) { setMsg('The path is lost to history.'); G.busy = false; G.revealing = false; return; }
+    let moveNo = 0;
+    for (const step of res.path) {
+      const ep = step.hold ? -(1 + G.ronin) : step.cell;
+      const path = E.pathTo(G.ronin, G.army, G.board.adj, step.hold ? -1 : step.cell) || [G.ronin];
+      for (let i = 1; i < path.length; i++) queueTween(vis.ronin, pos(path[i]), 260);
+      const rep = E.armyReply(ep, G.army, G.board.adj);
+      const mv = armyReplyMoves(ep, G.army, G.board.adj, rep);
+      if (!step.hold) G.ronin = step.cell;
+      moveNo++;
+      G.moveCount = moveNo; updateHud();
+      setMsg(step.hold ? `Move ${moveNo}: hold — let the guards drift…` : `Move ${moveNo} of ${res.par}…`);
+      await new Promise(r => afterTweens(r));
+      for (const m of mv) {
+        const g = vis.guards.find(v => v.cell === m.from);
+        if (g) { queueTween(g, pos(m.to), 240); g.cell = m.to; }
+      }
+      G.army = rep.army.slice();
+      await new Promise(r => afterTweens(r));
+      if (!document.hidden) await new Promise(r => setTimeout(r, 200)); // beat between turns
+    }
+    moveNo++;
+    G.moveCount = moveNo; updateHud();
+    setMsg(`Move ${moveNo}: Ascend ⛩ — that was the way in. Par ${G.board.par}. Tomorrow, it's yours.`);
+    G.busy = false; G.revealing = false;
+  }
+
+  function postChecks() {
+    refreshHints();
+    if (canAscend()) setMsg('The inner ring — tap the Emperor (or RESCUE) to finish! ⛩');
+    else if (!G.opts.length) { attemptFailed('cornered'); return; }
+    else setMsg('');
+    updateHud();
+  }
+
+  function attemptFailed(reason) {
+    G.busy = false;
+    G.squares[G.attempt - 1] = 'f';
+    G.sel = null; G.selPath = null; G.opts = []; preview = null;
+    updateHud(); updateButtons();
+    if (G.attempt < 3) {
+      saveDay(false);
+      openModal(`
+        <h2 style="text-align:center">You have been overwhelmed</h2>
+        <div style="text-align:center;color:var(--ink-soft);font-size:13px;letter-spacing:2px;margin-top:2px">attempt ${G.attempt} of 3</div>
+        <p style="text-align:center;color:var(--ink-soft);margin:14px 0 4px">The castle resets, the guards return to their posts.</p>
+        <p style="text-align:center;margin:4px 0 2px"><b><i>You know their ways a little better now.</i></b></p>
+        <button class="primary" id="retryBtn">Attempt ${G.attempt + 1}</button>
+      `);
+      $('retryBtn').onclick = (e) => {
+        e.target.disabled = true; e.target.onclick = null; // double-tap must not skip an attempt
+        closeModal(); G.attempt++; resetAttempt();
+      };
+    } else {
+      finalizeDay(false);
+    }
+  }
+
+  function resetAttempt() {
+    G.ronin = G.board.ronin;
+    G.army = G.board.army.slice();
+    G.moveCount = 0; G.sel = null; G.selPath = null; G.busy = false;
+    syncVis();
+    setMsg(`Attempt ${G.attempt} — reach the Emperor.`);
+    refreshHints(); updateHud();
+  }
+
+  function finalizeDay(won) {
+    G.phase = 'done';
+    G.busy = false;
+    saveDay(true);
+    updateHud(); updateButtons();
+    if (document.hidden) { showEndModal(won); return; }
+    if (won) { playWinFlourish(); setTimeout(() => showEndModal(true), FX_DUR + 400); }
+    else setTimeout(() => showEndModal(false), 650);
+  }
+
+  // ---------- modals ----------
+  function openModal(html) { $('modalContent').innerHTML = html; $('overlay').classList.add('open'); }
+  function closeModal() { $('overlay').classList.remove('open'); }
+  const modalOpen = () => $('overlay').classList.contains('open');
+  $('modalX').onclick = closeModal;
+  $('overlay').onclick = (e) => { if (e.target === $('overlay')) closeModal(); };
+
+  function squaresStr() { return G.squares.map(s => s === 'w' ? '🟩' : s === 'f' ? '🟥' : '⬜').join(''); }
+  const resDots = () => `<div class="resDots">${G.squares.map(s =>
+    `<span class="${s === 'w' ? 'w' : s === 'f' ? 'f' : ''}"></span>`).join('')}</div>`;
+  const diffTag = () => G.diff === 'easy' ? '' : ' ⚔' + G.diff.toUpperCase();
+  function shareText() {
+    const w = G.squares.indexOf('w');
+    const s = readStore();
+    const lantern = modeState(s).hints[G.dayNum] ? ' 🏮' : '';
+    const head = `RONIN ◯ #${G.dayNum}${diffTag()} ${squaresStr()}${lantern}`;
+    const line = w >= 0
+      ? `Rescued on attempt ${w + 1} · ${G.finalMoves} moves (par ${G.board.par})${G.finalMoves === G.board.par ? ' — perfect ⚔️' : ''}`
+      : `The Emperor waits… (par ${G.board.par})`;
+    return head + '\n' + line;
+  }
+
+  function calcStats() {
+    const results = modeState(readStore()).results;
+    const today = dayNumber();
+    let played = 0, wins = 0, dist = [0, 0, 0];
+    for (const d of Object.keys(results)) {
+      const r = results[d];
+      if (!r.done) continue;
+      played++;
+      const w = r.squares.indexOf('w');
+      if (w >= 0) { wins++; dist[w]++; }
+    }
+    const winsOn = (d) => { const r = results[d]; return r && r.done && r.squares.includes('w'); };
+    let cur = 0;
+    for (let d = (results[today] && results[today].done) ? today : today - 1; d >= 1; d--) {
+      if (winsOn(d)) cur++; else break;
+    }
+    let max = 0, run = 0;
+    for (let d = 1; d <= today; d++) {
+      if (winsOn(d)) { run++; max = Math.max(max, run); }
+      else if (results[d] || d < today) run = 0;
+    }
+    return { played, wins, cur, max, dist };
+  }
+
+  function statsHtml(includeDist = true) {
+    const s = calcStats();
+    const pc = s.played ? Math.round(100 * s.wins / s.played) : 0;
+    const maxD = Math.max(1, ...s.dist);
+    return `
+      <div class="statgrid">
+        <div><div class="n">${s.played}</div><div class="l">played</div></div>
+        <div><div class="n">${pc}</div><div class="l">win %</div></div>
+        <div><div class="n">${s.cur}</div><div class="l">streak</div></div>
+        <div><div class="n">${s.max}</div><div class="l">best</div></div>
+      </div>
+      ${includeDist ? `<div class="dist">
+        ${[0, 1, 2].map(i => `
+          <div class="row"><span>attempt ${i + 1}</span>
+          <span class="bar" style="width:${Math.max(8, 90 * s.dist[i] / maxD)}%">${s.dist[i]}</span></div>`).join('')}
+      </div>` : ''}`;
+  }
+
+  let cdTimer = null;
+  function countdownHtml() { return `<div id="countdown"></div>`; }
+  function startCountdown() {
+    const el = $('countdown');
+    if (!el) return;
+    clearInterval(cdTimer);
+    const tick = () => {
+      const now = new Date();
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+      const ms = next - now;
+      const h = String(Math.floor(ms / 3600000)).padStart(2, '0');
+      const m = String(Math.floor(ms / 60000) % 60).padStart(2, '0');
+      const s = String(Math.floor(ms / 1000) % 60).padStart(2, '0');
+      const e = $('countdown');
+      if (!e) { clearInterval(cdTimer); return; }
+      e.textContent = `next castle in ${h}:${m}:${s}`;
+    };
+    tick(); cdTimer = setInterval(tick, 1000);
+  }
+
+  function showEndModal(won) {
+    const perfect = won && G.finalMoves === G.board.par;
+    const headline = won
+      ? `${G.finalMoves} moves · par ${G.board.par}${perfect ? ' — <b>perfect ⚔️</b>' : ''}`
+      : `The Emperor waits… <b>(par ${G.board.par})</b>`;
+    const isDaily = G.mode === 'daily';
+    openModal(`
+      <h2 style="text-align:center;margin-bottom:1px">${won ? 'The Emperor is free' : 'You have been overwhelmed'}</h2>
+      <div class="splashSub">${isDaily ? 'RONIN ◯ #' + G.dayNum : 'PRACTICE'}${G.diff === 'easy' ? '' : ' · ⚔ ' + G.diff.toUpperCase()}</div>
+      ${resDots()}
+      <div class="headline" style="margin:2px 0 12px">${headline}</div>
+      ${!won ? `<button class="primary" id="revealBtn" style="background:var(--gold);color:var(--ink)">REVEAL THE WAY IN ⛩</button>` : ''}
+      ${isDaily ? `<button class="primary" id="shareBtn">SHARE RESULT</button><div id="shareFeedback"></div>` : ''}
+      ${isDaily ? statsHtml(false) : ''}
+      ${isDaily ? countdownHtml() : ''}
+      <div style="text-align:center;margin-top:3px;font-size:13px">
+        <a id="practiceLink2" style="color:var(--indigo);cursor:pointer;text-decoration:underline">
+          ${isDaily ? 'practice on a random castle' : 'another random castle'}</a>
+      </div>
+    `);
+    if (isDaily) {
+      $('shareBtn').onclick = async () => {
+        try { await navigator.clipboard.writeText(shareText()); $('shareFeedback').textContent = 'copied to clipboard!'; }
+        catch { $('shareFeedback').textContent = shareText().replace('\n', ' — '); }
+      };
+      startCountdown();
+    }
+    const rb = $('revealBtn');
+    if (rb) rb.onclick = () => { rb.disabled = true; revealSolution(); };
+    $('practiceLink2').onclick = () => { closeModal(); startPractice(); };
+  }
+
+  function showHelp() {
+    openModal(`
+      <h2>RONIN ◯</h2>
+      <p style="margin:4px 0;color:var(--ink-soft);font-size:14px">The Emperor is held at the heart of the ring castle. You are the only one coming for him.</p>
+      <ul>
+        <li>🥷 <b>Move:</b> tap any marked cell — you travel up to <b>${E.cfg.roninSteps} cells</b> a turn along the rings. Tap it again (or hit <b>MOVE</b>) to commit, or <b>HOLD</b> to wait in place.</li>
+        <li>🏯 <b>Walls:</b> circling a ring is always open; crossing inward or outward only works where a wall opens into a <b>stair gate</b>.</li>
+        <li>⚔️ <b>Guards:</b> after each of your moves, the two nearest guards step toward you. Arrows show who will move before you commit. If a guard reaches your cell — <b>captured</b>.</li>
+        <li>👑 <b>Rescue:</b> reach the innermost ring, then tap the Emperor. Fewer moves is better — match <b>par</b> for a perfect rescue.</li>
+        <li>🌄 <b>Daily:</b> same castle for everyone, every day. You have <b>3 attempts</b> — the guards are predictable, so every failure teaches you their ways.</li>
+        <li>🏮 <b>Hint:</b> once per castle, the old maps will mark your best next move — but your shared result will carry the lantern.</li>
+      </ul>
+      <button class="primary" id="beginBtn">BEGIN</button>
+    `);
+    $('beginBtn').onclick = () => {
+      closeModal();
+      const s = readStore(); s.seenHelp = true; writeStore(s);
+    };
+  }
+
+  // ---------- input ----------
+  // Tap → nearest cell by (ring band, angle); generous hit-areas — a tap snaps to
+  // the nearest LEGAL endpoint within a tolerance so outer cells stay playable at 375px.
+  function cellAt(x, y) {
+    const dx = x - geo.CX, dy = y - geo.CY, r = Math.hypot(dx, dy);
+    if (r < geo.rIn(1)) return 'EMP';
+    if (r > geo.rOut(6) + geo.step * 0.6) return null;
+    const k = Math.min(6, Math.max(1, Math.round((r - geo.offset) / geo.step + 1)));
+    const count = E.counts[k - 1];
+    let frac = (Math.atan2(dy, dx) + Math.PI / 2) / TAU;
+    frac = ((frac % 1) + 1) % 1;
+    return E.byRing[k][Math.round(frac * count) % count];
+  }
+  canvas.addEventListener('click', (ev) => {
+    if (!G.board || G.phase !== 'play' || G.busy || modalOpen()) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+    const hit = cellAt(x, y);
+    if (hit === 'EMP') {
+      if (canAscend() && G.sel == null) ascend();
+      else setMsg('Reach the innermost ring first — then tap the Emperor.');
+      return;
+    }
+    // snap to the nearest legal endpoint within tolerance
+    let best = null, bd = 1e9;
+    for (const o of G.opts) {
+      if (o < 0) continue;
+      const p = pos(o), d = Math.hypot(p.x - x, p.y - y);
+      if (d < bd) { bd = d; best = o; }
+    }
+    const tol = Math.max(22, geo.step * 0.75);
+    if (best != null && bd <= tol) {
+      if (G.sel === best) { executeMove(); return; } // second tap commits
+      G.sel = best;
+      refreshHints();
+      setMsg(preview && preview.captured ? 'That path ends in capture — the guards will take you. ⚠' : 'Tap again, or hit MOVE.');
+      return;
+    }
+    // not a legal endpoint — explain, and clear any pending selection
+    if (hit != null) {
+      if (hit === G.ronin) setMsg('');
+      else if (G.army.includes(hit)) setMsg('A guard holds that cell.');
+      else setMsg('Out of reach this turn — walls open only at the stair gates.');
+    }
+    G.sel = null; G.selPath = null;
+    refreshHints();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (modalOpen()) { if (e.key === 'Escape') closeModal(); return; }
+    if (e.key === 'Enter') executeMove();
+    else if (e.key === 'Backspace') { if (G.sel != null) { G.sel = null; refreshHints(); } e.preventDefault(); }
+    else if (e.key === 'Escape') { G.sel = null; refreshHints(); }
+    else if (e.key === 'h' || e.key === 'H') hold();
+  });
+
+  $('moveBtn').onclick = executeMove;
+  $('hintBtn').onclick = useHint;
+  $('holdBtn').onclick = hold;
+  $('undoBtn').onclick = () => { if (G.sel != null) { G.sel = null; refreshHints(); } };
+  $('rescueBtn').onclick = ascend;
+  $('helpBtn').onclick = showHelp;
+  const modeSegHtml = () => `
+    <div class="modeRow">difficulty<br/>
+      <span id="modeSeg">${Object.keys(RE.RING_MODES).map(k =>
+        `<button data-diff="${k}" class="${G.diff === k ? 'on' : ''}">${k}</button>`).join('')}
+      </span>
+    </div>`;
+  const wireModeSeg = () => document.querySelectorAll('#modeSeg button').forEach(b => { b.onclick = () => setDiff(b.dataset.diff); });
+  $('statsBtn').onclick = () => { openModal(`<h2>Statistics</h2>${statsHtml()}${modeSegHtml()}${countdownHtml()}`); wireModeSeg(); startCountdown(); };
+  $('practiceLink').onclick = () => startPractice();
+
+  // ---------- game setup ----------
+  function beginBoard(board, mode) {
+    G.mode = mode;
+    G.board = board;
+    G.attempt = 1; G.squares = [null, null, null];
+    G.moveCount = 0; G.finalMoves = null;
+    G.sel = null; G.selPath = null; G.opts = []; preview = null;
+    G.phase = 'play'; G.busy = false; G.hintUsed = false;
+    G.ronin = board.ronin;
+    G.army = board.army.slice();
+    fx = null; snapCv = null;
+    buildStatic();
+    syncVis(); refreshHints(); updateHud();
+    $('status').innerHTML = `<b><i>Rescue the Emperor at the heart of the castle.</i></b><br>Tap a marked cell to plan your move — up to ${E.cfg.roninSteps} cells a turn.`;
+  }
+
+  function startPractice(seed) {
+    closeModal();
+    $('veil').style.display = 'flex';
+    $('veil').textContent = 'forging a random castle…';
+    setTimeout(() => {
+      const s = seed ?? Math.floor(Math.random() * 2 ** 31);
+      const board = practiceBoardFor(E, s);
+      beginBoard(board, 'practice');
+      G.practiceSeed = s;
+      $('veil').style.display = 'none';
+    }, 30);
+  }
+
+  function startDaily() {
+    const s0 = readStore();
+    writeStore(s0); // persist store init once at boot
+    G.diff = RE.RING_MODES[s0.mode] ? s0.mode : 'easy';
+    E = engineFor(G.diff);
+    makeGeo();
+    const dayNum = Math.max(1, dayNumber());
+    G.dayNum = dayNum;
+    $('veil').style.display = 'flex';
+    $('veil').textContent = 'forging today’s castle…';
+    setTimeout(() => {
+      const board = cachedDailyBoard(dayNum);
+      const saved = modeState(readStore()).results[dayNum];
+      beginBoard(board, 'daily');
+      if (saved) {
+        G.squares = saved.squares.slice(0, 3);
+        while (G.squares.length < 3) G.squares.push(null);
+        if (saved.done) {
+          G.phase = 'done';
+          G.finalMoves = saved.moves;
+          if (saved.moves != null) G.moveCount = saved.moves;
+          G.opts = [];
+          updateHud(); updateButtons();
+          setMsg('Today’s rescue is decided — return tomorrow, or practice below.');
+          showEndModal(saved.squares.includes('w'));
+        } else {
+          G.attempt = G.squares.filter(s => s !== null).length + 1;
+          setMsg(`Attempt ${G.attempt} — reach the Emperor.`);
+          updateHud();
+        }
+      }
+      $('veil').style.display = 'none';
+      if (!readStore().seenHelp) showHelp();
+    }, 30);
+  }
+
+  // difficulty switcher (easy is the daily default; the rest are opt-in steps up)
+  function setDiff(key) {
+    if (!RE.RING_MODES[key] || key === G.diff || G.busy || tweens.length || G.revealing) return;
+    const s = readStore(); s.mode = key; writeStore(s);
+    closeModal();
+    startDaily();
+  }
+  // day rollover notice
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && G.mode === 'daily' && dayNumber() !== G.dayNum) {
+      setMsg('A new castle has risen — refresh to play today’s puzzle.');
+    }
+  });
+
+  // ---------- debug hooks (console only) ----------
+  const waitIdle = () => new Promise(res => {
+    if (!G.busy && !tweens.length) return res();
+    const t = setInterval(() => { if (!G.busy && !tweens.length) { clearInterval(t); res(); } }, 25);
+  });
+  window.RoninDebug = {
+    G, RE, vis, engineFor, startPractice, executeMove, hold, ascend, revealSolution, useHint, shareText, setDiff,
+    playWinFlourish,
+    get E() { return E; },
+    async autoWin() {
+      while (G.phase === 'play') {
+        await waitIdle();
+        if (G.phase !== 'play') break;
+        if (canAscend()) { ascend(); break; }
+        const res = E.solveBoard({ ronin: G.ronin, army: G.army, adj: G.board.adj }, { fLimit: 40, maxNodes: 400000, wantPath: true });
+        if (!res || !res.path || !res.path.length) return 'no solution from here';
+        G.sel = res.path[0].hold ? -(1 + G.ronin) : res.path[0].cell;
+        executeMove();
+      }
+      await waitIdle();
+      return 'done';
+    },
+    async holdUntilCaught(maxTurns = 40) {
+      for (let i = 0; i < maxTurns && G.phase === 'play'; i++) {
+        await waitIdle();
+        if (G.phase !== 'play' || G.busy) break;
+        hold();
+      }
+      await waitIdle();
+      return G.phase;
+    },
+  };
+
+  // ---------- boot ----------
+  resize();
+  requestAnimationFrame(loop);
+  startDaily();
+})();
+</script>
+</body>
+</html>

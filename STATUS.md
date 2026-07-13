@@ -4,16 +4,74 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-08 (exploring a circular ring-graph board — see BOARD_REDESIGN_BRIEF.md)*
+*Last updated: 2026-07-13 (v2 `round.html` DEPLOYED as beta alongside the square game — epoch stamped puzzle #1 = 2026-07-13, cross-links live both ways, all four gates green at deploy)*
 
-## ⮕ Active exploration: circular board redesign
+## ⮕ Circular board redesign (v2) — DEPLOYED AS BETA (2026-07-13)
 
-**See `BOARD_REDESIGN_BRIEF.md`** (self-contained) + reference files `ronin-ring-reference-1b.html`
-(Option 1, stepping-stone) and `ronin-ring-reference-2c.html` (Option 2, tier-gate). We're
-exploring replacing the square grid with a concentric ring graph (6 rings + Emperor, 3 tiers).
-Leading difficulty-ladder proposal: easy = Option 2 + 3 moves; normal = Option 1 + 3 moves;
-hard = Option 1 + 2 moves; epic = hard + mechanics. Not built yet — design/planning stage, to be
-built in Fable. The live square game below is unchanged and still deployed.
+Replacing the square grid with a **concentric ring graph** (6 rings + Emperor, 3 tiers). Design
+settled on the **grid-tile board** (continuous polar board, thin keylines, single stair-cell gates,
+ascending terrace shadows) — see `BOARD_REDESIGN_BRIEF.md` + references `ronin-ring-reference-3.html`
+(every-ring gating) / `ronin-ring-reference-3-tier.html` (tier gating) + `ronin-win-flourish.html`
+(rising-sun win). The old scattered-stone mockups (`-1b`/`-2c`) are superseded; that look is parked
+as the "Step Stone" maze idea.
+
+**v1 (square game) archived** to `archive-v1-square/` as a recoverable fallback; still live/deployed,
+untouched. Cell density LOCKED at reference 150 cells (shrink-to-fit mobile, don't reduce cells).
+
+**Engine built + lab-validated in Node (outside Fable), 2026-07-12/13.** New in `tests/`:
+`ring-engine.mjs` (graph engine — orbit+gate edges, deterministic graph-distance guard AI, A* par,
+seeded gen w/ `genMaxNodes=60000` cap), `ring-config.mjs` (locked 4-mode ladder), `ring-rules.mjs`
+(20/20 pass), `ring-horizon.mjs` (+ `ring-lab/diag/ladder.mjs` benchmarks).
+
+**LOCKED difficulty ladder** (all 3-move except epic; guard count is the smooth lever, gating the
+medium step, the 3→2 move cliff reserved for epic). Naive-bot win% = ranking floor; needs playtest.
+
+| mode (2026-07-13 names) | board | guards | steps | band | ~naive-win | 10yr result |
+|------|-------|--------|-------|------|-----------|-------------|
+| **easy** (daily default) | tier | 8/5/3 | 3 | [6,12] | ~60% | ✓ 0/0, mean-par 8.5 |
+| **normal** | tier | 10/6/4 | 3 | [7,13] | ~43% | ✓ 0/0, mean-par 9.5 |
+| **hard** | every-ring 4-gate | 6/4/2 | 3 | [7,14] | ~31% | ✓ 0/0, mean-par 9.4 |
+| **brutal** | every-ring 4-gate | 6/4/2 | 2 | [10,18] | ~21% | ✓ 0/0, mean-par 13.5 |
+
+**10-year horizon (2026-07-13): all 14,600 boards (3650×4) solver-verified — 0 unsolvable, 0
+below-band, every mode.** Gen: base 389ms/9.4s, hard 758ms/13.8s, severe 323ms/8.9s, epic 305ms/8.0s
+(avg/max; worst-case cached per-day). Re-run after ANY engine change: `node tests/ring-horizon.mjs`.
+
+**Phase 2 DONE (2026-07-13): Fable handover spec written** → `RONIN_v2_FABLE_BUILD_SPEC.md` (complete
+build plan). Solver `wantPath` (hints/reveal) + `pathTo` (move anim) added to the engine; rules now
+24/24. **Beta plan: v2 ships as `round.html` ALONGSIDE the square `index.html` (both live), not a
+replacement** — gather opinions first, pick the winner later; distinct localStorage namespace so
+square/round stats never mix. Mode names easy/normal/hard/brutal (easy = daily default), fresh stats.
+**Phase 3 DONE (2026-07-13): `round.html` built in Fable.** Single self-contained file, no network
+calls beyond v1's font-fallback pattern. Engine embedded 1:1 in `<script id="engine">` (generated from
+`tests/ring-engine.mjs` + `ring-config.mjs`; new gate `tests/ring-parity.mjs` proves embedded == Node,
+40/40 across all 4 modes; `ring-rules.mjs` still 24/24). Board render lifted from the two references
+(tier board for easy/normal, every-ring for hard/brutal), win flourish lifted from
+`ronin-win-flourish.html`. Full v1 shell ported and re-pointed at the ring engine: 4-mode switcher
+(stats modal), daily seed + per-day/per-mode board cache, 3 attempts, endpoint tap-to-move
+(select → dashed path + guard-intent arrows → tap-again/MOVE commits), HOLD, one-lantern hint,
+reveal-the-way-in, share string (`RONIN ◯ #N`), stats/streaks, captured/success modals, countdown,
+practice mode, `RoninDebug` hooks (+ `playWinFlourish`). Storage root `ronin.round.v1` — fully
+separate from the square game's `ronin.daily.v1` on the same origin (verified side-by-side). Guard
+arrows/animation use a display-only mirror of `armyReply` cross-checked against the engine reply
+every turn (engine stays authoritative). Browser-verified: win (flourish + modal + share + stats),
+3-loss day (captured modals, reveal replays par line), hint (incl. hold-hint), practice isolation,
+mode switch re-render, done-day reload restore. **Mobile 375px: first pass caught a canvas-overflow
+bug (stale viewport width during emulated resize); fixed (layout-viewport read + debounced re-settle
+in `resize()`) and screenshot-verified 2026-07-13** — at 375×812: board circle fully inside the
+viewport (canvas 351px at x 12–363, zero horizontal scroll), all 150 cells kept, and an off-centre
+tap on an outer-ring endpoint still snaps and selects (the 22px tolerance floor is what's active at
+this board size). Confirmed on both a fresh load at 375px and a live desktop→mobile emulated resize
+with no reload (the original bug path). No code changes; engine untouched, ring-parity re-run 40/40.
+**DEPLOYED 2026-07-13 (beta, alongside the square game — single push):** (1) `EPOCH_UTC` stamped:
+puzzle #1 = 2026-07-13 — NEVER change it again (it would renumber every player's days and
+regenerate their boards); (2) cross-links live both ways ("try the circular board ◯" in the square
+footer ↔ "⬅ back to the classic square castle" in round's — square↔round round-trip
+browser-verified at 375px); (3) shipped `round.html` + `tests/ring-{engine,config,rules,parity}.mjs`
+(so both gates run from a fresh clone) + the cross-linked `ronin_daily_v1.html`/`index.html` + this
+file; (4) gates at deploy: square rules 20/20 + parity 40/40, ring rules 24/24 + ring-parity 40/40.
+Square engine/boards/stats untouched throughout (the footer link is the square page's only change). Brutal mechanics layer on later, one at a time. Live square game
+unchanged/deployed throughout.
 
 ## Live
 
@@ -21,6 +79,12 @@ built in Fable. The live square game below is unchanged and still deployed.
 (public), serving `index.html` from `main`. Deploy = `cp ronin_daily_v1.html index.html && git push`;
 Pages rebuilds automatically on push to `main` (usually live within ~1-2 minutes; confirmed via
 `gh api repos/bradthecaveman/ronin-daily/pages/builds/latest`). No custom domain yet — see Roadmap.
+
+**https://bradthecaveman.github.io/ronin-daily/round.html** — RONIN ◯, the v2 circular board
+(BETA since 2026-07-13; puzzle #1 = launch day), live ALONGSIDE the square game while opinions
+gather — winner picked later. Separate storage namespace (`ronin.round.v1` vs `ronin.daily.v1`)
+so stats never mix; footer cross-links both ways. Deploying a round change = edit `round.html`,
+run the ring gates (`ring-rules.mjs`, `ring-parity.mjs`), push.
 
 ## What this project is
 
