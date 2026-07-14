@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>RONIN — ring reference (tier-gate, v2)</title>
+<style>
+  :root{ --paper:#ece4cf; --ink:#3a322b; --ink-soft:#6e6355; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:var(--paper); color:var(--ink); font-family:"Iowan Old Style",Palatino,Georgia,serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:22px 12px 40px; }
+  h1{ font-size:26px; letter-spacing:8px; font-weight:800; }
+  .sub{ color:var(--ink-soft); font-size:13px; margin:6px 0 16px; max-width:540px; text-align:center; line-height:1.5; }
+  canvas{ display:block; }
+  .legend{ margin-top:16px; font-size:11.5px; letter-spacing:.06em; color:var(--ink-soft); text-align:center; line-height:1.9; max-width:540px; }
+  .legend b{ color:var(--ink); }
+</style>
+</head>
+<body>
+<h1>RONIN</h1>
+<div class="sub">Tier-gate model. Three tiers of two rings each; move freely inside a tier, cross inward only at a gate. Grey stones mark the gates. Reach the inner tier, then ascend to the throne.</div>
+<canvas id="c"></canvas>
+<div class="legend">
+  <b>three bands</b> = the tiers (outer→inner, lightening toward the throne) &nbsp;·&nbsp;
+  <b>grey stones</b> = the gates (only crossings inward) &nbsp;·&nbsp;
+  <b>red</b> = ronin &amp; emperor &nbsp;·&nbsp; <b>dark</b> = guards
+</div>
+
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const SIZE = Math.min(540, (window.innerWidth||540) - 24), DPR = window.devicePixelRatio || 1;
+cv.width = SIZE*DPR; cv.height = SIZE*DPR; cv.style.width = SIZE+'px'; cv.style.height = SIZE+'px'; ctx.scale(DPR, DPR);
+const CX = SIZE/2, CY = SIZE/2, TAU = Math.PI*2;
+
+const tierFill = t => t === 1 ? '#f4edd8' : t === 2 ? '#e3d8ba' : '#d3c39c'; // 1 inner lightest
+const GREY = '#a7a096';
+let _s = 7; const rnd = () => { _s = (_s*1103515245 + 12345) & 0x7fffffff; return _s/0x7fffffff; };
+
+const gap = (SIZE*0.46) / 6.4;
+const tierOfRing = k => k <= 2 ? 1 : k <= 4 ? 2 : 3;
+const tierCount = { 1: 12, 2: 20, 3: 32 };
+const nodes = [], byRing = [];
+for (let k = 1; k <= 6; k++){
+  const R = k*gap, t = tierOfRing(k), count = tierCount[t];
+  const arc = TAU*R/count;
+  const f = k === 1 ? 0.54 : 0.5;                 // bump the innermost so it isn't dwarfed
+  const stoneR = Math.min(arc*f, gap*0.46);
+  const ring = [];
+  for (let s = 0; s < count; s++){
+    const a = (s/count)*TAU - Math.PI/2;
+    const n = { x: CX + R*Math.cos(a), y: CY + R*Math.sin(a), ring:k, tier:t, idx:s, count, R, a, r:stoneR };
+    nodes.push(n); ring.push(n);
+  }
+  byRing[k] = ring;
+}
+
+// gates at the two tier walls — mark both endpoint stones grey
+const gate = new Set();
+const addGate = (outerRing, sOuter) => {
+  const o = byRing[outerRing][sOuter], innerRing = outerRing - 1;
+  let best=null, bd=1e9; for (const n of byRing[innerRing]){ let d=Math.abs(n.a-o.a); d=Math.min(d,TAU-d); if(d<bd){bd=d;best=n;} }
+  gate.add(o.ring+'.'+o.idx); gate.add(best.ring+'.'+best.idx);
+};
+addGate(5, 3); addGate(5, 4); addGate(5, 20);   // outer wall (with a fork)
+addGate(3, 2); addGate(3, 12);                    // inner wall
+
+function disc(x,y,r,fill){ ctx.save(); ctx.shadowColor='rgba(46,38,30,.3)'; ctx.shadowBlur=r*0.55; ctx.shadowOffsetX=r*0.22; ctx.shadowOffsetY=r*0.3;
+  ctx.fillStyle=fill; ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill(); ctx.restore(); }
+
+for(const n of nodes){
+  const isGate = gate.has(n.ring+'.'+n.idx);
+  disc(n.x,n.y,n.r, isGate ? GREY : tierFill(n.tier));
+  const bg=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);
+  bg.addColorStop(0,'rgba(0,0,0,.05)'); bg.addColorStop(.7,'rgba(0,0,0,0)'); bg.addColorStop(1,'rgba(255,255,255,.18)');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,TAU); ctx.fill();
+}
+
+// guards
+{ const pool = nodes.filter(n=>n.ring>=2); for(let i=0;i<11;i++){ const n=pool[Math.floor(rnd()*pool.length)];
+  const r=n.r*0.82; disc(n.x,n.y,r,'#332b26');
+  const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r); g.addColorStop(0,'#332b26'); g.addColorStop(.6,'#332b26'); g.addColorStop(1,'#4a3f37');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(n.x,n.y,r,0,TAU); ctx.fill(); } }
+
+// ronin (outer ring)
+{ const rn = byRing[6][8], R = rn.r*0.9;
+  ctx.save(); ctx.shadowColor='rgba(46,38,30,.4)'; ctx.shadowBlur=R*0.6; ctx.shadowOffsetX=R*0.2; ctx.shadowOffsetY=R*0.28;
+  const g=ctx.createRadialGradient(rn.x,rn.y,0,rn.x,rn.y,R); g.addColorStop(0,'#9c352d'); g.addColorStop(.6,'#9c352d'); g.addColorStop(1,'#bf4e44');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(rn.x,rn.y,R,0,TAU); ctx.fill(); ctx.restore();
+  ctx.fillStyle='#e6ba48'; ctx.beginPath();
+  ctx.moveTo(rn.x-R*.6, rn.y+R*.64); ctx.quadraticCurveTo(rn.x+R*.5, rn.y+R*.4, rn.x+R*.64, rn.y-R*.6);
+  ctx.quadraticCurveTo(rn.x+R*.22, rn.y+R*.12, rn.x-R*.6, rn.y+R*.64); ctx.closePath(); ctx.fill(); }
+
+// emperor
+disc(CX,CY,gap*0.66,'#a6392f');
+const eg=ctx.createRadialGradient(CX,CY,2,CX,CY,gap*0.42); eg.addColorStop(0,'#c3922f'); eg.addColorStop(1,'#e9c56a');
+ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(CX,CY,gap*0.42,0,TAU); ctx.fill();
+ctx.fillStyle='#a6392f'; ctx.beginPath(); ctx.arc(CX,CY,gap*0.18,0,TAU); ctx.fill();
+</script>
+</body>
+</html>

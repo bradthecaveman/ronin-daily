@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>RONIN — ring reference (grid tiles, tier-gate)</title>
+<style>
+  :root{ --paper:#ece4cf; --ink:#3a322b; --ink-soft:#6e6355; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:var(--paper); color:var(--ink); font-family:"Iowan Old Style",Palatino,Georgia,serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:22px 12px 40px; }
+  h1{ font-size:26px; letter-spacing:8px; font-weight:800; }
+  .sub{ color:var(--ink-soft); font-size:13px; margin:6px 0 16px; max-width:540px; text-align:center; line-height:1.5; }
+  canvas{ display:block; }
+  .legend{ margin-top:16px; font-size:11.5px; letter-spacing:.06em; color:var(--ink-soft); text-align:center; line-height:1.9; max-width:540px; }
+  .legend b{ color:var(--ink); }
+</style>
+</head>
+<body>
+<h1>RONIN</h1>
+<div class="sub">Grid-tile board, tier-gate layout. Three tiers of two rings each; move freely within a tier (orbit + cross between its two rings), cross inward only where a tier wall opens into a <b>gate</b>. Each tier is a raised terrace climbing to the throne.</div>
+<canvas id="c"></canvas>
+<div class="legend">
+  <b>three terraces</b> = the tiers (outer→inner, lightening + rising) &nbsp;·&nbsp;
+  <b>stair cells (fade + treads, wall opens)</b> = gates &nbsp;·&nbsp;
+  <b>red</b> = ronin &amp; emperor &nbsp;·&nbsp; <b>dark</b> = guards
+</div>
+
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const SIZE = Math.min(540, (window.innerWidth||540) - 24), DPR = window.devicePixelRatio || 1;
+cv.width = SIZE*DPR; cv.height = SIZE*DPR; cv.style.width = SIZE+'px'; cv.style.height = SIZE+'px'; ctx.scale(DPR, DPR);
+const CX = SIZE/2, CY = SIZE/2, TAU = Math.PI*2;
+
+const tierShade = [null,'#f4edd8','#e3d8ba','#d3c39c'];   // tier1 inner lightest → tier3 outer darkest
+const tierOf = k => k<=2 ? 1 : k<=4 ? 2 : 3;
+const GRID = 'rgba(58,50,43,.13)';   // radial spokes + passable within-tier ring line
+const WALL = 'rgba(58,50,43,.32)';   // the two tier walls (+ chamber + outer edge)
+const darken = (hex,f)=>{ const n=parseInt(hex.slice(1),16); return `rgb(${Math.round((n>>16&255)*f)},${Math.round((n>>8&255)*f)},${Math.round((n&255)*f)})`; };
+let _s = 20260707; const rnd = () => { _s = (_s*1103515245 + 12345) & 0x7fffffff; return _s/0x7fffffff; };
+
+// ---- geometry: same even rings as v3 ----
+const RINGS = 6;
+const step = (SIZE*0.445) / 6.5;
+const offset = step * 1.5;
+const EMP_R = step * 0.72;
+const rIn = k => offset + (k-1)*step - step/2;
+const rOut = k => offset + (k-1)*step + step/2;
+const nodes = [], byRing = [];
+for (let k = 1; k <= RINGS; k++){
+  const R = offset + (k-1)*step;
+  const count = Math.max(8, Math.round((TAU*R/step)/2)*2);
+  const stoneR = Math.min((TAU*R/count)*0.47, step*0.46);
+  const ring = [];
+  for (let s = 0; s < count; s++){
+    const a = (s/count)*TAU - Math.PI/2;
+    const n = { x: CX + R*Math.cos(a), y: CY + R*Math.sin(a), ring:k, tier:tierOf(k), idx:s, count, R, a, r:stoneR, half: TAU/count/2 };
+    nodes.push(n); ring.push(n);
+  }
+  byRing[k] = ring;
+}
+
+const sdiff = (n,a) => { let d=n.a-a; while(d<=-Math.PI)d+=TAU; while(d>Math.PI)d-=TAU; return d; };
+const nearestInner = (k,a) => { let best=null,bd=1e9; for(const n of byRing[k-1]){ const d=Math.abs(sdiff(n,a)); if(d<bd){bd=d;best=n;} } return best; };
+
+// ---- gates: only at the two TIER boundaries (ring4|5 outer wall, ring2|3 inner wall) ----
+const edges = [], ek = new Set();
+const addEdge = (a,b) => { if(!a||!b) return; const k=[a.ring+'.'+a.idx, b.ring+'.'+b.idx].sort().join('|'); if(ek.has(k))return; ek.add(k); edges.push([a,b]); };
+for (const ko of [5,3]){          // outer cell ring of each tier wall (ki = ko-1 is the tier below)
+  const rg=byRing[ko], cnt=rg.length;
+  const i0=Math.floor(rnd()*cnt);
+  const i1=(i0 + Math.floor(cnt*(0.35+rnd()*0.3)))%cnt;
+  for(const i of [i0,i1]){ const n=rg[i]; addEdge(n, nearestInner(ko, n.a)); }
+}
+const roninNode = byRing[RINGS][Math.floor(rnd()*byRing[RINGS].length)];
+const joinStones = new Set(); edges.forEach(([a,b])=>{ joinStones.add(a); joinStones.add(b); });
+const gates = edges.map(([a,b])=>{
+  const bc = a.a + sdiff(b, a.a);
+  let lo = Math.max(a.a - a.half, bc - b.half), hi = Math.min(a.a + a.half, bc + b.half);
+  if (hi <= lo){ const m=(a.a+bc)/2, w=Math.min(a.half,b.half)*0.8; lo=m-w; hi=m+w; }
+  return { a, b, bc, wallR: rIn(a.ring), lo, hi };
+});
+
+// ---- tier terraces: fill each tier as one 2-ring band, rising inward as a plateau ----
+const tierIn  = t => t===1 ? rIn(1) : t===2 ? rIn(3) : rIn(5);
+const tierOut = t => t===1 ? rOut(2): t===2 ? rOut(4): rOut(6);
+const bandPath = (c,ri,ro) => { c.beginPath(); c.arc(CX,CY,ro,0,TAU,false); c.arc(CX,CY,ri,0,TAU,true); };
+const LIFT = t => 1 + (3 - t) * 1.5;       // tier3 lowest (1) → tier1 highest (4)
+for(let t=3; t>=1; t--){
+  const L = LIFT(t);
+  ctx.save();
+  ctx.shadowColor=`rgba(46,38,30,${Math.min(0.42, 0.16 + 0.05*(L-1)).toFixed(3)})`;
+  ctx.shadowBlur=step*0.16*L; ctx.shadowOffsetX=step*0.07*L; ctx.shadowOffsetY=step*0.09*L;
+  ctx.fillStyle=tierShade[t]; bandPath(ctx, tierIn(t), tierOut(t)); ctx.fill('evenodd'); ctx.restore();
+}
+
+// gates: each is a stair climbing between terraces. Like the square game, the fill runs
+// from a darker "foot" (below the tier it leaves) up to the destination tier's own colour
+// at the top, and thin tread arcs lighten as they ascend into the next terrace.
+const sectorPath = (c,k,ac,half) => { const a0=ac-half, a1=ac+half;
+  c.beginPath(); c.arc(CX,CY,rOut(k),a0,a1,false); c.arc(CX,CY,rIn(k),a1,a0,true); c.closePath(); };
+const shadeOf = k => tierShade[tierOf(k)];
+const FOOTF = 0.86;
+const treadCols = ['rgba(74,58,38,.50)','rgba(98,79,53,.42)','rgba(126,106,73,.34)','rgba(154,133,98,.28)','rgba(170,150,112,.22)'];
+for(const g of gates){
+  // the stair is a SINGLE cell (the outer one you climb from); it opens through the tier
+  // wall onto a normal inner-tier cell. One cell does the job — one clean chokepoint.
+  const shadeA = shadeOf(g.a.ring), shadeB = shadeOf(g.b.ring);
+  const rFoot = rOut(g.a.ring), rTop = rIn(g.a.ring);   // foot = outer edge, top = the tier wall it opens through
+  const grad = ctx.createRadialGradient(CX,CY, rTop, CX,CY, rFoot);
+  grad.addColorStop(0, shadeB);                 // top meets the destination tier's colour
+  grad.addColorStop(1, darken(shadeA, FOOTF));  // foot dips darker for depth
+  ctx.fillStyle=grad;
+  sectorPath(ctx, g.a.ring, g.a.a, g.a.half); ctx.fill();
+  ctx.lineWidth=1;                              // tread arcs across the climb
+  for(let i=0;i<treadCols.length;i++){
+    const f=(i+1)/(treadCols.length+1), r=rFoot + f*(rTop-rFoot);
+    const pad = Math.min(g.a.half*0.25, (step*0.12)/r);
+    ctx.strokeStyle=treadCols[i];
+    ctx.beginPath(); ctx.arc(CX,CY, r, g.a.a-g.a.half+pad, g.a.a+g.a.half-pad); ctx.stroke();
+  }
+}
+
+// ---- keylines ----
+// radial spokes: every cell edge, all rings (cells visible everywhere)
+ctx.strokeStyle=GRID; ctx.lineWidth=1;
+for(let k=1;k<=RINGS;k++){ const ri=rIn(k), ro=rOut(k);
+  for(const n of byRing[k]){ const e=n.a-n.half;
+    ctx.beginPath(); ctx.moveTo(CX+ri*Math.cos(e), CY+ri*Math.sin(e)); ctx.lineTo(CX+ro*Math.cos(e), CY+ro*Math.sin(e)); ctx.stroke(); } }
+// passable within-tier ring line (between the two rings of a tier) — faint, no barrier
+for(const r of [rOut(1), rOut(3), rOut(5)]){ ctx.beginPath(); ctx.arc(CX,CY,r,0,TAU); ctx.stroke(); }
+
+// the two tier walls open where a gate passes; chamber + outer edge are solid
+function keptArcs(gaps){
+  if(!gaps.length) return [[0,TAU]];
+  let g=[]; for(let [lo,hi] of gaps){ lo=((lo%TAU)+TAU)%TAU; hi=((hi%TAU)+TAU)%TAU;
+    if(hi<lo){ g.push([lo,TAU]); g.push([0,hi]); } else g.push([lo,hi]); }
+  g.sort((p,q)=>p[0]-q[0]);
+  let m=[g[0].slice()]; for(let i=1;i<g.length;i++){ const last=m[m.length-1];
+    if(g[i][0]<=last[1]) last[1]=Math.max(last[1],g[i][1]); else m.push(g[i].slice()); }
+  let kept=[], c=0; for(const [lo,hi] of m){ if(lo>c) kept.push([c,lo]); c=Math.max(c,hi); }
+  if(c<TAU) kept.push([c,TAU]); return kept;
+}
+ctx.strokeStyle=WALL; ctx.lineWidth=1.3;
+for(const rr of [rIn(1), rIn(3), rIn(5), rOut(6)]){       // chamber, two tier walls, outer edge
+  const gaps = gates.filter(g=>Math.abs(g.wallR-rr)<0.5).map(g=>[g.lo,g.hi]);
+  for(const [lo,hi] of keptArcs(gaps)){ ctx.beginPath(); ctx.arc(CX,CY,rr,lo,hi,false); ctx.stroke(); }
+}
+
+function disc(x,y,r,fill){ ctx.save(); ctx.shadowColor='rgba(46,38,30,.3)'; ctx.shadowBlur=r*0.55; ctx.shadowOffsetX=r*0.22; ctx.shadowOffsetY=r*0.3;
+  ctx.fillStyle=fill; ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill(); ctx.restore(); }
+
+// guards
+{ const pool = nodes.filter(n=>n.ring>=2 && n!==roninNode); for(let i=0;i<11;i++){ const n=pool[Math.floor(rnd()*pool.length)];
+  const r=n.r*0.82; disc(n.x,n.y,r,'#332b26');
+  const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r); g.addColorStop(0,'#332b26'); g.addColorStop(.6,'#332b26'); g.addColorStop(1,'#4a3f37');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(n.x,n.y,r,0,TAU); ctx.fill(); } }
+
+// ronin
+{ const rn=roninNode, R=rn.r*0.92;
+  ctx.save(); ctx.shadowColor='rgba(46,38,30,.4)'; ctx.shadowBlur=R*0.6; ctx.shadowOffsetX=R*0.2; ctx.shadowOffsetY=R*0.28;
+  const g=ctx.createRadialGradient(rn.x,rn.y,0,rn.x,rn.y,R); g.addColorStop(0,'#9c352d'); g.addColorStop(.6,'#9c352d'); g.addColorStop(1,'#bf4e44');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(rn.x,rn.y,R,0,TAU); ctx.fill(); ctx.restore();
+  ctx.fillStyle='#e6ba48'; ctx.beginPath();
+  ctx.moveTo(rn.x-R*.6, rn.y+R*.64); ctx.quadraticCurveTo(rn.x+R*.5, rn.y+R*.4, rn.x+R*.64, rn.y-R*.6);
+  ctx.quadraticCurveTo(rn.x+R*.22, rn.y+R*.12, rn.x-R*.6, rn.y+R*.64); ctx.closePath(); ctx.fill(); }
+
+// emperor
+disc(CX,CY,EMP_R,'#a6392f');
+const eg=ctx.createRadialGradient(CX,CY,2,CX,CY,EMP_R*0.64); eg.addColorStop(0,'#c3922f'); eg.addColorStop(1,'#e9c56a');
+ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(CX,CY,EMP_R*0.64,0,TAU); ctx.fill();
+ctx.fillStyle='#a6392f'; ctx.beginPath(); ctx.arc(CX,CY,EMP_R*0.28,0,TAU); ctx.fill();
+</script>
+</body>
+</html>

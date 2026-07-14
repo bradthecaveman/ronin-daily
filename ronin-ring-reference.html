@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>RONIN — ring-board reference</title>
+<style>
+  :root{ --paper:#ece4cf; --ink:#3a322b; --ink-soft:#6e6355; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:var(--paper); color:var(--ink); font-family:"Iowan Old Style",Palatino,Georgia,serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:22px 12px 40px; }
+  h1{ font-size:26px; letter-spacing:8px; font-weight:800; }
+  .sub{ color:var(--ink-soft); font-size:13px; margin:6px 0 16px; max-width:520px; text-align:center; line-height:1.5; }
+  canvas{ display:block; }
+  .legend{ margin-top:16px; font-size:11.5px; letter-spacing:.06em; color:var(--ink-soft); text-align:center; line-height:1.9; max-width:520px; }
+  .legend b{ color:var(--ink); }
+</style>
+</head>
+<body>
+<h1>RONIN</h1>
+<div class="sub">Reference only — no gameplay. Concentric rings of stones; you can always follow a ring around, but you cross <i>inward</i> only where a road (a “stair”) links two rings. The occasional fork gives a route choice. Reach the throne.</div>
+<canvas id="c"></canvas>
+<div class="legend">
+  <b>rings</b> = the three tiers (outer→inner, lightening toward the throne) &nbsp;·&nbsp;
+  <b>thin roads</b> = orbit a ring freely &nbsp;·&nbsp;
+  <b>warm roads</b> = the sparse inward links (gates/forks) &nbsp;·&nbsp;
+  <b>red</b> = ronin &amp; emperor &nbsp;·&nbsp; <b>dark</b> = guards
+</div>
+
+<script>
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const SIZE = Math.min(540, (window.innerWidth||540) - 24);
+const DPR = window.devicePixelRatio || 1;
+cv.width = SIZE*DPR; cv.height = SIZE*DPR; cv.style.width = SIZE+'px'; cv.style.height = SIZE+'px';
+ctx.scale(DPR, DPR);
+const CX = SIZE/2, CY = SIZE/2, TAU = Math.PI*2;
+
+// ---- palette (matches the live game) ----
+const tierFill = ring => ring <= 2 ? '#f4edd8' : ring <= 4 ? '#e3d8ba' : '#d3c39c'; // 1-2 inner lightest
+const ROAD = 'rgba(66,56,47,.28)';        // orbit roads
+const GATE0 = '#6c4e30', GATE1 = '#a9855c'; // inward-link road (foot→top)
+
+// ---- deterministic RNG so the reference is stable ----
+let _s = 1337; const rnd = () => { _s = (_s*1103515245 + 12345) & 0x7fffffff; return _s/0x7fffffff; };
+
+// ---- geometry: 6 rings, even-look node sizing (stone fills its local gap) ----
+const RINGS = 6;
+const gap = (SIZE*0.46) / (RINGS + 0.4);
+const nodes = [];
+const byRing = [];
+for (let k = 1; k <= RINGS; k++){
+  const R = k*gap;
+  const count = Math.max(8, Math.round((TAU*R/gap)/2)*2);
+  const arc = TAU*R/count;
+  const stoneR = Math.min(arc, gap) * 0.44;
+  const ring = [];
+  for (let s = 0; s < count; s++){
+    const a = (s/count)*TAU - Math.PI/2;
+    const n = { x: CX + R*Math.cos(a), y: CY + R*Math.sin(a), ring:k, idx:s, count, R, a, r:stoneR };
+    nodes.push(n); ring.push(n);
+  }
+  byRing[k] = ring;
+}
+const nearestOnRing = (ring, a) => {
+  let best=null, bd=1e9;
+  for (const n of byRing[ring]){ let d=Math.abs(n.a-a); d=Math.min(d, TAU-d); if(d<bd){bd=d; best=n;} }
+  return best;
+};
+
+// ---- edges ----
+const ringEdges = [];      // orbit (thin)
+for (let k=1;k<=RINGS;k++){ const rg=byRing[k]; for(let i=0;i<rg.length;i++){ ringEdges.push([rg[i], rg[(i+1)%rg.length]]); } }
+
+const radial = [];         // inward links (warm); the "gates/forks"
+const linkKey = new Set();
+const addRadial = (a,b)=>{ const k=Math.min(a.ring,b.ring)+'/'+a.idx+'/'+b.idx; if(linkKey.has(k))return; linkKey.add(k); radial.push([a,b]); };
+// guaranteed inward chain from an outer node to the centre, so a route is always visible
+let cur = byRing[RINGS][Math.floor(rnd()*byRing[RINGS].length)];
+const throneChainStart = cur; // outer node where the guaranteed route begins (ronin sits here)
+for (let k=RINGS;k>1;k--){ const nxt = nearestOnRing(k-1, cur.a); addRadial(cur, nxt); cur = nxt; }
+// scatter extra inward links + occasional forks
+for (let k=RINGS;k>1;k--){
+  const rg=byRing[k];
+  const extra = Math.max(1, Math.round(rg.length*0.18));
+  for (let e=0;e<extra;e++){
+    const n = rg[Math.floor(rnd()*rg.length)];
+    addRadial(n, nearestOnRing(k-1, n.a));
+    if (rnd()<0.28){ // fork: a second nearby inward link
+      const n2 = byRing[k-1][ (nearestOnRing(k-1,n.a).idx + (rnd()<0.5?1:byRing[k-1].length-1)) % byRing[k-1].length ];
+      addRadial(n, n2);
+    }
+  }
+}
+
+// ---- draw ----
+function disc(x,y,r,fill,shadow){
+  if(shadow){ ctx.save(); ctx.shadowColor='rgba(46,38,30,.32)'; ctx.shadowBlur=r*0.55; ctx.shadowOffsetX=r*0.22; ctx.shadowOffsetY=r*0.3; }
+  ctx.fillStyle=fill; ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill();
+  if(shadow) ctx.restore();
+}
+
+// faint concentric guides (the castle rings)
+ctx.strokeStyle='rgba(66,56,47,.10)'; ctx.lineWidth=1;
+for(let k=1;k<=RINGS;k++){ ctx.beginPath(); ctx.arc(CX,CY,k*gap,0,TAU); ctx.stroke(); }
+
+// orbit roads
+ctx.strokeStyle=ROAD; ctx.lineWidth=Math.max(2, gap*0.09); ctx.lineCap='round';
+for(const [a,b] of ringEdges){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+
+// inward links (warm, dark at foot→light toward centre)
+ctx.lineWidth=Math.max(3, gap*0.16); ctx.lineCap='round';
+for(const [a,b] of radial){
+  const outer = a.R>=b.R ? a : b, inner = a.R>=b.R ? b : a;
+  const g=ctx.createLinearGradient(outer.x,outer.y,inner.x,inner.y);
+  g.addColorStop(0,GATE0); g.addColorStop(1,GATE1);
+  ctx.strokeStyle=g; ctx.beginPath(); ctx.moveTo(outer.x,outer.y); ctx.lineTo(inner.x,inner.y); ctx.stroke();
+}
+ctx.lineCap='butt';
+
+// stones
+for(const n of nodes){
+  disc(n.x,n.y,n.r, tierFill(n.ring), true);
+  // subtle inner bevel
+  const bg=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);
+  bg.addColorStop(0,'rgba(0,0,0,.05)'); bg.addColorStop(.7,'rgba(0,0,0,0)'); bg.addColorStop(1,'rgba(255,255,255,.18)');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,TAU); ctx.fill();
+}
+
+// pieces — guards (dark lacquer) on a scattered set of nodes
+const guardNodes = [];
+{ const pool = nodes.filter(n=>n.ring>=2); for(let i=0;i<11;i++){ guardNodes.push(pool[Math.floor(rnd()*pool.length)]); } }
+for(const n of guardNodes){
+  const r=n.r*0.82;
+  const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r);
+  g.addColorStop(0,'#332b26'); g.addColorStop(.6,'#332b26'); g.addColorStop(1,'#4a3f37');
+  disc(n.x,n.y,r,'#332b26',true); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(n.x,n.y,r,0,TAU); ctx.fill();
+}
+
+// ronin — red lacquer + gold slash, sitting at the outer mouth of the main inward chain
+{ const rn = byRing[RINGS].find(n => n === throneChainStart) || byRing[RINGS][0];
+  const R = rn.r*0.9;
+  ctx.save(); ctx.shadowColor='rgba(46,38,30,.4)'; ctx.shadowBlur=R*0.6; ctx.shadowOffsetX=R*0.2; ctx.shadowOffsetY=R*0.28;
+  const g=ctx.createRadialGradient(rn.x,rn.y,0,rn.x,rn.y,R);
+  g.addColorStop(0,'#9c352d'); g.addColorStop(.6,'#9c352d'); g.addColorStop(1,'#bf4e44');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(rn.x,rn.y,R,0,TAU); ctx.fill(); ctx.restore();
+  ctx.fillStyle='#e6ba48';
+  ctx.beginPath();
+  ctx.moveTo(rn.x - R*.6, rn.y + R*.64);
+  ctx.quadraticCurveTo(rn.x + R*.5, rn.y + R*.4, rn.x + R*.64, rn.y - R*.6);
+  ctx.quadraticCurveTo(rn.x + R*.22, rn.y + R*.12, rn.x - R*.6, rn.y + R*.64);
+  ctx.closePath(); ctx.fill();
+}
+
+// emperor — the throne at centre (red tile, gold sun, red core)
+disc(CX,CY,gap*0.66,'#a6392f',true);
+const eg=ctx.createRadialGradient(CX,CY,2,CX,CY,gap*0.42);
+eg.addColorStop(0,'#c3922f'); eg.addColorStop(1,'#e9c56a');
+ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(CX,CY,gap*0.42,0,TAU); ctx.fill();
+ctx.fillStyle='#a6392f'; ctx.beginPath(); ctx.arc(CX,CY,gap*0.18,0,TAU); ctx.fill();
+</script>
+</body>
+</html>

@@ -5,6 +5,18 @@ Fable build session). Pair with the two reference files named below — together
 to continue without re-deriving anything. Sits alongside `STATUS.md` (the live square game's
 source of truth); this brief covers the **proposed next-generation board** only.*
 
+> **2026-07-11 — RESOLVED: the board is the GRID-TILE board.** The scattered-stone look
+> (Options 1/2, the `-1b`/`-2c` lozenge mockups) lost the bake-off; it read too busy for an
+> infiltration board. The winning direction is **one continuous polar board** — cells touch
+> edge-to-edge, split by thin keylines like the square game (concentric ring walls + radial
+> spokes), with **ascending "terrace" drop-shadows** climbing to the throne. Gates are a
+> **single stair cell** (see the gate section below). The two gating models survive as a
+> generation parameter and still map to the difficulty ladder, now both rendered in this grid
+> language. Canonical references: **`ronin-ring-reference-3.html`** (stepping-stone gating) and
+> **`ronin-ring-reference-3-tier.html`** (tier-gate). The stepping-stone *look* is parked
+> separately as the "Step Stone" maze-game idea, not part of this game. Difficulty ladder,
+> movement/graph model, guard-AI TODO, and build order below are all unchanged by this.
+
 ## The pivot
 
 The live game (`ronin_daily_v1.html`, deployed) uses a **13×13 square grid**. We're exploring
@@ -18,37 +30,37 @@ share, stats, modals, release-gate discipline, the solver-first + lab-benchmark 
 Board structure: **6 rings + Emperor at centre**, grouped as **3 tiers of 2 rings** (outer /
 middle / inner), lightening toward the throne. The Emperor sits in a slightly larger central
 "throne chamber." You **orbit any ring freely**; you cross **inward** only through a **gate**
-(rendered as two stones fused into a lozenge / figure-8). Reach the inner ring, then ascend.
+(rendered as a single stair cell — see gate section). Reach the inner ring, then ascend.
 
-## The two board models (THE core open decision)
+## The two gating models (both kept — a generation parameter, not a fork)
 
-Same physical geometry (6 rings); they differ only in **where the walls/gates are**:
+Same physical geometry (6 rings) and same grid-tile look; they differ only in **where the walls/gates
+are**. Both are now rendered in the grid-tile language and both feed the difficulty ladder:
 
-- **Option 1 — "stepping-stone"** (`ronin-ring-reference-1b.html`): every ring boundary is a wall.
-  **Two gates per ring boundary** (5 boundaries → 10 gates), each a simple 2-stone join (we tried
-  forks — a stone joining the two straddling inner stones — but removed them; single joins only for
-  now). Tighter, more chokepoints, more forced angular detours, higher par, spikier difficulty.
-- **Option 2 — "tier-gate"** (`ronin-ring-reference-2c.html`): only the two **tier boundaries** are
-  walls (2 boundaries → ~5 gates incl. one fork in the mock). You move **freely within a 2-ring
-  tier** (orbit + cross between its two rings). Calmer, flows more, more forgiving, reads more
-  cleanly. Brad: "Option 2 reads so much more cleanly."
+- **Stepping-stone gating** (`ronin-ring-reference-3.html`): every ring boundary is a wall.
+  **Two gates per ring boundary** (5 boundaries → 10 gates), each a single stair cell. Tighter,
+  more chokepoints, more forced angular detours, higher par, spikier difficulty. → normal/hard/epic.
+- **Tier-gate gating** (`ronin-ring-reference-3-tier.html`): only the two **tier boundaries** are
+  walls (2 boundaries → ~4 gates). You move **freely within a 2-ring tier** (orbit + cross between
+  its two rings), and the three tiers read as three colour-band terraces. Calmer, more forgiving,
+  reads more cleanly. → easy.
 
-Engineering note that makes both cheap: if the engine is **a graph of stones + gate-edges**, the
+Engineering note that makes both cheap: the engine is **a graph of cells + gate-edges**, so the
 only difference between the models is a **generation parameter** — *gate every ring boundary*
-(Opt 1) vs *gate only tier boundaries, open within a tier* (Opt 2). One engine, one generator, a
-per-mode gating config. Neither reference is wasted.
+(stepping-stone) vs *gate only tier boundaries, open within a tier* (tier-gate). One engine, one
+generator, a per-mode gating config. Neither reference is wasted.
 
 ## Difficulty ladder (Brad's proposal, 2026-07-08 — leading candidate)
 
 Each rung raises difficulty on a **different axis**, so each mode has its own identity, not just
 bigger numbers:
 
-| Mode   | Board            | Moves/turn | Extra                                             |
-|--------|------------------|-----------|---------------------------------------------------|
-| easy   | Option 2 (2 walls) | 3       | gentle                                            |
-| normal | Option 1 (5 walls) | 3       | —                                                 |
-| hard   | Option 1 (5 walls) | 2       | —                                                 |
-| epic   | Option 1 (5 walls) | 2       | + mechanics (see epic sketch in STATUS.md)        |
+| Mode   | Gating               | Moves/turn | Extra                                          |
+|--------|----------------------|-----------|-------------------------------------------------|
+| easy   | tier-gate (2 walls)  | 3         | gentle                                          |
+| normal | stepping-stone (5 walls) | 3     | —                                               |
+| hard   | stepping-stone (5 walls) | 2     | —                                               |
+| epic   | stepping-stone (5 walls) | 2     | + mechanics (see epic sketch in STATUS.md)      |
 
 Rationale: easy→normal changes **board complexity**; normal→hard changes **mobility** (from the
 square-game lab, 3→2 moves was a huge swing — ~73% naive-win to ~14% — so this is a real cliff,
@@ -65,46 +77,56 @@ isn't *trivial*.
 ## Movement model (changes from the square game)
 
 From "king moves up to N squares" to **"traverse up to N edges along the graph."** An edge is
-either an **orbit step** (to the adjacent stone on the same ring) or a **gate step** (inward
-through a lozenge). N = moves/turn (3 or 2 per the ladder). Guards: step toward the ronin along
-the graph (reduce graph-distance), the two nearest, deterministic — cleaner than the square
-game's polar-angle logic. Guard behaviour on the ring graph is **not yet specified** — needs
-defining + lab-tuning. Ascend rule still open (Option A: reach any inner-ring stone → ascend;
+either an **orbit step** (to the adjacent cell on the same ring) or a **gate step** (inward
+through a stair cell's opening). N = moves/turn (3 or 2 per the ladder). Guards: step toward the
+ronin along the graph (reduce graph-distance), the two nearest, deterministic — cleaner than the
+square game's polar-angle logic. Guard behaviour on the ring graph is **not yet specified** —
+needs defining + lab-tuning. Ascend rule still open (Option A: reach any inner-ring cell → ascend;
 Option B: a final gate to the throne too) — see STATUS.md.
 
-## Visual / rendering language (settled — embodied in the reference files)
+## Visual / rendering language (grid-tile — embodied in the reference-3 files)
 
-Read the two reference HTML files for the exact, working implementation. Key decisions:
+Read the two `reference-3*` HTML files for the exact, working implementation. Key decisions:
 
-- **Palette**: monochrome cream (from the live game's v1.8 art direction) — Option 1 uses a smooth
-  per-ring radial gradient (darkest outer edge → lightest throne); Option 2 uses 3 tier bands.
-  Emperor + Ronin are the only saturated (red/gold) elements. Guards are dark charcoal stones.
-- **Stones**: matte lacquered look — darker core + a **hard-edged inset rim** (a defined band
-  just inside a crisp boundary — NOT a blur) + subtle drop shadow (sun top-left). The rim is what
-  makes them read as stepping stones.
-- **Gates = lozenges**: two stones fused into **one continuous silhouette** — a true peanut/figure-8
-  with a pinched waist that flares **tangentially** into each stone's perimeter (no straight-bar
-  look), filled with **one continuous gradient across the whole shape** (no visible inner-circle
-  seams), a darker core, and the **same hard inset rim** as single stones so a gate and a single
-  stone share one material language. Built via an offscreen canvas so the merged shape casts a
-  single clean shadow; the rim is made by **eroding the union silhouette and subtracting** (a blur
-  feathers the edge and looks wrong — eroding keeps it crisp). Current dials: `DARKF`=0.87 (gate
-  ~13% darker than field), `WAIST`=1.05, `RIMW`=step*0.11, rim alpha 0.17.
-- **Emperor**: red tile, gold sun, red core, in the enlarged central chamber.
-- **Ronin**: red lacquer stone with a gold curved-katana slash.
+- **One continuous board, not scattered pieces.** Each ring is a full annulus of cells that
+  **touch edge-to-edge** (cell radial height = one `step`, so ring *k*'s outer edge is ring
+  *k+1*'s inner edge — no gaps). The cells are split by **thin keylines**, exactly the square
+  game's two-tier treatment: faint **radial spokes** at every cell edge (`GRID` ≈
+  `rgba(58,50,43,.13)`) and slightly stronger **concentric ring walls** (`WALL` ≈ `.26–.32`).
+- **Palette**: monochrome cream (live game's v1.8 art direction). Stepping-stone board uses a
+  per-ring gradient (darkest outer → lightest throne); tier board uses **3 tier colour bands**.
+  Emperor + Ronin are the only saturated (red/gold) elements; guards are dark charcoal **discs**
+  — the round actors are the *only* circles left, which pops them off the flat mosaic floor.
+- **Ascending terraces**: each ring (stepping-stone) / each tier (tier board) casts a drop shadow
+  onto its outer/lower neighbour, drawn outer→inner, so the board reads as terraces climbing to
+  the throne — a ziggurat, not a flat dartboard. On the tier board the lift steps as **3 plateaus**
+  (both rings of a tier share a height); on the stepping-stone board it climbs per-ring.
+- **Gates = a single stair cell** (settled 2026-07-11; not a fused double). The gate is the OUTER
+  cell of a crossing — the one you climb from. It renders like the square game's stair: a radial
+  gradient from a **darker "foot"** at its outer edge (`darken(shade, FOOTF=0.86)`) up to **exactly
+  the destination ring/tier's colour** at the top (the wall it opens through), plus ~5 thin
+  **concentric tread arcs** that lighten as they ascend (square's `treadCols` palette). The ring
+  wall **opens** (keyline arc skipped) across the gate, so the stair leads through the gap onto a
+  normal inner cell beyond. Mechanically a gate is just one graph edge; shading one cell is enough
+  — one clean chokepoint. (The old fused-lozenge double is retired.)
+- **Emperor**: red tile, gold sun, red core, round, in the central throne chamber (paper moat
+  around it).
+- **Ronin**: red lacquer disc with a gold curved-katana slash.
 
-Still not fully nailed (Brad): Option 1's stone/gate **edge rendering** ("still not quite right" —
-the rim/edge crispness). Whatever we settle there, apply to BOTH models so they stay identical.
+Still open (Brad, 2026-07-11): "still wants to adjust some design touches" — expect more visual
+iteration before this is frozen. Tread-arc weight, keyline weights, and terrace-lift strength are
+the live dials. Whatever we settle, apply to BOTH gating boards so they stay identical.
 
 ## Reference files (canonical)
 
-- **`ronin-ring-reference-1b.html`** — Option 1 (stepping-stone), current best. 2 gates/ring,
-  lozenge joins, eroded rim, radial gradient, throne chamber.
-- **`ronin-ring-reference-2c.html`** — Option 2 (tier-gate), current best. Same treatment, gates
-  only at tier boundaries.
-- `ronin-tiered-board.html` — Brad's original Claude.ai sketch (lineage).
-- Earlier iterations (`ronin-ring-reference.html`, `-2.html`, `-2b.html`, `_polar_mock*.html`) are
-  superseded — ignore.
+- **`ronin-ring-reference-3.html`** — grid-tile board, **stepping-stone gating** (5 walls, 2 gates
+  per ring boundary). Single stair-cell gates, terrace shadows, radial per-ring gradient.
+- **`ronin-ring-reference-3-tier.html`** — grid-tile board, **tier-gate gating** (2 walls, free
+  within each 2-ring tier). Same stair-cell + terrace treatment, 3 colour-band tiers.
+- Superseded — ignore: `ronin-ring-reference-1b.html` / `-2c.html` (the stone/lozenge look; the
+  look itself is parked as the separate "Step Stone" maze idea), `ronin-tiered-board.html` (original
+  sketch), and all earlier iterations (`ronin-ring-reference.html`, `-2.html`, `-2b.html`,
+  `_polar_mock*.html`).
 
 ## Build guidance / cost
 

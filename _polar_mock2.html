@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8"/>
+<style>html,body{margin:0;background:#ece4cf;display:flex;justify-content:center}canvas{display:block}</style>
+</head><body>
+<canvas id="c" width="620" height="620"></canvas>
+<script>
+const ctx = document.getElementById('c').getContext('2d');
+const CX = 310, CY = 310, TAU = Math.PI*2;
+const ringR = [52, 92, 132, 176, 220, 266];      // rings 1..6 (1 = innermost)
+const S     = [8, 8, 16, 16, 32, 32];             // graduated: doubles at each tier boundary
+const cellR = 11;
+const tierFill = r => r <= 2 ? '#f4edd8' : r <= 4 ? '#e3d8ba' : '#d3c39c';
+const ang = (s, n) => (s / n) * TAU - Math.PI/2;
+const pt = (R, s, n) => [CX + R*Math.cos(ang(s,n)), CY + R*Math.sin(ang(s,n))];
+
+function wall(R){ ctx.strokeStyle='#42382f'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(CX,CY,R,0,TAU); ctx.stroke(); }
+wall((ringR[1]+ringR[2])/2);
+wall((ringR[3]+ringR[4])/2);
+
+// gates {rIn, s}: inner ring rIn sector s -> outer ring rIn+1 sector s*2 (doubling)
+const gates = [ {rIn:4, s:2}, {rIn:4, s:8}, {rIn:4, s:12},   // 3 outer-tier gates
+                {rIn:2, s:2}, {rIn:2, s:6} ];                 // 2 inner-tier gates
+for (const g of gates){
+  const [x1,y1] = pt(ringR[g.rIn], g.s*2, S[g.rIn]);     // foot (outer)
+  const [x2,y2] = pt(ringR[g.rIn-1], g.s, S[g.rIn-1]);   // top (inner)
+  const grd = ctx.createLinearGradient(x1,y1,x2,y2);
+  grd.addColorStop(0,'#5c4128'); grd.addColorStop(1,'#9a7850');
+  ctx.strokeStyle=grd; ctx.lineWidth=18; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+}
+ctx.lineCap='butt';
+
+const gateCells = new Set(gates.flatMap(g => [(g.rIn)+'.'+g.s, (g.rIn+1)+'.'+(g.s*2)]));
+ctx.save();
+ctx.shadowColor='rgba(46,38,30,.3)'; ctx.shadowBlur=6; ctx.shadowOffsetX=3; ctx.shadowOffsetY=4;
+for (let r=1;r<=6;r++){
+  for (let s=0;s<S[r-1];s++){
+    if (gateCells.has(r+'.'+s)) continue;
+    const [x,y] = pt(ringR[r-1], s, S[r-1]);
+    ctx.fillStyle = tierFill(r);
+    ctx.beginPath(); ctx.arc(x,y,cellR,0,TAU); ctx.fill();
+  }
+}
+ctx.restore();
+
+ctx.save();
+ctx.shadowColor='rgba(46,38,30,.35)'; ctx.shadowBlur=9; ctx.shadowOffsetX=3; ctx.shadowOffsetY=4;
+ctx.fillStyle='#a6392f'; ctx.beginPath(); ctx.arc(CX,CY,30,0,TAU); ctx.fill();
+ctx.restore();
+const eg=ctx.createRadialGradient(CX,CY,2,CX,CY,19);
+eg.addColorStop(0,'#c3922f'); eg.addColorStop(1,'#e9c56a');
+ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(CX,CY,19,0,TAU); ctx.fill();
+ctx.fillStyle='#a6392f'; ctx.beginPath(); ctx.arc(CX,CY,8,0,TAU); ctx.fill();
+</script>
+</body></html>

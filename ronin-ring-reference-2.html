@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>RONIN — ring-board reference (tier-gate model)</title>
+<style>
+  :root{ --paper:#ece4cf; --ink:#3a322b; --ink-soft:#6e6355; }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:var(--paper); color:var(--ink); font-family:"Iowan Old Style",Palatino,Georgia,serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:22px 12px 40px; }
+  h1{ font-size:26px; letter-spacing:8px; font-weight:800; }
+  .sub{ color:var(--ink-soft); font-size:13px; margin:6px 0 16px; max-width:540px; text-align:center; line-height:1.5; }
+  canvas{ display:block; }
+  .legend{ margin-top:16px; font-size:11.5px; letter-spacing:.06em; color:var(--ink-soft); text-align:center; line-height:1.9; max-width:540px; }
+  .legend b{ color:var(--ink); }
+</style>
+</head>
+<body>
+<h1>RONIN</h1>
+<div class="sub">Reference only — the <i>tier-gate</i> model. Three tiers of two rings each. Inside a tier you move freely (orbit and cross between its two rings). Between tiers there’s a wall — cross only at a <b>gate</b>. Reach the inner tier, then ascend to the throne.</div>
+<canvas id="c"></canvas>
+<div class="legend">
+  <b>three bands</b> = the tiers (outer→inner, lightening toward the throne) &nbsp;·&nbsp;
+  <b>roads</b> = free movement inside a tier &nbsp;·&nbsp;
+  <b>dark rings</b> = tier walls &nbsp;·&nbsp;
+  <b>warm gates</b> = the only crossings inward &nbsp;·&nbsp;
+  <b>red</b> = ronin &amp; emperor &nbsp;·&nbsp; <b>dark</b> = guards
+</div>
+
+<script>
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const SIZE = Math.min(540, (window.innerWidth||540) - 24);
+const DPR = window.devicePixelRatio || 1;
+cv.width = SIZE*DPR; cv.height = SIZE*DPR; cv.style.width = SIZE+'px'; cv.style.height = SIZE+'px';
+ctx.scale(DPR, DPR);
+const CX = SIZE/2, CY = SIZE/2, TAU = Math.PI*2;
+
+// palette (matches the live game)
+const tierFill = t => t === 1 ? '#f4edd8' : t === 2 ? '#e3d8ba' : '#d3c39c'; // 1 inner lightest
+const ROAD = 'rgba(66,56,47,.26)';
+const WALL = '#42382f';
+const GATE0 = '#6c4e30', GATE1 = '#a9855c';
+
+let _s = 7; const rnd = () => { _s = (_s*1103515245 + 12345) & 0x7fffffff; return _s/0x7fffffff; };
+
+// ---- geometry: 3 tiers × 2 rings. Each tier's two rings share a node count so
+//      they align into a clean band you move through freely. ----
+const gap = (SIZE*0.46) / 6.4;
+// tiers: inner(t1)=rings1,2  middle(t2)=rings3,4  outer(t3)=rings5,6
+const tierOfRing = k => k <= 2 ? 1 : k <= 4 ? 2 : 3;
+const tierCount = { 1: 12, 2: 20, 3: 32 };     // nodes per ring, by tier (aligned pairs)
+const nodes = [], byRing = [];
+for (let k = 1; k <= 6; k++){
+  const R = k*gap, t = tierOfRing(k), count = tierCount[t];
+  const arc = TAU*R/count, stoneR = Math.min(arc, gap) * 0.44;
+  const ring = [];
+  for (let s = 0; s < count; s++){
+    const a = (s/count)*TAU - Math.PI/2;
+    const n = { x: CX + R*Math.cos(a), y: CY + R*Math.sin(a), ring:k, tier:t, idx:s, count, R, a, r:stoneR };
+    nodes.push(n); ring.push(n);
+  }
+  byRing[k] = ring;
+}
+
+// ---- edges ----
+// free movement inside a tier: orbit each ring + radial links between the tier's
+// two aligned rings (same idx). Drawn as thin roads.
+const roads = [];
+for (let k=1;k<=6;k++){ const rg=byRing[k]; for(let i=0;i<rg.length;i++) roads.push([rg[i], rg[(i+1)%rg.length]]); }
+for (const k of [1,3,5]){ // inner ring of each tier pairs with its outer ring (k & k+1, same count)
+  for (let i=0;i<byRing[k].length;i++) roads.push([byRing[k][i], byRing[k+1][i]]);
+}
+
+// gates: the only inward crossings, at the two tier walls (ring2->3, ring4->5).
+// A couple per wall, and one wall gets a fork (two adjacent gates).
+const gates = [];
+const addGate = (outerRing, sOuter) => {
+  const o = byRing[outerRing][sOuter];
+  // land on the nearest node of the inner tier's adjacent ring
+  const innerRing = outerRing - 1;
+  let best=null, bd=1e9;
+  for (const n of byRing[innerRing]){ let d=Math.abs(n.a-o.a); d=Math.min(d,TAU-d); if(d<bd){bd=d;best=n;} }
+  gates.push([o, best]);
+};
+// outer wall (ring5 -> ring4): three gates, two of them a fork (adjacent)
+addGate(5, 3); addGate(5, 4); addGate(5, 20);
+// inner wall (ring3 -> ring2): two gates
+addGate(3, 2); addGate(3, 12);
+
+// ---- draw ----
+function disc(x,y,r,fill,shadow){
+  if(shadow){ ctx.save(); ctx.shadowColor='rgba(46,38,30,.32)'; ctx.shadowBlur=r*0.55; ctx.shadowOffsetX=r*0.22; ctx.shadowOffsetY=r*0.3; }
+  ctx.fillStyle=fill; ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill();
+  if(shadow) ctx.restore();
+}
+
+// tier walls — dark rings sitting in the gaps between tiers
+ctx.strokeStyle=WALL; ctx.lineWidth=2.5;
+ctx.beginPath(); ctx.arc(CX,CY,(2.5)*gap,0,TAU); ctx.stroke();  // between ring2 & ring3
+ctx.beginPath(); ctx.arc(CX,CY,(4.5)*gap,0,TAU); ctx.stroke();  // between ring4 & ring5
+
+// roads (free movement within tiers)
+ctx.strokeStyle=ROAD; ctx.lineWidth=Math.max(2, gap*0.09); ctx.lineCap='round';
+for(const [a,b] of roads){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+
+// gates (warm, cross the wall inward)
+ctx.lineWidth=Math.max(3, gap*0.17); ctx.lineCap='round';
+for(const [o,inr] of gates){
+  const g=ctx.createLinearGradient(o.x,o.y,inr.x,inr.y);
+  g.addColorStop(0,GATE0); g.addColorStop(1,GATE1);
+  ctx.strokeStyle=g; ctx.beginPath(); ctx.moveTo(o.x,o.y); ctx.lineTo(inr.x,inr.y); ctx.stroke();
+}
+ctx.lineCap='butt';
+
+// stones
+for(const n of nodes){
+  disc(n.x,n.y,n.r, tierFill(n.tier), true);
+  const bg=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);
+  bg.addColorStop(0,'rgba(0,0,0,.05)'); bg.addColorStop(.7,'rgba(0,0,0,0)'); bg.addColorStop(1,'rgba(255,255,255,.18)');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,TAU); ctx.fill();
+}
+
+// guards (dark lacquer) scattered across tiers
+{ const pool = nodes.filter(n=>n.ring>=2); for(let i=0;i<11;i++){ const n=pool[Math.floor(rnd()*pool.length)];
+  const r=n.r*0.82; disc(n.x,n.y,r,'#332b26',true);
+  const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r); g.addColorStop(0,'#332b26'); g.addColorStop(.6,'#332b26'); g.addColorStop(1,'#4a3f37');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(n.x,n.y,r,0,TAU); ctx.fill(); } }
+
+// ronin — on the outer ring, red lacquer + gold slash
+{ const rn = byRing[6][8]; const R = rn.r*0.9;
+  ctx.save(); ctx.shadowColor='rgba(46,38,30,.4)'; ctx.shadowBlur=R*0.6; ctx.shadowOffsetX=R*0.2; ctx.shadowOffsetY=R*0.28;
+  const g=ctx.createRadialGradient(rn.x,rn.y,0,rn.x,rn.y,R); g.addColorStop(0,'#9c352d'); g.addColorStop(.6,'#9c352d'); g.addColorStop(1,'#bf4e44');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(rn.x,rn.y,R,0,TAU); ctx.fill(); ctx.restore();
+  ctx.fillStyle='#e6ba48';
+  ctx.beginPath();
+  ctx.moveTo(rn.x - R*.6, rn.y + R*.64);
+  ctx.quadraticCurveTo(rn.x + R*.5, rn.y + R*.4, rn.x + R*.64, rn.y - R*.6);
+  ctx.quadraticCurveTo(rn.x + R*.22, rn.y + R*.12, rn.x - R*.6, rn.y + R*.64);
+  ctx.closePath(); ctx.fill();
+}
+
+// emperor
+disc(CX,CY,gap*0.66,'#a6392f',true);
+const eg=ctx.createRadialGradient(CX,CY,2,CX,CY,gap*0.42);
+eg.addColorStop(0,'#c3922f'); eg.addColorStop(1,'#e9c56a');
+ctx.fillStyle=eg; ctx.beginPath(); ctx.arc(CX,CY,gap*0.42,0,TAU); ctx.fill();
+ctx.fillStyle='#a6392f'; ctx.beginPath(); ctx.arc(CX,CY,gap*0.18,0,TAU); ctx.fill();
+</script>
+</body>
+</html>

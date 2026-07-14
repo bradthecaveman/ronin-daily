@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"/>
+<style>html,body{margin:0;background:#ece4cf;display:flex;justify-content:center}canvas{display:block}</style>
+</head><body>
+<canvas id="c" width="620" height="620"></canvas>
+<script>
+const ctx = document.getElementById('c').getContext('2d');
+const CX = 310, CY = 310;
+const SECTORS = 12;
+const RINGS = 6;                       // 3 tiers of 2
+const ringR = [58, 100, 142, 184, 226, 268];   // ring 1..6 radii (1 = innermost)
+const cellR = 13;
+// tier cream shades: rings 1-2 inner (lightest) .. 5-6 outer (darkest)
+const tierFill = r => r <= 2 ? '#f4edd8' : r <= 4 ? '#e3d8ba' : '#d3c39c';
+const TAU = Math.PI * 2, ang = s => (s / SECTORS) * TAU - Math.PI / 2;
+const pt = (R, s) => [CX + R * Math.cos(ang(s)), CY + R * Math.sin(ang(s))];
+
+// concentric walls at the two tier boundaries (between ring2|3 and ring4|5)
+function wall(R){ ctx.strokeStyle = '#42382f'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, TAU); ctx.stroke(); }
+wall((ringR[1] + ringR[2]) / 2);   // middle↔inner boundary
+wall((ringR[3] + ringR[4]) / 2);   // outer↔middle boundary
+
+// gates: brown spokes crossing a wall, dark at the foot (outward) → light toward centre
+const gates = [ {lo:5, s:1}, {lo:5, s:6}, {lo:5, s:9},   // 3 outer-tier gates (ring5→4)
+                {lo:3, s:3}, {lo:3, s:8} ];               // 2 inner-tier gates (ring3→2)
+for (const g of gates){
+  const [x1,y1] = pt(ringR[g.lo-1], g.s);      // foot (outer ring)
+  const [x2,y2] = pt(ringR[g.lo-2], g.s);      // top  (inner ring)
+  const grd = ctx.createLinearGradient(x1,y1,x2,y2);
+  grd.addColorStop(0, '#5c4128'); grd.addColorStop(1, '#9a7850');
+  ctx.strokeStyle = grd; ctx.lineWidth = 22; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+}
+ctx.lineCap = 'butt';
+
+// cells (skip cells that a gate occupies so the gate reads as the opening)
+const gateCells = new Set(gates.flatMap(g => [g.lo+'.'+g.s, (g.lo-1)+'.'+g.s]));
+ctx.save();
+ctx.shadowColor = 'rgba(46,38,30,.32)'; ctx.shadowBlur = 7; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
+for (let r = 1; r <= RINGS; r++){
+  for (let s = 0; s < SECTORS; s++){
+    if (gateCells.has(r+'.'+s)) continue;
+    const [x,y] = pt(ringR[r-1], s);
+    ctx.fillStyle = tierFill(r);
+    ctx.beginPath(); ctx.arc(x, y, cellR, 0, TAU); ctx.fill();
+  }
+}
+ctx.restore();
+
+// emperor at the centre — red tile, gold sun, red core
+ctx.save();
+ctx.shadowColor = 'rgba(46,38,30,.35)'; ctx.shadowBlur = 9; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
+ctx.fillStyle = '#a6392f'; ctx.beginPath(); ctx.arc(CX, CY, 32, 0, TAU); ctx.fill();
+ctx.restore();
+const eg = ctx.createRadialGradient(CX, CY, 2, CX, CY, 20);
+eg.addColorStop(0,'#c3922f'); eg.addColorStop(1,'#e9c56a');
+ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(CX, CY, 20, 0, TAU); ctx.fill();
+ctx.fillStyle = '#a6392f'; ctx.beginPath(); ctx.arc(CX, CY, 9, 0, TAU); ctx.fill();
+</script>
+</body></html>
