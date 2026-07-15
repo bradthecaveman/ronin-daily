@@ -73,6 +73,21 @@ file; (4) gates at deploy: square rules 20/20 + parity 40/40, ring rules 24/24 +
 Square engine/boards/stats untouched throughout (the footer link is the square page's only change). Brutal mechanics layer on later, one at a time. Live square game
 unchanged/deployed throughout.
 
+## UI pass — rules box + par replay (2026-07-15, BOTH games)
+
+Brad's brief: de-emoji the rules box, tighter copy, wider box, and a way to study par after a win.
+- **Rules box (square + round):** all emojis removed; every rule reworded to land in exactly two
+  lines at 375px (verified by measuring rendered line counts, 6/6 rules × 2 lines in both games);
+  modal max-width 420→460px, padding 22→18px, list indent 20→18px, li font 14.5→14px (desktop
+  gets wider, mobile text gains width from the trims).
+- **"HOW TO GET TO PAR ⛩" (square + round):** the win modal now offers the same solver replay the
+  loss modal has, whenever `finalMoves > par` (hidden on a perfect run — nothing to teach).
+  `revealSolution(won)` picks the closing line: win → "par N, the old maps' route. Yours: M.";
+  loss flow byte-for-byte unchanged.
+- Engines untouched. Gates: square rules 20/20 + parity 40/40, ring rules 24/24 + ring-parity
+  40/40. Browser-verified at 375px on both games (help line counts; win → button → replay →
+  closing message; loss-button markup unchanged).
+
 ## Live
 
 **https://bradthecaveman.github.io/ronin-daily/** — GitHub Pages, repo `bradthecaveman/ronin-daily`

@@ -96,8 +96,8 @@
   }
   #overlay.open{ display:flex; }
   .modal{
-    background:var(--paper); border-radius:14px; max-width:420px; width:100%;
-    padding:22px 22px 18px; box-shadow:0 18px 50px rgba(0,0,0,.35);
+    background:var(--paper); border-radius:14px; max-width:460px; width:100%;
+    padding:18px 18px 16px; box-shadow:0 18px 50px rgba(0,0,0,.35);
     max-height:88vh; overflow-y:auto; position:relative;
   }
   .modal h2{ margin:0 0 6px; font-family:"Iowan Old Style",Palatino,Georgia,serif; letter-spacing:1px; }
@@ -105,8 +105,8 @@
     position:absolute; top:10px; right:12px; border:none; background:none;
     font-size:20px; cursor:pointer; color:var(--ink-soft);
   }
-  .modal ul{ padding-left:20px; margin:10px 0; }
-  .modal li{ margin:9px 0; font-size:14.5px; line-height:1.45; }
+  .modal ul{ padding-left:18px; margin:10px 0; }
+  .modal li{ margin:9px 0; font-size:14px; line-height:1.45; }
   .modal .primary{
     width:100%; margin-top:12px; padding:12px; font-size:16px; font-weight:700;
     background:var(--indigo); color:#fff; border:none; border-radius:10px; cursor:pointer;
@@ -975,7 +975,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   }
 
   // After a lost day: animate the solver's optimal line so the player sees the way in.
-  async function revealSolution() {
+  async function revealSolution(won) {
     if (G.phase !== 'done' || G.busy || G.revealing) return;
     G.revealing = true; G.busy = true;
     closeModal();
@@ -1006,7 +1006,9 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     }
     moveNo++;
     G.moveCount = moveNo; updateHud();
-    setMsg(`Move ${moveNo}: Ascend ⛩ — that was the way in. Par ${G.layout.par}. Tomorrow, it's yours.`);
+    setMsg(won
+      ? `Move ${moveNo}: Ascend ⛩ — par ${G.layout.par}, the old maps' route. Yours: ${G.finalMoves}.`
+      : `Move ${moveNo}: Ascend ⛩ — that was the way in. Par ${G.layout.par}. Tomorrow, it's yours.`);
     G.busy = false; G.revealing = false;
   }
 
@@ -1155,7 +1157,8 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       <div class="splashSub">${isDaily ? 'RONIN #' + G.dayNum : 'PRACTICE'}${G.diff === 'hard' ? ' · ⚔ HARD' : ''}</div>
       ${resDots()}
       <div class="headline" style="margin:2px 0 12px">${headline}</div>
-      ${!won ? `<button class="primary" id="revealBtn" style="background:var(--gold);color:var(--ink)">REVEAL THE WAY IN ⛩</button>` : ''}
+      ${!won ? `<button class="primary" id="revealBtn" style="background:var(--gold);color:var(--ink)">REVEAL THE WAY IN ⛩</button>`
+             : (G.finalMoves > G.layout.par ? `<button class="primary" id="revealBtn" style="background:var(--gold);color:var(--ink)">HOW TO GET TO PAR ⛩</button>` : '')}
       ${isDaily ? `<button class="primary" id="shareBtn">SHARE RESULT</button><div id="shareFeedback"></div>` : ''}
       ${isDaily ? statsHtml(false) : ''}
       ${isDaily ? countdownHtml() : ''}
@@ -1172,7 +1175,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       startCountdown();
     }
     const rb = $('revealBtn');
-    if (rb) rb.onclick = () => { rb.disabled = true; revealSolution(); };
+    if (rb) rb.onclick = () => { rb.disabled = true; revealSolution(won); };
     $('practiceLink2').onclick = () => { closeModal(); startPractice(); };
   }
 
@@ -1181,12 +1184,12 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       <h2>RONIN</h2>
       <p style="margin:4px 0;color:var(--ink-soft);font-size:14px">The Emperor is held at the heart of the castle. You are the only one coming for him.</p>
       <ul>
-        <li>🥷 <b>Move:</b> tap tiles to plan your steps (any direction) — <b>3 per turn</b> on normal, <b>2</b> on hard, then hit <b>MOVE</b>. Or <b>HOLD</b> to wait in place.</li>
-        <li>🏯 <b>Walls:</b> the castle has three rings. Cross between rings only at the <b>stair tiles</b>.</li>
-        <li>⚔️ <b>Guards:</b> after each of your moves, the two nearest guards step toward you. Orange arrows show who will move. If a guard reaches your tile — <b>captured</b>.</li>
-        <li>👑 <b>Rescue:</b> reach a tile beside the Emperor, then tap him. Fewer moves is better — match <b>par</b> for a perfect rescue.</li>
-        <li>🌄 <b>Daily:</b> same castle for everyone, every day. You have <b>3 attempts</b> — the guards are predictable, so every failure teaches you their ways.</li>
-        <li>🏮 <b>Hint:</b> once per castle, the old maps will mark your best next move — but your shared result will carry the lantern.</li>
+        <li><b>Move:</b> tap tiles to plan up to <b>3 steps</b> (2 on hard). <b>MOVE</b> commits; <b>HOLD</b> waits.</li>
+        <li><b>Walls:</b> three rings circle the Emperor — cross only at the <b>stair tiles</b>.</li>
+        <li><b>Guards:</b> the two nearest chase each move — arrows show who. Reach you: <b>captured</b>.</li>
+        <li><b>Rescue:</b> reach a tile beside the Emperor, tap him. Match <b>par</b> for perfect.</li>
+        <li><b>Daily:</b> same castle for all, <b>3 attempts</b> — every failure teaches their ways.</li>
+        <li><b>Hint:</b> once per castle; marks your best move. Your share carries the lantern.</li>
       </ul>
       <button class="primary" id="beginBtn">BEGIN</button>
     `);
