@@ -517,11 +517,11 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     diff: 'normal', diffCfg: null, // difficulty mode (normal/hard) — set before any board loads
     ronin: null, army: null,
     attempt: 1, squares: [null, null, null],
-    moveCount: 0, finalMoves: null, queue: [],
+    moveCount: 0, finalMoves: null, sel: null, selPath: null, opts: [],
     busy: false, phase: 'play', // 'play' | 'done'
   };
   const vis = { ronin: { r: 0, c: 0 }, army: [] };
-  let cell = 40, hints = [], preview = null, flashT = 0;
+  let cell = 40, preview = null, flashT = 0;
 
   // ---------- storage ----------
   const SKEY = 'ronin.daily.v1';
@@ -710,32 +710,27 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 
     if (!G.layout) return;
 
-    // queued path
-    if (G.queue.length) {
-      ctx.strokeStyle = COL.path; ctx.lineWidth = 2.5; ctx.setLineDash([6, 5]);
-      ctx.beginPath();
-      ctx.moveTo(cx(G.ronin.c), cy(G.ronin.r));
-      for (const q of G.queue) ctx.lineTo(cx(q.c), cy(q.r));
-      ctx.stroke(); ctx.setLineDash([]);
-      G.queue.forEach((q, i) => {
-        ctx.fillStyle = COL.pip;
-        ctx.beginPath(); ctx.arc(cx(q.c), cy(q.r), cell * .17, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.floor(cell * .22)}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(String(i + 1), cx(q.c), cy(q.r) + .5);
-      });
-      if (preview && preview.captured) {
-        const q = G.queue[G.queue.length - 1];
-        ctx.strokeStyle = COL.danger; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(cx(q.c), cy(q.r), cell * .38, 0, Math.PI * 2); ctx.stroke();
+    // legal-endpoint dots (round's input model: tap where you want to END)
+    if (G.phase === 'play' && !G.busy) {
+      ctx.fillStyle = COL.hint;
+      for (const o of G.opts) {
+        if (o.hold) continue;
+        ctx.beginPath(); ctx.arc(cx(o.c), cy(o.r), cell * .11, 0, Math.PI * 2); ctx.fill();
       }
     }
 
-    // legal-step hints
-    if (G.phase === 'play' && !G.busy) {
-      ctx.fillStyle = COL.hint;
-      for (const hcell of hints) {
-        ctx.beginPath(); ctx.arc(cx(hcell.c), cy(hcell.r), cell * .11, 0, Math.PI * 2); ctx.fill();
+    // pending move: dashed path along the shortest legal route + endpoint pip
+    if (G.sel && G.selPath && G.phase === 'play' && !G.busy) {
+      ctx.strokeStyle = COL.path; ctx.lineWidth = 2.5; ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(cx(G.ronin.c), cy(G.ronin.r));
+      for (const q of G.selPath) ctx.lineTo(cx(q.c), cy(q.r));
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = COL.pip;
+      ctx.beginPath(); ctx.arc(cx(G.sel.c), cy(G.sel.r), cell * .17, 0, Math.PI * 2); ctx.fill();
+      if (preview && preview.captured) {
+        ctx.strokeStyle = COL.danger; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx(G.sel.c), cy(G.sel.r), cell * .38, 0, Math.PI * 2); ctx.stroke();
       }
     }
 
@@ -776,7 +771,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       ctx.fillStyle = COL.emperorTile;
       ctx.beginPath(); ctx.arc(ex0, ey0, cell * .13, 0, Math.PI * 2); ctx.fill();
     }
-    if (canAscend() && !G.queue.length && !G.busy && G.phase === 'play') {
+    if (canAscend() && !G.sel && !G.busy && G.phase === 'play') {
       ctx.strokeStyle = COL.emperor; ctx.lineWidth = 2.5; ctx.globalAlpha = .55 + .4 * Math.sin(now / 260);
       ctx.beginPath(); ctx.arc(ex0, ey0, cell * (.30 + .05 * Math.sin(now / 260)), 0, Math.PI * 2); ctx.stroke();
       ctx.globalAlpha = 1;
@@ -840,25 +835,17 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   const guardAt = (r, c) => G.army.some(p => p.r === r && p.c === c);
   const canAscend = () => G.layout && RE.ringOf(G.ronin.r, G.ronin.c) === 1;
   function refreshHints() {
-    hints = [];
     preview = null;
-    if (!G.layout || G.phase !== 'play') { updateButtons(); return; }
-    const head = G.queue.length ? G.queue[G.queue.length - 1] : G.ronin;
-    if (G.queue.length < G.diffCfg.steps) {
-      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-        if (!dr && !dc) continue;
-        const nr = head.r + dr, nc = head.c + dc;
-        if (!RE.stepLegal(head.r, head.c, nr, nc, G.layout.stairs)) continue;
-        if (guardAt(nr, nc)) continue;
-        if (nr === G.ronin.r && nc === G.ronin.c) continue;
-        if (G.queue.some(q => q.r === nr && q.c === nc)) continue;
-        hints.push({ r: nr, c: nc });
-      }
+    if (!G.layout || G.phase !== 'play') { G.opts = []; G.sel = null; G.selPath = null; updateButtons(); return; }
+    G.opts = RE.roninOptions(G.ronin, G.army, G.layout.stairs, G.diffCfg.steps);
+    if (G.sel && !G.opts.some(o => !!o.hold === !!G.sel.hold && o.r === G.sel.r && o.c === G.sel.c)) {
+      G.sel = null; G.selPath = null;
     }
-    if (G.queue.length) {
-      const ep = G.queue[G.queue.length - 1];
-      preview = RE.armyReply(ep, G.army, G.layout.stairs);
-    }
+    if (G.sel) {
+      G.selPath = RE.pathTo(G.ronin, G.army, G.layout.stairs, G.sel, G.diffCfg.steps);
+      if (!G.selPath) { G.sel = null; }
+      else preview = RE.armyReply({ r: G.sel.r, c: G.sel.c }, G.army, G.layout.stairs);
+    } else G.selPath = null;
     updateButtons();
   }
 
@@ -877,27 +864,27 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   }
   function updateButtons() {
     const play = G.phase === 'play' && !G.busy;
-    $('moveBtn').disabled = !play || !G.queue.length;
-    $('undoBtn').disabled = !play || !G.queue.length;
-    $('holdBtn').disabled = !play || G.queue.length > 0;
+    $('moveBtn').disabled = !play || !G.sel;
+    $('undoBtn').disabled = !play || !G.sel;
+    $('holdBtn').disabled = !play || !!G.sel;
     $('moveBtn').classList.toggle('danger', !!(preview && preview.captured));
     $('moveBtn').textContent = preview && preview.captured ? 'MOVE ⚠' : 'MOVE';
-    $('rescueBtn').style.display = (play && canAscend() && !G.queue.length) ? 'inline-block' : 'none';
+    $('rescueBtn').style.display = (play && canAscend() && !G.sel) ? 'inline-block' : 'none';
     $('hintBtn').style.display = hintAvailable() ? 'inline-block' : 'none';
     $('hintBtn').disabled = !play;
   }
 
   // ---------- turn flow ----------
   function executeMove() {
-    if (G.phase !== 'play' || G.busy || !G.queue.length || modalOpen()) return;
+    if (G.phase !== 'play' || G.busy || !G.sel || !G.selPath || modalOpen()) return;
     G.busy = true;
-    const endpoint = G.queue[G.queue.length - 1];
+    const endpoint = { r: G.sel.r, c: G.sel.c };
     const rep = RE.armyReply(endpoint, G.army, G.layout.stairs);
-    for (const q of G.queue) queueTween(vis.ronin, q, 150);
-    G.ronin = { r: endpoint.r, c: endpoint.c };
+    for (const q of G.selPath) queueTween(vis.ronin, q, 150);
+    G.ronin = endpoint;
     G.moveCount++;
-    G.queue = [];
-    hints = []; preview = null;
+    G.sel = null; G.selPath = null; G.opts = [];
+    preview = null;
     updateHud(); updateButtons();
     afterTweens(() => {
       for (const m of rep.moves) queueTween(vis.army[m.i], m.to, 170);
@@ -911,7 +898,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   }
 
   function hold() {
-    if (G.phase !== 'play' || G.busy || G.queue.length || modalOpen()) return;
+    if (G.phase !== 'play' || G.busy || G.sel || modalOpen()) return;
     if (!RE.roninOptions(G.ronin, G.army, G.layout.stairs, G.diffCfg.steps).length) return;
     G.busy = true;
     G.moveCount++;
@@ -928,7 +915,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   }
 
   function ascend() {
-    if (G.phase !== 'play' || G.busy || G.queue.length || !canAscend() || modalOpen()) return;
+    if (G.phase !== 'play' || G.busy || G.sel || !canAscend() || modalOpen()) return;
     G.moveCount++;
     G.finalMoves = G.moveCount;
     G.squares[G.attempt - 1] = 'w';
@@ -949,7 +936,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   async function useHint() {
     if (!hintAvailable() || G.busy || modalOpen()) return;
     G.busy = true;
-    G.queue = []; hints = []; preview = null;
+    G.sel = null; G.selPath = null; preview = null;
     setMsg('Consulting the old maps… 🏮');
     updateButtons();
     await new Promise(r => setTimeout(r, 40)); // let the status paint before the solve
@@ -967,10 +954,10 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       refreshHints(); updateHud();
       return;
     }
-    const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, res.path[0], G.diffCfg.steps);
-    if (!steps) { setMsg('The maps are smudged here — trust your instincts. 🏮'); refreshHints(); updateHud(); return; }
-    G.queue = steps;
+    const ep = res.path[0];
+    G.sel = ep.hold ? { r: G.ronin.r, c: G.ronin.c, hold: true } : { r: ep.r, c: ep.c };
     refreshHints(); updateHud();
+    if (!G.sel) { setMsg('The maps are smudged here — trust your instincts. 🏮'); return; }
     setMsg(`The old maps mark a route — rescue in ${res.par} from here. Take it, or find your own. 🏮`);
   }
 
@@ -981,7 +968,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     closeModal();
     G.ronin = { ...G.layout.ronin };
     G.army = G.layout.army.map(p => ({ ...p }));
-    G.queue = []; hints = []; preview = null;
+    G.sel = null; G.selPath = null; G.opts = []; preview = null;
     syncVis(); updateHud();
     setMsg('Consulting the old maps…');
     await new Promise(r => setTimeout(r, 60)); // let the status paint before the solve
@@ -1046,7 +1033,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   function resetAttempt() {
     G.ronin = { ...G.layout.ronin };
     G.army = G.layout.army.map(p => ({ ...p }));
-    G.moveCount = 0; G.queue = []; G.busy = false;
+    G.moveCount = 0; G.sel = null; G.selPath = null; G.busy = false;
     syncVis();
     setMsg(`Attempt ${G.attempt} — reach the Emperor.`);
     refreshHints(); updateHud();
@@ -1184,7 +1171,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       <h2>RONIN</h2>
       <p style="margin:4px 0;color:var(--ink-soft);font-size:14px">The Emperor is held at the heart of the castle. You are the only one coming for him.</p>
       <ul>
-        <li><b>Move:</b> tap tiles to plan up to <b>3 steps</b> (2 on hard). <b>MOVE</b> commits; <b>HOLD</b> waits.</li>
+        <li><b>Move:</b> tap a marked cell — <b>3 a turn</b> (2 on hard). Tap again to commit; <b>HOLD</b> waits.</li>
         <li><b>Walls:</b> three rings circle the Emperor — cross only at the <b>stair tiles</b>.</li>
         <li><b>Guards:</b> the two nearest chase each move — arrows show who. Reach you: <b>captured</b>.</li>
         <li><b>Rescue:</b> reach a tile beside the Emperor, tap him. Match <b>par</b> for perfect.</li>
@@ -1203,45 +1190,50 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   canvas.addEventListener('click', (ev) => {
     if (!G.layout || G.phase !== 'play' || G.busy || modalOpen()) return;
     const rect = canvas.getBoundingClientRect();
-    const c = Math.floor((ev.clientX - rect.left) / cell);
-    const r = Math.floor((ev.clientY - rect.top) / cell);
+    const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+    const c = Math.floor(x / cell), r = Math.floor(y / cell);
     if (r < 0 || r > 12 || c < 0 || c > 12) return;
 
     if (r === 6 && c === 6) {
-      if (canAscend() && !G.queue.length) ascend();
+      if (canAscend() && !G.sel) ascend();
       else setMsg('Reach a tile beside the Emperor first, inside the keep.');
       return;
     }
-    const head = G.queue.length ? G.queue[G.queue.length - 1] : G.ronin;
-    if (G.queue.length && r === head.r && c === head.c) { G.queue.pop(); refreshHints(); return; }
-    if (G.queue.length >= G.diffCfg.steps) { setMsg(`${G.diffCfg.steps} steps max — MOVE, or tap your last step to undo.`); return; }
-    if (!RE.stepLegal(head.r, head.c, r, c, G.layout.stairs)) {
-      if (RE.cheb(head.r, head.c, r, c) === 1) setMsg('A wall blocks that step — find the golden stairs.');
-      else setMsg('Plan one step at a time, from where your path ends.');
+    // round's input model: snap to the nearest legal endpoint within tolerance
+    let best = null, bd = 1e9;
+    for (const o of G.opts) {
+      if (o.hold) continue;
+      const d = Math.hypot(cx(o.c) - x, cy(o.r) - y);
+      if (d < bd) { bd = d; best = o; }
+    }
+    const tol = Math.max(22, cell * .75);
+    if (best && bd <= tol) {
+      if (G.sel && !G.sel.hold && G.sel.r === best.r && G.sel.c === best.c) { executeMove(); return; } // second tap commits
+      G.sel = { r: best.r, c: best.c };
+      refreshHints();
+      setMsg(preview && preview.captured ? 'That path ends in capture — the guards will take you. ⚠' : 'Tap again, or hit MOVE.');
       return;
     }
-    if (guardAt(r, c)) { setMsg('A guard holds that tile.'); return; }
-    if ((r === G.ronin.r && c === G.ronin.c) || G.queue.some(q => q.r === r && q.c === c)) {
-      setMsg('You cannot double back within one move.');
-      return;
-    }
-    G.queue.push({ r, c });
-    setMsg('');
+    // not a legal endpoint — explain, and clear any pending selection
+    if (guardAt(r, c)) setMsg('A guard holds that tile.');
+    else if (r === G.ronin.r && c === G.ronin.c) setMsg('');
+    else setMsg('Out of reach this turn — cross walls at the stair tiles.');
+    G.sel = null; G.selPath = null;
     refreshHints();
   });
 
   document.addEventListener('keydown', (e) => {
     if (modalOpen()) { if (e.key === 'Escape') closeModal(); return; }
     if (e.key === 'Enter') executeMove();
-    else if (e.key === 'Backspace') { if (G.queue.length) { G.queue.pop(); refreshHints(); } e.preventDefault(); }
-    else if (e.key === 'Escape') { G.queue = []; refreshHints(); }
+    else if (e.key === 'Backspace') { if (G.sel) { G.sel = null; G.selPath = null; refreshHints(); } e.preventDefault(); }
+    else if (e.key === 'Escape') { G.sel = null; G.selPath = null; refreshHints(); }
     else if (e.key === 'h' || e.key === 'H') hold();
   });
 
   $('moveBtn').onclick = executeMove;
   $('hintBtn').onclick = useHint;
   $('holdBtn').onclick = hold;
-  $('undoBtn').onclick = () => { if (G.queue.length) { G.queue.pop(); refreshHints(); } };
+  $('undoBtn').onclick = () => { if (G.sel) { G.sel = null; G.selPath = null; refreshHints(); } };
   $('rescueBtn').onclick = ascend;
   $('helpBtn').onclick = showHelp;
   const modeSegHtml = () => `
@@ -1260,12 +1252,12 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     G.mode = mode;
     G.layout = layout;
     G.attempt = 1; G.squares = [null, null, null];
-    G.moveCount = 0; G.finalMoves = null; G.queue = [];
+    G.moveCount = 0; G.finalMoves = null; G.sel = null; G.selPath = null;
     G.phase = 'play'; G.busy = false; G.hintUsed = false;
     G.ronin = { ...layout.ronin };
     G.army = layout.army.map(p => ({ ...p }));
     syncVis(); refreshHints(); updateHud();
-    $('status').innerHTML = `<b><i>Rescue the Emperor in the tower.</i></b><br>Tap tiles to plan up to ${G.diffCfg.steps} steps, then hit MOVE.`;
+    $('status').innerHTML = `<b><i>Rescue the Emperor in the tower.</i></b><br>Tap a marked cell to plan your move — up to ${G.diffCfg.steps} cells a turn.`;
   }
 
   function startPractice(seed) {
@@ -1342,9 +1334,10 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
         if (canAscend()) { ascend(); break; }
         const res = RE.solveBoard({ ronin: G.ronin, army: G.army, stairs: G.layout.stairs }, { fLimit: 40, maxNodes: 400000, wantPath: true, steps: G.diffCfg.steps });
         if (!res || !res.path || !res.path.length) return 'no solution from here';
-        const steps = RE.pathTo(G.ronin, G.army, G.layout.stairs, res.path[0], G.diffCfg.steps);
-        if (!steps) return 'unwalkable endpoint';
-        G.queue = steps;
+        const ep = res.path[0];
+        G.sel = ep.hold ? { r: G.ronin.r, c: G.ronin.c, hold: true } : { r: ep.r, c: ep.c };
+        refreshHints();
+        if (!G.sel || !G.selPath) return 'unwalkable endpoint';
         executeMove();
       }
       await waitIdle();

@@ -73,6 +73,25 @@ file; (4) gates at deploy: square rules 20/20 + parity 40/40, ring rules 24/24 +
 Square engine/boards/stats untouched throughout (the footer link is the square page's only change). Brutal mechanics layer on later, one at a time. Live square game
 unchanged/deployed throughout.
 
+## Input unification — round's endpoint-tap ported to square (2026-07-15)
+
+**Direction (Brad): square + round are two STRANDS of the same game, not a bake-off** — players
+pick a favourite; both live long-term. So shared language matters: the input model is now unified
+on round's (tap a marked endpoint → engine auto-routes → dashed path + guard arrows → tap-again/
+MOVE commits; UNDO/Backspace/Escape clear the selection). Square's step-by-step queue is gone —
+mechanically the route never mattered (armyReply in both engines sees only the endpoint), so the
+queue was pure interaction cost: ~4 precise taps/turn down to 2, and all legal endpoints are now
+visible up front as dots. Engine UNTOUCHED (roninOptions/pathTo already existed for solver/hint);
+boards/pars/results identical. Hint now sets the selection (incl. hold advice via the out-and-back
+pathTo). DELIBERATELY NOT unified, each board keeps its own soul: movement grammar (square =
+8-way king moves incl. diagonal stair entry; round = orbit+radial only — diagonals are undefined
+between rings of different cell counts) and guard AI (square = chebyshev-nearest; round =
+graph-distance-nearest — nearest-by-walking-distance; both present the same player-facing rule,
+"two nearest chase, arrows show who"). Changing either engine would alter published boards — red
+line. Gates: rules 20/20, parity 40/40. Browser-verified at 375px: endpoint dots, off-centre snap,
+capture-warning select (red ring + MOVE ⚠), second-tap commit, UNDO, hint-select, autoWin,
+perfect-run par-button hide, help copy still 2 lines/rule.
+
 ## UI pass — rules box + par replay (2026-07-15, BOTH games)
 
 Brad's brief: de-emoji the rules box, tighter copy, wider box, and a way to study par after a win.
