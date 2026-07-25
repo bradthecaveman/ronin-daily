@@ -4,7 +4,10 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-*Last updated: 2026-07-13 (v2 `round.html` DEPLOYED as beta alongside the square game — epoch stamped puzzle #1 = 2026-07-13, cross-links live both ways, all four gates green at deploy)*
+*Last updated: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
+games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
+Prior: 2026-07-19
+DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.)*
 
 ## ⮕ Circular board redesign (v2) — DEPLOYED AS BETA (2026-07-13)
 
@@ -39,9 +42,15 @@ below-band, every mode.** Gen: base 389ms/9.4s, hard 758ms/13.8s, severe 323ms/8
 
 **Phase 2 DONE (2026-07-13): Fable handover spec written** → `RONIN_v2_FABLE_BUILD_SPEC.md` (complete
 build plan). Solver `wantPath` (hints/reveal) + `pathTo` (move anim) added to the engine; rules now
-24/24. **Beta plan: v2 ships as `round.html` ALONGSIDE the square `index.html` (both live), not a
-replacement** — gather opinions first, pick the winner later; distinct localStorage namespace so
-square/round stats never mix. Mode names easy/normal/hard/brutal (easy = daily default), fresh stats.
+24/24. **v2 ships as `round.html` ALONGSIDE the square `index.html` (both live), not a
+replacement** — distinct localStorage namespace so square/round stats never mix. Mode names
+easy/normal/hard/brutal (easy = daily default), fresh stats.
+**DECISION 2026-07-19: KEEP BOTH PERMANENTLY — the "beta / pick-a-winner" framing is RETIRED.**
+Brad: square's gameplay is obvious and works; the circular board adds a dimension he likes
+*over and above* the gameplay. They are **independent-but-related, not square-OR-circular — play
+either/or.** Two coexisting games sharing DNA, not v1/v2 of one. This makes square a permanent
+product (not a fallback awaiting a verdict), which unblocks **epic mode as the square board's
+stealth identity** — see the epic section below.
 **Phase 3 DONE (2026-07-13): `round.html` built in Fable.** Single self-contained file, no network
 calls beyond v1's font-fallback pattern. Engine embedded 1:1 in `<script id="engine">` (generated from
 `tests/ring-engine.mjs` + `ring-config.mjs`; new gate `tests/ring-parity.mjs` proves embedded == Node,
@@ -107,10 +116,71 @@ Brad's brief: de-emoji the rules box, tighter copy, wider box, and a way to stud
   40/40. Browser-verified at 375px on both games (help line counts; win → button → replay →
   closing message; loss-button markup unchanged).
 
+## Going properly live — share links + og-image (2026-07-24)
+
+Brad's brief: get the games "properly live" and add a way for people to donate. Split into what
+needs an account (Brad's) and what is code (here). **Done here, NOT pushed** — the working tree is
+release-ready and nothing has touched the remote.
+
+- **Share strings now carry the site link** (both games). New `SHARE_URL` const at the top of each
+  UI script (deliberately outside the `<script id="engine">` block so parity is unaffected);
+  `shareText()` appends it as a third line. Each game points at ITSELF — square →
+  `/ronin-daily/`, round → `/ronin-daily/round.html` — so a shared ◯ result lands on the round
+  board, not the square one. This was Roadmap item 3, previously blocked on "once a domain
+  exists"; unblocked because Pages 301-redirects the github.io URL to a custom domain once one is
+  configured, so links shared now keep working after a domain lands. One place to change per file.
+- **Clipboard fallback fixed for the third line:** the catch path used `.replace('\n', ' — ')`,
+  which only replaces the FIRST newline, so a 3-line share would have rendered broken in the
+  one-line feedback div. Now `.replace(/\n/g, ' · ')`, matching the separator the result line
+  already uses.
+- **og-image shipped: `og-square.png` + `og-round.png`** (1200×630, one per board) plus the full
+  meta set on both pages: `og:image` + width/height/alt, `og:url`, `og:type`, `og:site_name`,
+  `twitter:card=summary_large_image`, `theme-color`. Shared links previously rendered as a grey
+  nothing on WhatsApp/iMessage/Discord.
+  - **How they were generated (repeatable):** scratchpad copies of the two game files with an
+    og-composer script appended, rendered by headless Chrome (`--headless --screenshot`,
+    `--virtual-time-budget`, window 1300×1300, crop to 1200×630 in PIL). The composer waits for
+    `document.fonts.ready` + a rendered board, then draws the REAL board canvas next to the title
+    block, so the card uses the game's own art and its own Shippori Mincho. The shipped game files
+    were never modified to do this. Note `--headless=new` hangs on this machine; plain
+    `--headless` works.
+  - The board on each card is that day's real board, not a mock. Regenerate the same way if the
+    art direction changes.
+- **Gates after these edits: square rules 20/20 + parity 40/40 + bench (0 below band, replay
+  10/10), ring rules 24/24 + ring-parity 40/40.** `index.html` re-synced from
+  `ronin_daily_v1.html`. Browser-verified: meta tags present, board renders, share text correct on
+  all three files (win / loss / perfect, square and round).
+
+**Donations: Ko-fi, WIRED IN 2026-07-24.** Chosen over Patreon (Patreon = recurring membership =
+tiers = owing subscribers content monthly; a self-running daily puzzle has nothing to give them).
+Ko-fi takes 0% (card processing only). Brad's page: **`ko-fi.com/bradtheronin`**, tip unit named a
+"Sausage Roll", "Get all of Ko-fi" 5%-for-features toggle left OFF (keeps 0%), PayPal payout,
+one-off tips only (memberships off). Wired into BOTH games as a plain `<a href target="_blank"
+rel="noopener">`, **never the embedded widget** (widget = third-party JS = tracking on a page that
+has none): footer link ("buy the ronin a sausage roll") + a muted win-screen line ("enjoyed the
+rescue? buy the ronin a sausage roll") shown ONLY on a win (`${won ? … : ''}`, never on a loss).
+Change the link in one place per file if the Ko-fi handle ever changes.
+
+**Round board HIDDEN 2026-07-24 (Brad's call: ship the square game now, refine round later).** The
+square footer's "try the circular board ◯" link is removed (replaced by the Ko-fi link); a comment
+marks how to restore it. `round.html` is NOT deleted — still deployed and reachable by direct URL,
+just unlinked so players don't discover it. Ko-fi was added to round too (footer + win line) so it's
+ready if/when un-hidden. This is why the "ROUND · BETA" copy issue is moot for now — nobody's routed
+there.
+
+**Custom domain LIVE 2026-07-24: `roninpuzzles.com`.** Brad bought it (Namecheap, domain only, no
+add-ons), pointed the four GitHub Pages A records (185.199.108–111.153) at `@` + a `www` CNAME to
+`bradthecaveman.github.io`, set it as the custom domain in repo Settings → Pages (GitHub commits its
+own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation were the last steps on
+Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
+Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
+planned.
+
 ## Live
 
-**https://bradthecaveman.github.io/ronin-daily/** — GitHub Pages, repo `bradthecaveman/ronin-daily`
-(public), serving `index.html` from `main`. Deploy = `cp ronin_daily_v1.html index.html && git push`;
+**https://roninpuzzles.com** — custom domain (bought 2026-07-24), served by GitHub Pages, repo
+`bradthecaveman/ronin-daily` (public), `index.html` from `main`. The old
+**https://bradthecaveman.github.io/ronin-daily/** still works and 301-redirects to the domain. Deploy = `cp ronin_daily_v1.html index.html && git push`;
 Pages rebuilds automatically on push to `main` (usually live within ~1-2 minutes; confirmed via
 `gh api repos/bradthecaveman/ronin-daily/pages/builds/latest`). No custom domain yet — see Roadmap.
 
@@ -259,16 +329,40 @@ decade was validated 2026-07-05 and its boards are unchanged (continuity test).
 - **hard**: the exact current live game — 2-step, band [8,14], seed salt `0x524F4E49`
   ("RONI", UNCHANGED so all published hard boards/days stay identical; verify with a
   board-continuity regression test snapshotted BEFORE refactor).
-- **epic**: reserved, NOT in UI yet. **Brad's design sketch (2026-07-07):**
-  - Ronin moves 3; guards step **2 each** (the two nearest, two steps each — much deadlier
-    kill radius; balance must go through the lab).
-  - **Line of sight**: if NO guard can see the Ronin, he moves 4 (the stealth payoff —
-    resurrect v17's hidden/canSee mechanic). Needs a seen/hidden indicator in the UI.
-  - **Sight-blocker obstacles** on the board (new tile type; decide: block movement too, or
-    vision only?). Generator places them; adds daily variety.
-  - **Curved stairs**: gates can be straight OR curved — curved limits which directions you
-    can exit at the top (directional/edge-based legality, not just tile-based; stepLegal
-    grows a direction parameter). Routing depth: some gates become nearly one-way.
+- **epic**: reserved, NOT in UI yet. **Core design RESOLVED 2026-07-19 (see block below);
+  original sketch 2026-07-07 kept for provenance.**
+
+  **STEALTH CORE — settled 2026-07-19 (Brad):** epic is the **square board's stealth
+  identity**, distinct from the circular game (see the "keep both permanently" decision at the
+  top of this file). The mechanic is internally consistent — every piece reinforces one
+  intent: **stealth buys tempo, not a free run at the throne.**
+  - **Spine = line of sight.** Unseen by ALL guards → Ronin moves 4 (vs 3 when seen). Resurrect
+    v17's hidden/canSee. Needs a seen/hidden indicator in the UI.
+  - **Sight-blockers are VISION-ONLY** (decision made — was the open fork). Columns block
+    sightlines, NOT movement — "cover, not walls." Rationale: the tier/stair topology is
+    ALREADY Ronin's movement-constraint system; a second one would just make it more of the
+    maze it already is. Vision-only adds a NEW orthogonal axis (where you can *go* vs where you
+    can be *seen*) and is what makes the moves-4 bonus load-bearing — it decouples "unseen"
+    from "unreachable" so the real decision (short exposed route vs long covered route) exists.
+    Fiction agrees: you walk *around* a column. Generator places them; adds daily variety.
+  - **Hiding is TEMPORARY & POSITIONAL** — break sight for a beat, gain tempo, guard can walk
+    around and re-acquire. NOT a safe pocket you can sit in.
+  - **Guard-when-blind = HOLD-AND-COVER** (decision made — the load-bearing AI rule). When no
+    guard sees the Ronin, blind guards fall back to DEFEND the approach (gates + up-tier route
+    to the Emperor), they do NOT chase the last-seen tile. Rationale: moves-4 is already the
+    reward for being unseen; letting guards ALSO abandon posts to chase your ghost stacks two
+    rewards on one action, blows the par band, and would make epic easier than hard (backwards).
+    Deterministic (daily scores must stay comparable). Final numbers are a lab question; this
+    fixes the *intent* the lab tunes toward.
+  - **Difficulty floor:** Ronin moves 3; guards step **2 each** (two nearest, two steps — deadlier
+    kill radius). Pure tuning, no new UI; the base epic hardness the stealth layer sits on.
+  - **Curved stairs — DROPPED from square epic (2026-07-19).** Given to the *circular* board to
+    own, since ring gates are already inherently directional; keeping it off square keeps epic
+    focused purely on the stealth axis so the two games stay distinct. Not building on square.
+
+  **Build order (per discipline below):** guards-step-2 (floor) → line-of-sight + vision-only
+  blockers + hold-and-cover (the stealth core = the identity). That's the whole mode; curved
+  stairs is no longer part of it.
   Build discipline unchanged: one mechanic at a time through tests/lab.mjs (already
   parameterized for steps/army), solver integration + naive-bot win-rate + par-band tuning
   per mechanic, Brad signs off on the data before each ships.
@@ -399,9 +493,17 @@ modals + captured/success flows.
 2. ~~Hosting~~ — **done 2026-07-05**, see Live section above. Next: sanity-check the name "RONIN"
    isn't already taken by another game before buying a custom domain; point domain at Pages once
    chosen.
-3. Share-string polish once a domain exists (add link; consider streak emoji).
+3. ~~Share-string polish~~ — **link added 2026-07-24** (see the section above); streak emoji still
+   unconsidered. Remember to update `SHARE_URL` in both files if a domain lands.
 4. Hard mode shelf: grapple, leap-capture, hidden/alerted bonus moves, ronin classes.
-5. Later: sound, richer animation, og-image, analytics-lite (respecting the no-tracking instinct).
+5. Later: sound, richer animation, ~~og-image~~ (**done 2026-07-24**), analytics-lite (respecting
+   the no-tracking instinct).
+6. ~~Ko-fi link~~ — **done 2026-07-24**, `ko-fi.com/bradtheronin` in both games (see above).
+7. **`round.html` still says "ROUND · BETA" in its header.** Now hidden (unlinked from square), so
+   moot until it's un-hidden — but if it ever goes back on, the beta framing needs retiring
+   (decision 2026-07-19: keep both permanently) and needs Brad's wording.
+8. **When Brad promotes the game**, the domain move is already done, so no streak-reset worry
+   remains — safe to share widely.
 
 ## 10-year horizon validation (run 2026-07-05, `tests/horizon.mjs`)
 
@@ -437,3 +539,54 @@ guards decision for the pattern) and get Brad's sign-off on the data.
 In-browser console: `RoninDebug.startPractice(seed)`, `RoninDebug.autoWin()` (solver plays out
 the current position), `RoninDebug.holdUntilCaught()`, plus `RoninDebug.G` (live state) and
 `RoninDebug.RE` (engine).
+
+## ⮕ STEP STONES prototype v3 — `stones.html` (2026-07-19, NOT deployed, untracked)
+
+One-thumb mobile river crossing in the Ronin world: ten seeded rivers toward the castle. Single
+self-contained file, no network calls, storage root `ronin.stones.v2` (separate from square/round).
+
+**v3 rebuild after Brad's 2026-07-19 playtest of v2** ("static soldiers = easy chokepoints, only
+the archer sidesteps were engaging, monotonous"). Brad chose: MOVING sentries one-at-a-time; more
+koi; a 2-token special pool. Design now:
+- **Sentries WAKE into a hunter.** Dormant sentries lurk (their reach marked red — stepping into it
+  still wakes+strikes same turn). Come within HUNT_RANGE=138 and the nearest wakes and CHASES —
+  strictly ONE hunter at a time (Brad's call); others hold. Hunter has stamina 7, then kneels →
+  becomes plain terrain (wall opens permanently). **Key tuning: hunter reach 80 < ronin hop 100**,
+  so a chase is outrunnable with good routing — the board's gaps supply the difficulty, not raw
+  speed. Two earlier v2 pursuit variants (homing, tether) cornered even perfect play; the slower
+  wake-chase-kneel loop is the fair version.
+- **Reactive strike vs chase-wake are separate:** ANY sentry within reach (80) of your landing tile
+  takes you that turn (honest red ticks); the one-at-a-time rule governs only which sentry MOVES.
+- **Koi 2–4/river** (Brad wanted more randomness), varied speed/direction; **koi now EAT soldiers**
+  on their struck tile — this is what makes BAIT a weapon. Telegraph = bubbles + vermillion ring.
+- **Specials — 2 shared tokens/run, any mix** (Brad's "2 tokens, any mix" pick): DASH (leap ~216px,
+  ~3 stones) · BAIT (retarget a koi's next strike onto a chosen in-range stone; feed it a hunter
+  using the hunter's own intent arrow) · REED (a turn underwater — immune to blade + arrow, NOT the
+  koi). All verified: DASH expands reach 6→23 and consumes a token; BAIT sets koi override + eats a
+  soldier on the tile; REED survives adjacent hunter + arrow, dies to koi-on-tile.
+- **Chase-from-behind soldiers REMOVED** — the wake-chase IS the moving soldier; keeps "one on
+  screen at a time." Archers unchanged (volley AT ronin's row, act 3, earlier on late rivers).
+  Lily pads (2-turn hold) + leashed tide (≤330 behind) + whorl-grain art all retained from v2.
+- **Validation ladder** (in-file bots, `StonesDebug.runAll('naive'|'dodge'|'plan')`, all NO-SPECIALS):
+  threat-blind bot loses ALL 10 (t3–11); immediate-dodge bot wins II–V,VII only (real middle tier);
+  safe-lane-routing+duel bot wins ALL 10 (16→35 turns). **Bar: every river beatable without spending
+  a token** — specials are recovery/expression, not a key. Seeds hardcoded to hold this profile
+  (rivers I–VII seeds 37/22/33/44/55/66/77; VIII–X reseeded to 101/177/149).
+
+Status: awaiting Brad's next playtest — deliberately NOT in git, NOT deployed, not linked from
+square/round. Open: does the wake-chase-duel feel land on human thumbs (vs bot heuristics), ladder-
+vs-daily decision, and whether this art language gets ratified for a wider Ronin redesign (stones
+.html is serving as the style tile). Note real-time animation relies on rAF; a backgrounded tab can
+stall a hop mid-animation (watchdog recovers when timers fire) — non-issue on a foreground device.
+
+## ⮕ Journey / linked-games idea — BANKED 2026-07-17, NOT actioned
+
+Brad's sketch: several games, each fully standalone, linked as one journey (forge → crossing →
+castle → turret) where earlier games earn the ronin coarse boons (extra step / hide / extra
+attempt) for later stages. Full self-contained brief: `RONIN_JOURNEY_BRIEF.md`. **Red line
+recorded there: carried boons never enter the square/round dailies** (breaks share/par
+comparability + the solver guarantees); stones is the sandbox (ladder, no daily contract), and
+word game → stones is the first experiment IF ever actioned. The merge-game ("little alchemy")
+idea is explicitly split off as its own standalone title, not a chain gate. Idea only — no build;
+the brief sits uncommitted alongside stones.html pending Brad's word (repo is public; committing
+= publishing the idea).

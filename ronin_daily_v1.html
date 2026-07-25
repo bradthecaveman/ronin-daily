@@ -7,6 +7,15 @@
 <meta name="description" content="One ronin. One castle. One rescue a day. Cross the walls, slip the guards, reach the Emperor — in as few moves as you can."/>
 <meta property="og:title" content="RONIN — a daily rescue puzzle"/>
 <meta property="og:description" content="Slip past the guards and rescue the Emperor. New castle every day."/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="RONIN"/>
+<meta property="og:url" content="https://bradthecaveman.github.io/ronin-daily/"/>
+<meta property="og:image" content="https://bradthecaveman.github.io/ronin-daily/og-square.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:alt" content="The RONIN board: a square castle of three walled rings with the Emperor at its centre."/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="theme-color" content="#ece4cf"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700;800&display=swap" rel="stylesheet"/>
@@ -158,7 +167,9 @@
 
 <div id="footer">
   <a id="practiceLink">practice on a random castle</a><br/>
-  <a href="round.html">try the circular board ◯</a>
+  <!-- round board hidden for now (2026-07-24): reachable at round.html by URL, just unlinked.
+       to un-hide, restore: <a href="round.html">try the circular board ◯</a> -->
+  <a href="https://ko-fi.com/bradtheronin" target="_blank" rel="noopener">buy the ronin a sausage roll</a>
 </div>
 
 <div id="overlay">
@@ -492,6 +503,8 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 <script>
 (() => {
   const RE = RoninEngine;
+  // Where a shared result sends people. Update this (and round.html's) if the domain changes.
+  const SHARE_URL = 'https://bradthecaveman.github.io/ronin-daily/';
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
 
@@ -1067,7 +1080,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const line = w >= 0
       ? `Rescued on attempt ${w + 1} · ${G.finalMoves} moves (par ${G.layout.par})${G.finalMoves === G.layout.par ? ' — perfect ⚔️' : ''}`
       : `The Emperor waits… (par ${G.layout.par})`;
-    return head + '\n' + line;
+    return head + '\n' + line + '\n' + SHARE_URL;
   }
 
   function calcStats() {
@@ -1153,11 +1166,14 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
         <a id="practiceLink2" style="color:var(--indigo);cursor:pointer;text-decoration:underline">
           ${isDaily ? 'practice on a random castle' : 'another random castle'}</a>
       </div>
+      ${won ? `<div style="text-align:center;margin-top:10px;font-size:12px">
+        <a href="https://ko-fi.com/bradtheronin" target="_blank" rel="noopener" style="color:var(--ink-soft);text-decoration:underline">enjoyed the rescue? buy the ronin a sausage roll</a>
+      </div>` : ''}
     `);
     if (isDaily) {
       $('shareBtn').onclick = async () => {
         try { await navigator.clipboard.writeText(shareText()); $('shareFeedback').textContent = 'copied to clipboard!'; }
-        catch { $('shareFeedback').textContent = shareText().replace('\n', ' — '); }
+        catch { $('shareFeedback').textContent = shareText().replace(/\n/g, ' · '); }
       };
       startCountdown();
     }
