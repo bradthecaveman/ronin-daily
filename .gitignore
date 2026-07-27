@@ -1,1 +1,8 @@
 .DS_Store
+
+# Local work in progress. Not for roninpuzzles.com, not for the public repo.
+# These stay on this Mac until Brad decides otherwise.
+stones.html
+links.html
+RONIN_JOURNEY_BRIEF.md
+tests/epic-lab.mjs
