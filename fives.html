@@ -54,15 +54,21 @@ Error generating stack: `+o.message+`
      and the home indicator. In Safari that's invisible, because the browser's
      own chrome pushes everything down. Installed to the home screen there is
      no chrome, and without these insets the clock and battery sit on top of
-     the back button. Reported from a real phone, 2026-08-02. */
-  padding:calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+     the back button. Reported from a real phone, 2026-08-02.
+
+     The gap is a VARIABLE, not a literal, so a screen can ask for different
+     headroom without having to restate env() and silently drop the inset.
+     .lk-screen did exactly that and cost the picker and packs their insets. */
+  --pad-top:20px;
+  padding:calc(var(--pad-top) + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
           calc(22px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
 }
 
 /* Standalone gets a little more headroom: the status bar is taller than the
    inset alone allows for once the wordmark is up against it. */
 @media (display-mode: standalone){
-  .lk-root{ padding-top:calc(28px + env(safe-area-inset-top)); }
+  .lk-root{ --pad-top:28px; }
+  .lk-screen{ --pad-top:24px; }
 }
 
 .lk-head{ text-align:center; margin-bottom:10px; position:relative; }
@@ -258,7 +264,9 @@ Error generating stack: `+o.message+`
 .lk-gem{ width:14px; height:14px; flex:0 0 auto; }
 .lk-gem.off{ opacity:.22; }
 
-.lk-screen{ padding-top:16px; }
+/* Sets the variable, NOT padding-top. Overriding the padding here would drop
+   the safe-area inset that .lk-root's shorthand carries. */
+.lk-screen{ --pad-top:16px; }
 .lk-topbar{
   width:min(90vw - 20px, 380px); display:flex; align-items:center;
   justify-content:space-between; gap:12px; margin-bottom:14px;
