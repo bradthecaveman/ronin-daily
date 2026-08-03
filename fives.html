@@ -20,6 +20,26 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FIVES">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- Link preview. Without this, sending the URL to a tester shows a bare
+     string and nothing else, which is a poor first impression of a game
+     nobody has heard of. Regenerate the image with make-og.mjs.
+
+     ⚠ og:image MUST be absolute. A relative path resolves against the
+     scraper, not the site, and the card silently never appears.
+     ⚠ This does NOT make Fives public — noindex above still stands, and
+     the homepage still links to nothing. It only means that when YOU send
+     the link, it looks like something. -->
+<meta property="og:title" content="FIVES — a 5×5 word puzzle">
+<meta property="og:description" content="Five hidden theme words. Slide the tiles, spell one, and hold it still.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FIVES">
+<meta property="og:url" content="https://roninpuzzles.com/fives.html">
+<meta property="og:image" content="https://roninpuzzles.com/fives-og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The FIVES board: a 5×5 grid of cream letter tiles with COMET spelled across the second row in lime.">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   html,body{margin:0;padding:0;background:#1C1C1C;min-height:100%;}
   #root{min-height:100vh;}
