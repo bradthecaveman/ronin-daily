@@ -1,7 +1,7 @@
 {
   "name": "FIVES",
   "short_name": "FIVES",
-  "description": "Five hidden theme words. Spell one in a row or column and hold it still.",
+  "description": "Five hidden words. Slide the tiles to find them.",
   "start_url": "fives.html",
   "scope": "fives.html",
   "display": "standalone",
