@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1C1C1C">
+<title>Your Fives unlock code</title>
+<link href="https://fonts.googleapis.com/css2?family=Asimovian&family=Exo+2:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1C1C1C; --panel:#252525; --panel-2:#2E2E2E; --lime:#D8F55E; --lime-soft:#E7FA98;
+    --ink:#15170F; --fg:#F2F3EE; --fg-dim:rgba(242,243,238,.52); --line:rgba(242,243,238,.14);
+    --disp:'Asimovian', system-ui, sans-serif;
+    --tile:'Exo 2', system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); min-height:100%; }
+  body{
+    color:var(--fg); font-family:var(--tile); line-height:1.5;
+    display:flex; justify-content:center;
+    padding:calc(28px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
+  }
+  .wrap{ width:100%; max-width:380px; }
+  .mark{
+    font-family:var(--disp); font-weight:400; font-size:30px; letter-spacing:.16em;
+    margin-right:-.16em; text-align:center; line-height:1;
+  }
+  .rule{ width:96px; height:7px; margin:10px auto 22px; border-radius:999px; background:var(--lime); }
+  h1{ font-size:17px; font-weight:600; letter-spacing:.03em; margin:0 0 4px; text-align:center; }
+  .sub{ font-size:12.5px; color:var(--fg-dim); margin:0 0 20px; text-align:center; }
+
+  .codebox{ background:var(--panel); border-radius:20px; padding:20px 16px 16px; text-align:center; }
+  /* ⚠ The code is set in Exo 2 and MUST NEVER be set in Asimovian, however
+     well the wordmark wears it. Asimovian renders S as 5, N as a pi and R
+     backwards, and the code alphabet exists precisely to remove characters
+     people misread. Setting a code in it would put the confusion straight
+     back, on the one string that has to be copied exactly. */
+  .code{
+    font-family:var(--tile); font-weight:700; color:var(--lime);
+    font-size:clamp(19px, 6.4vw, 25px); letter-spacing:.10em; word-break:break-all;
+    user-select:all; -webkit-user-select:all;
+  }
+  .code.none{ color:var(--fg-dim); font-size:14px; font-weight:600; letter-spacing:.02em; }
+  button{
+    margin-top:16px; width:100%; font-family:var(--tile); font-size:12px; font-weight:700;
+    letter-spacing:.10em; text-transform:uppercase; color:var(--ink); background:var(--lime);
+    border:none; border-radius:999px; padding:13px 16px; cursor:pointer;
+  }
+  button:hover{ background:var(--lime-soft); }
+  button:active{ transform:translateY(1px); }
+  button.done{ background:var(--panel-2); color:var(--fg); }
+
+  ol{ margin:24px 0 0; padding:0; list-style:none; counter-reset:s; }
+  ol li{
+    counter-increment:s; position:relative; padding:0 0 0 34px; margin-bottom:13px;
+    font-size:14px; color:var(--fg);
+  }
+  ol li::before{
+    content:counter(s); position:absolute; left:0; top:1px;
+    width:22px; height:22px; border-radius:50%; background:var(--panel-2); color:var(--lime);
+    font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  }
+  .foot{ margin-top:26px; border-top:1px solid var(--line); padding-top:18px; }
+  .foot p{ font-size:12.5px; color:var(--fg-dim); margin:0 0 12px; }
+  .foot p:last-child{ margin-bottom:0; }
+  a{ color:var(--lime); text-decoration:underline; text-underline-offset:3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="mark">FIVES</div>
+  <div class="rule"></div>
+
+  <h1 id="head">Your unlock code</h1>
+  <p class="sub" id="sub">Thanks. Here it is.</p>
+
+  <div class="codebox">
+    <div class="code" id="code">&hellip;</div>
+    <button id="copy">Copy</button>
+  </div>
+
+  <ol id="steps">
+    <li>Copy the code</li>
+    <li>Open Fives from your home screen</li>
+    <li>Go to Packs and paste it in</li>
+  </ol>
+
+  <div class="foot">
+    <p>Not put Fives on your home screen yet? <a href="https://roninpuzzles.com/fives.html">Open Fives</a>, tap Share, then Add to Home Screen. Safari clears sites you leave for a week; an installed one it keeps.</p>
+    <p>Keep the email this came from. Fives has no accounts, so this code is how you get your pack back on a new phone.</p>
+  </div>
+</div>
+<script>
+(function () {
+  /* The code arrives in the hash rather than the query string, so it is never
+     sent to a server in a request. Nothing here validates it: the game does
+     that, and this page is deliberately dumb so it can never disagree with it.
+
+     Kept as typed rather than reformatted. The game normalises case, spaces
+     and dashes on the way in, so even a mangled copy still works. */
+  var raw = "";
+  try { raw = decodeURIComponent(location.hash.slice(1)).trim().toUpperCase(); }
+  catch (e) { raw = location.hash.slice(1).trim().toUpperCase(); }
+
+  var codeEl = document.getElementById("code");
+  var btn = document.getElementById("copy");
+
+  if (!raw) {
+    /* Somebody has landed here without a code: a bare link, a truncated one,
+       or a browser that dropped the hash. Say so plainly and point at the
+       thing that definitely still has it. */
+    document.getElementById("head").textContent = "No code in this link";
+    document.getElementById("sub").textContent = "";
+    codeEl.className = "code none";
+    codeEl.textContent = "Your code is in your Ko-fi receipt email, under \u201cNote from seller\u201d.";
+    btn.remove();
+    document.getElementById("steps").remove();
+    return;
+  }
+
+  codeEl.textContent = raw;
+  document.title = raw + " — your Fives unlock code";
+
+  btn.addEventListener("click", function () {
+    function worked() {
+      btn.textContent = "Copied";
+      btn.className = "done";
+      setTimeout(function () { btn.textContent = "Copy"; btn.className = ""; }, 2500);
+    }
+    /* Selecting the text is the fallback, not an error message. If the
+       clipboard is refused — older Safari, an odd in-app browser, no secure
+       context — the code ends up selected and one long-press from copied,
+       which is a worse experience but never a dead end. */
+    function fallback() {
+      try {
+        var r = document.createRange();
+        r.selectNodeContents(codeEl);
+        var s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        btn.textContent = "Now long-press to copy";
+        btn.className = "done";
+      } catch (e) { /* nothing sensible left to try */ }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(raw).then(worked, fallback);
+    } else {
+      fallback();
+    }
+  });
+})();
+</script>
+</body>
+</html>
