@@ -4,6 +4,48 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
+## Where things stand — 2026-08-18
+
+Read this block first. Everything below it is history, kept in full.
+
+### Live now
+
+- **RONIN ⬛ (the square daily) is live at `roninpuzzles.com`**, on its own domain, with Ko-fi
+  tips wired in. This is the public product.
+- **RONIN ◯ (the round board) is hidden, not retired.** Unlinked from `index.html` on 2026-07-24
+  because it wasn't being played. Still deployed, still reachable by URL, and the link is
+  commented out in `index.html` ready to restore. Brad has not given up on it.
+
+### The game itself has barely changed since 2026-07-24
+
+One gameplay change in that time: **modals now anchor to the top of the window instead of
+dead-centre** (`52cfe4c`, 2026-07-31, applied to `index.html`, `ronin_daily_v1.html` and
+`round.html`). Everything else in the repo since then was Fives, which no longer lives here.
+
+### Fives has moved out
+
+Until 2026-08-09 this repo hosted Fives at `roninpuzzles.com/fives.html`. It now has its own
+repo and its own domain, `fivesgame.online`. What remains here is a **215-line signpost** at
+`fives.html` that points at the new address. Its own source lives in `~/Desktop/Projects/Links`,
+and `Links/STATUS.md` is the source of truth for it, not this file.
+
+### Local-only files, deliberately ring-fenced
+
+`.gitignore` keeps four things off the public repo. **They are not junk and must not be cleaned up:**
+
+- `stones.html` — the Step Stone prototype. Parked, and Brad may come back to it.
+- `links.html`, `RONIN_JOURNEY_BRIEF.md`, `tests/epic-lab.mjs`
+
+`tests/lab.mjs` is modified and deliberately left unstaged. It has been that way for months.
+
+### Standing rules
+
+- **The repo is public.** Stage files by name, never `git add .`.
+- **`parity.mjs` must pass before any release.** It proves the tuning mirror and the shipped
+  engine generate identical boards.
+
+---
+
 *Last updated: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
 games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
 Prior: 2026-07-19
@@ -182,13 +224,15 @@ planned.
 `bradthecaveman/ronin-daily` (public), `index.html` from `main`. The old
 **https://bradthecaveman.github.io/ronin-daily/** still works and 301-redirects to the domain. Deploy = `cp ronin_daily_v1.html index.html && git push`;
 Pages rebuilds automatically on push to `main` (usually live within ~1-2 minutes; confirmed via
-`gh api repos/bradthecaveman/ronin-daily/pages/builds/latest`). No custom domain yet — see Roadmap.
+`gh api repos/bradthecaveman/ronin-daily/pages/builds/latest`).
 
-**https://bradthecaveman.github.io/ronin-daily/round.html** — RONIN ◯, the v2 circular board
-(BETA since 2026-07-13; puzzle #1 = launch day), live ALONGSIDE the square game while opinions
-gather — winner picked later. Separate storage namespace (`ronin.round.v1` vs `ronin.daily.v1`)
-so stats never mix; footer cross-links both ways. Deploying a round change = edit `round.html`,
-run the ring gates (`ring-rules.mjs`, `ring-parity.mjs`), push.
+**https://roninpuzzles.com/round.html** — RONIN ◯, the v2 circular board (BETA since 2026-07-13;
+puzzle #1 = launch day). **HIDDEN since 2026-07-24, not retired.** It was unlinked from
+`index.html` because it wasn't being played, not because a winner was picked. Still deployed and
+still reachable by typing the URL; the link in `index.html` is commented out with the exact markup
+needed to restore it. Brad has not given up on it. Separate storage namespace (`ronin.round.v1` vs
+`ronin.daily.v1`) so stats never mix. Deploying a round change = edit `round.html`, run the ring
+gates (`ring-rules.mjs`, `ring-parity.mjs`), push.
 
 ## What this project is
 
