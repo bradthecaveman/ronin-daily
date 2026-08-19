@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-## Where things stand — 2026-08-18
+## Where things stand — 2026-08-19
 
 Read this block first. Everything below it is history, kept in full.
 
@@ -31,10 +31,12 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Local-only files, deliberately ring-fenced
 
-`.gitignore` keeps four things off the public repo. **They are not junk and must not be cleaned up:**
+`.gitignore` keeps five things off the public repo. **They are not junk and must not be cleaned up:**
 
 - `stones.html` — the Step Stone prototype. Parked, and Brad may come back to it.
 - `links.html`, `RONIN_JOURNEY_BRIEF.md`, `tests/epic-lab.mjs`
+- `CLAUDE.md` — project instructions for Claude, added 2026-08-19. Ignored deliberately:
+  the repo is public and the file names the unpublished work above.
 
 `tests/lab.mjs` is modified and deliberately left unstaged. It has been that way for months.
 
