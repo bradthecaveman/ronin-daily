@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-## Where things stand — 2026-08-19
+## Where things stand — 2026-09-15
 
 Read this block first. Everything below it is history, kept in full.
 
@@ -40,6 +40,23 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 `tests/lab.mjs` is modified and deliberately left unstaged. It has been that way for months.
 
+### In the working tree, NOT deployed (2026-09-15)
+
+The **straight-move zigzag is fixed** in `ronin_daily_v1.html` and `tests/engine.mjs`.
+Display only: `pathTo` draws the route, and the engine only ever receives the endpoint, so
+no board, par or result changes. Proven by regenerating 240 boards across both modes and
+diffing against `HEAD` — byte-identical, par included. Gates re-run green.
+**`index.html` is NOT re-synced and nothing is committed** — awaiting Brad.
+
+### Parked for the rules-section review
+
+Brad wants to revisit the rules box, so three findings from 2026-09-15 are waiting there
+rather than being fixed piecemeal. Detail in the section below.
+
+1. **The guard rule the help box promises is not the rule the engine runs.**
+2. **A gate is a tile you stand on, not a gap you pass through.**
+3. **The rules box copy contains em-dashes**, against the standing no-em-dash rule.
+
 ### Standing rules
 
 - **The repo is public.** Stage files by name, never `git add .`.
@@ -48,10 +65,10 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ---
 
-*Last updated: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
+*Last updated: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; NOT deployed, index.html not re-synced. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
 games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
 Prior: 2026-07-19
-DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.)*
+DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.))*
 
 ## ⮕ Circular board redesign (v2) — DEPLOYED AS BETA (2026-07-13)
 
@@ -219,6 +236,76 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## Straight-move routing fixed + two rule findings (2026-09-15)
+
+Brad reported three things in play. All three were checked against the real engine rather
+than the docs.
+
+**1. The zigzag — FIXED.** Moving two or three tiles in a straight line drew a detour, up
+one and back down. Cause: `pathTo`'s breadth-first search took its neighbour order from
+nested loops running row offset -1, 0, +1 and column offset -1, 0, +1, so the up-left
+diagonal was tried first and the straight step almost last. A straight two-away target is
+reachable in two steps by either a diagonal pair or a straight pair, so the search returned
+whichever it found first, which the loop order guaranteed was the diagonal. Measured on an
+open board: **57% of straight 2-step moves and 58% of straight 3-step moves** drew a
+detour, which is why it felt random rather than constant.
+
+Fix: a named `PATH_DIRS` list above `pathTo`, orthogonals before diagonals, used for the
+search loop. Result: **0% detours in both modes.** Pure diagonals still draw as pure
+diagonals, and an offset target still draws a sensible mixed route.
+
+Why it was safe: `pathTo` has **zero callers inside the engine**, is asserted by no test,
+and sits outside board generation. `refreshHints` (`ronin_daily_v1.html:866`) computes the
+guard reply from the selected endpoint alone, so the drawn route never reaches `armyReply`.
+The hold branch of `pathTo` was deliberately left on the old ordering: it is not a zigzag,
+and changing it would alter the HOLD animation's direction.
+
+**`roninOptions` must keep its current order** even though it contains a visually identical
+loop. `solveBoard` iterates its output into the A* buckets, so the order breaks ties and
+changes the node count, and `genCandidate` runs the solver under `maxNodes: 60000` — a
+different order could push a borderline board over the cap and change which seeds pass the
+par band. Same red line for `armyReply` and `stepLegal`.
+
+Verified: rules 20/20, parity 40/40, bench 0 below band + replay 10/10, 240 boards
+byte-identical to `HEAD` including par, 1,314 endpoints across 120 boards with no route
+lost and no illegal step. Browser-verified at 900px and 375px: straight dashed preview,
+second-tap commit, capture-warning select, UNDO, HOLD, HINT, `autoWin`, the win modal's
+par replay, and the three-attempt loss flow's "REVEAL THE WAY IN" replay. Off-centre tap
+still snaps at 375px on the 22px tolerance floor, no horizontal scroll.
+
+**2. Diagonal moves through a gate — NOT a bug, parked.** The rule is consistent but its
+shape is unintuitive. A gate is a **tile you must touch**, not a gap in the wall, because
+`stepLegal` allows a tier crossing when either the tile you leave or the tile you land on
+is a stair. So the door fans out three ways from its own tile and zero ways from the tile
+beside it. Worked example, gate (10,3) on day 74:
+
+| move | result | looks like |
+|---|---|---|
+| (10,3) → (11,3) | legal | straight out of the door |
+| (10,3) → (11,2) / (11,4) | legal | diagonal out of the door |
+| (10,4) → (11,3) | **blocked** | diagonal cutting the same doorway |
+| (11,4) → (10,3) | legal | diagonal into the door |
+| (11,4) → (10,4) | **blocked** | straight ahead, one tile from the door |
+
+The last pair is the confusing one: stood just outside the door, the diagonal works and
+straight ahead does not. Cannot be changed on the live board — `stepLegal` sits under the
+generator. Any fix is visual or copy, so it waits for the rules-section review.
+
+**3. The guard rule — engine and copy disagree, parked on Brad's call.** The help box says
+"the two nearest chase each move — arrows show who". `armyReply` sorts by **chebyshev
+distance straight through walls**, tiebreaking on generation order. Across the first 200
+daily boards the two guards that move are **not** the two nearest by walking distance on
+**148 of them (74%)**. Day 1: a guard 4 tiles away but 10 walking steps away, behind a
+wall, moves; a guard 8 tiles away with a clear run does nothing. Also counted 181 chasers
+with a wall between them and the ronin, and 56 mover steps that closed no distance at all,
+which is a guard sliding along a wall face while still using one of the two slots.
+
+The arrows are honest — they come from the real engine, so they always show exactly who
+will move. The mismatch is in the word "nearest". **Brad's call 2026-09-15: leave it, and
+revisit with the rules section.** Fixing it in the engine would regenerate every published
+board, so the candidate home for walking-distance guards is the reserved **epic** mode,
+where nothing has shipped.
 
 ## Live
 

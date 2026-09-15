@@ -330,6 +330,13 @@ function roninOptions(ronin, army, stairs, steps) {
   return out;
 }
 
+// Display-only route ordering: orthogonals before diagonals, so a straight move draws a
+// straight route instead of an equal-length diagonal detour. Used ONLY by pathTo, which
+// sits outside board generation. Do NOT use this in roninOptions: solveBoard iterates its
+// output into the A* buckets, so changing that order would change which seeds pass the par
+// band and regenerate every published board.
+const PATH_DIRS = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+
 // Shortest legal step-path (<= steps) from ronin to target, or null.
 function pathTo(ronin, army, stairs, target, steps) {
   needSteps(steps);
@@ -350,8 +357,7 @@ function pathTo(ronin, army, stairs, target, steps) {
   for (let s = 0; s < steps; s++) {
     const nxt = [];
     for (const p of frontier) {
-      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-        if (!dr && !dc) continue;
+      for (const [dr, dc] of PATH_DIRS) {
         const nr = p.r + dr, nc = p.c + dc;
         if (!stepLegal(p.r, p.c, nr, nc, stairs)) continue;
         const k = key(nr, nc);
