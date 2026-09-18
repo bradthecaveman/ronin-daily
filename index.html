@@ -78,7 +78,6 @@
   }
   #boardFrame{
     position:relative; padding:0; background:transparent;
-    box-shadow:14px 18px 34px rgba(58,50,43,.28); /* sun top-left */
   }
   canvas{ display:block; }
   #veil{
@@ -636,6 +635,16 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 
   // ---------- drawing ----------
   const cx = (c) => (c + .5) * cell, cy = (r) => (r + .5) * cell;
+  // canvas shadowBlur is one uniform value, so a single pass cannot be sharp at the
+  // tier and soft at the tip. Stacking passes does it: tight and near-opaque at the
+  // contact, then wider, fainter and further out. [offsetX, offsetY, blur, alpha], in cells.
+  const TERRACE_SHADOW = [
+    [ .06,  .08,  .08, 1   ],
+    [ .28,  .36,  .44,  .40],
+    [ .52,  .68,  .90,  .26],
+    [ .84, 1.10, 1.60,  .18],
+    [1.20, 1.56, 2.50,  .12]
+  ];
   function draw(now) {
     const px = cell * 13;
     ctx.clearRect(0, 0, px, px);
@@ -646,12 +655,20 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     ctx.fillStyle = COL.outer;
     ctx.fillRect(0, 0, px, px);
     ctx.save();
-    ctx.shadowColor = 'rgba(46,38,30,.55)'; ctx.shadowBlur = cell * .75;
-    ctx.shadowOffsetX = cell * .26; ctx.shadowOffsetY = cell * .32;
-    ctx.fillStyle = COL.middle;
-    ctx.fillRect(2 * cell, 2 * cell, 9 * cell, 9 * cell);
-    ctx.fillStyle = COL.inner;
-    ctx.fillRect(4 * cell, 4 * cell, 5 * cell, 5 * cell);
+    // each pass re-fills the same rect so the shadows accumulate. Both tiers get the
+    // same stack, matched rather than graduated. Run a tier's whole stack before the
+    // next tier's, or the later fills paint over the earlier tier's shadow.
+    const terrace = (fill, xy, w) => {
+      ctx.fillStyle = fill;
+      for (const [ox, oy, blur, a] of TERRACE_SHADOW) {
+        ctx.shadowColor = 'rgba(40,32,24,' + a + ')';
+        ctx.shadowBlur = cell * blur;
+        ctx.shadowOffsetX = cell * ox; ctx.shadowOffsetY = cell * oy;
+        ctx.fillRect(xy, xy, w, w);
+      }
+    };
+    terrace(COL.middle, 2 * cell, 9 * cell);
+    terrace(COL.inner, 4 * cell, 5 * cell);
     ctx.restore();
 
     // grid — one subtle tone across all rings

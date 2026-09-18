@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-## Where things stand — 2026-09-15
+## Where things stand — 2026-09-18
 
 Read this block first. Everything below it is history, kept in full.
 
@@ -40,13 +40,39 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 `tests/lab.mjs` is modified and deliberately left unstaged. It has been that way for months.
 
-### In the working tree, NOT deployed (2026-09-15)
+### Committed locally, NOT pushed
 
-The **straight-move zigzag is fixed** in `ronin_daily_v1.html` and `tests/engine.mjs`.
-Display only: `pathTo` draws the route, and the engine only ever receives the endpoint, so
-no board, par or result changes. Proven by regenerating 240 boards across both modes and
-diffing against `HEAD` — byte-identical, par included. Gates re-run green.
-**`index.html` is NOT re-synced and nothing is committed** — awaiting Brad.
+Two commits are waiting. The next push puts both live.
+
+- **Straight-move zigzag fixed** (`4f0ee10`, 2026-09-15). Display only, boards proven
+  byte-identical to the previous engine.
+- **Terrace elevation shadows, the stacked-pass x2 spec** (2026-09-18). Built to the signed-off
+  table, plus the `#boardFrame` `box-shadow` removed so the outer board sits on the ground,
+  which Brad approved on the day. Drawing only. Measurements under "Shadow methodology".
+
+`index.html` was re-synced in both, so the source and the deployed copy are identical.
+
+### Working tree
+
+Only `tests/lab.mjs` is modified, as it has been for months.
+
+An earlier, different shadow attempt was built and REVERTED on 2026-09-18 at Brad's request:
+"that's wrong, I want to start again from the current live version." That was the two-pass
+graduated version, which is on the rejected list under Parked. It is not what shipped.
+The patch that was kept at `scratchpad/shadow-work.patch` is gone; the scratchpad did not
+survive. No loss, the rejected parameters are recorded below.
+
+### Next up, in Brad's order
+
+1. **Gate foot colour** and **stair side keylines** — settled with Brad from rendered
+   comparisons, numbers final, NOT built. Recipe in the session below.
+2. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
+   wrapping in the stats modal, and a set of widows including three that strand a lone
+   emoji at 375px. Full list in the session below.
+3. **Rules box review** — Brad's next stage, and three findings are already waiting there.
+
+**Parked:** reflections on every piece, guards and Ronin both. A hard line rendered well on
+the guards but the Ronin's yellow collided with the katana. To be its own piece of work.
 
 ### Parked for the rules-section review
 
@@ -65,7 +91,7 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; NOT deployed, index.html not re-synced. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
+*Last updated: 2026-09-18 (terrace shadows BUILT to the signed-off stacked-pass x2 spec, and the #boardFrame box-shadow dropped on Brad's call; drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed. Gate foot recipe and stair keylines settled but NOT built. Reflections parked on all pieces. Design audit run, findings recorded above and not yet fixed. Prior: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; committed locally as 4f0ee10 with index.html re-synced, not pushed. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
 games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
 Prior: 2026-07-19
 DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.))*
@@ -236,6 +262,237 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## Shadow methodology — what finally worked, and why (2026-09-18)
+
+Six rounds of shadow variants, all rejected, before the cause was found. Recorded so it is
+never re-derived.
+
+### The spec to build — BUILT 2026-09-18
+
+Built exactly as written below, as `TERRACE_SHADOW` plus the `terrace()` helper in `draw()`
+(`ronin_daily_v1.html:638`). One thing the spec did not say, found in the build: a tier's
+whole stack must run before the next tier's starts. Interleaving them lets the middle tier's
+later fills paint over the inner tier's earlier shadow passes.
+
+`#boardFrame`'s CSS `box-shadow` was removed in the same change, which was the loose end from
+Brad's original brief. He called it on 2026-09-18: "drop the boardFrame shadow".
+
+Re-measured on an isolated rig after the build, as % darkening in linear luminance against the
+middle terrace, sampling the inner tier's shadow (the same basis as the numbers below):
+
+| | contact | 3px | 8px | 16px | 30px | 50px |
+|---|---|---|---|---|---|---|
+| predicted | 94.1 | 82.4 | 68.2 | 54 | 34.7 | 25.7 |
+| built | 94.5 | 85.9 | 76.7 | 66.1 | 44.6 | 26.7 |
+| the old single pass | 60.6 | 57.7 | 49.9 | 34.7 | 10.7 | 0 |
+
+Contact lands at 94.5 against the keyline's 94.4, so the cliff is gone: it was a 34-point step
+before. The built falloff holds a few points darker than predicted through the middle of the
+walk, same shape, still monotonic. Walking diagonally out from the inner tier's shadow-facing
+corner now goes 92.9 → 86 → 78.7 → 72.1 → 64.1, darkest at the tier.
+
+Gate at build: rules 20/20, parity 40/40, bench 0 fallback boards and replay 10/10 in both
+modes. The engine was not touched, so those could not have changed, but they were run.
+Browser-verified at desktop and at 375px: board 338px wide inside a 375px viewport, no
+horizontal overflow at either width.
+
+Replace the single shadow pass in `draw()` with five stacked passes, applied **identically
+to both tiers** (matched, not graduated). Offsets and blurs are in cells; colour is
+`rgba(40,32,24,a)`:
+
+| pass | offset x | offset y | blur | alpha |
+|---|---|---|---|---|
+| contact | .06 | .08 | .08 | 1.0 |
+| 2 | .28 | .36 | .44 | .40 |
+| 3 | .52 | .68 | .90 | .26 |
+| 4 | .84 | 1.10 | 1.60 | .18 |
+| 5 | 1.20 | 1.56 | 2.50 | .12 |
+
+Each pass sets `shadowColor`/`shadowBlur`/`shadowOffsetX`/`shadowOffsetY` then re-fills the
+same rect, so the shadows accumulate. **The contact pass must never be scaled** if the throw
+is changed later; it sits at the tier whatever the sun does.
+
+Measured: contact pixel 94.1% darkening against the keyline's 94.4%, so no step at the join.
+Falloff 94.1 → 82.4 → 68.2 → 54 → 34.7 → 25.7% at 1/3/8/16/30/50px. Cost at 40px cells: ink
+19.88 and 47 of 150 playable cells in deep shade, against today's 7.20 and 26. Endpoint dot
+contrast 1.64 against today's 1.68, so the move markers are unaffected. Drawing only, so the
+engine is untouched and no board, par or result can change — but still run the release gate.
+
+**The complaint.** Brad: "the tiers look like they are floating"; "the corners look detached
+from the shadow"; and his spec, which turned out to be the key: "the shadow would be darkest
+at the pixel next to the tier and then fade to nothing... the shadow would also have a
+harder edge at the connection point and blur and/or fade out the further away you got."
+
+**Why nothing worked for six rounds.** Canvas `shadowBlur` is a **single uniform value**.
+It cannot be sharp at the contact and soft at the tip. Every single-pass variant therefore
+has the same edge softness everywhere, which is why offset, blur, opacity and ambient
+tuning all failed to produce a connection. This is the whole answer.
+
+**The two measurable symptoms.**
+
+1. *The cliff.* The tier keyline is 94.4% darkening. A single-pass shadow peaks around 58
+   to 65% at the contact. So there was a ~31 point step from the keyline into the shadow,
+   which reads as an outline with a detached wash beyond it.
+2. *The floating corner.* Walking diagonally out from a tier's top-right corner, today's
+   shadow gets **darker** as you move away: 16.2 → 17.1 → 18.9 → 20.8%. The darkest point
+   is off in space, not at the tier. That is literally the float Brad kept pointing at.
+   Cause: an offset shadow is the shape moved down-right, so the top of the right edge and
+   the left of the base get no shadow core at all, only blur spill.
+
+**The fix.** Stack passes. A tight near-opaque pass with a *small but non-zero* offset for
+the contact, then progressively wider, lighter, further-offset passes for the penumbra.
+They accumulate into a shadow that is darkest against the tier, sharp there, and softer and
+fainter with distance. Contact goes from 58.7% to 94.1%, killing the cliff entirely.
+
+**The trap that cost an extra round.** The contact pass needs an offset of about `.06/.08`
+cells. At `.02/.03` it is sub-pixel and never emerges from under the tier, giving only 23 to
+33% and looking no better than before. A single tight pass at `ox .06, oy .08, blur .08,
+alpha 1.0` reaches 86.9% on its own.
+
+**What the stacked approach does NOT fix.** x2's corner still peaks 2px out rather than at
+the tier itself (28.3 → 37.2 → 27.4%). The projected-silhouette V2 was the only variant that
+got the corner perfectly (87.2% right at it, falling away monotonically) but its body was a
+flat 59.3% plateau from 3px to 30px with a hard cut outer edge, which is what Brad disliked.
+**A combination of V2's corner geometry with x2's stacked falloff was identified but never
+built.** That is the obvious next move if x2's corner ever bothers him.
+
+**Practical notes.**
+
+- The Browser pane stopped compositing frames repeatedly during this session, so screenshots
+  timed out and several variants were sent to Brad unseen. If it recurs, put a single
+  variant into a copy of the game and let Brad open it himself rather than building
+  multi-panel comparison pages.
+- Comparison harnesses from this session are in the scratchpad: `ronin-frame-depth.html`,
+  `ronin-connected-shadow.html`, `ronin-edge.html`, `ronin-lit.html`, `ronin-stacked.html`,
+  `ronin-3way.html`. They are throwaway, outside the repo, and will not survive a reboot.
+- Brad's reference for the feel is a framed print on a wall: soft broad shadow, hard line at
+  the contact, and the frame's own thickness doing the connecting work.
+- **Token cost was Brad's stated reason for stopping.** Six rounds of rendered variants is
+  too many. Next time, get a reference image first and lead with the physics, not options.
+
+## Visual pass 1 — terrace elevation shadows (REVERTED) + design audit (2026-09-18)
+
+> **The shadow build described below was reverted at Brad's request and is NOT in the
+> code.** It is recorded because the measurements are reusable and because the next attempt
+> should not repeat it. The design audit findings further down are still live and unfixed.
+
+### What was built, and then taken out
+
+**Terrace elevation shadows, item 1 of the visual list.** Two changes, both drawing only:
+
+1. `#boardFrame`'s CSS `box-shadow` removed, so the board sits flat on the page. The outer
+   ring is the ground; a shadow under the whole board made the outer ring look raised too.
+2. Each terrace now gets its **own** shadow length instead of both sharing one setting.
+   Middle offset `.50/.66` cells, inner `.92/1.20`, blur `.38`, alpha `.52`. The inner
+   throwing further than the middle is what reads as the height difference.
+
+Each terrace draws **two** passes. An offset shadow alone leaves the left of the base and
+the top of the right edge completely unshaded, which is what made the terraces look like
+floating plates — **not** the blur radius, which was the first diagnosis and was wrong.
+The extra tight pass (blur `.10`, offset `.07/.09`, alpha `.45`) puts shade on all four
+sides. Measured on the live board: darkest at the wall on every sampled column, fading
+away from it, zero unshaded samples along the base.
+
+Engine untouched. Gates re-run: rules 20/20, parity 40/40, bench identical par
+distribution with 0 below band and replay 10/10. Browser-verified at 900px and a settled
+375px (canvas 325px at x 25–350, no horizontal scroll, all 169 cells kept).
+
+**Note for browser testing (still true, worth keeping):** an emulated resize leaves
+`resize()` holding a stale viewport width, so the canvas keeps its old cell size and
+overflows. It looks exactly like a layout bug and is not one. Reload after resizing.
+`round.html` has a debounced re-settle for this; the square board does not.
+
+**Outcome: reverted.** Brad's verdict on seeing it in the game was "that's wrong, I want to
+start again from the current live version." It passed every gate and every measurement,
+which is worth remembering: the numbers were not the problem, the look was. Reverted
+file-scoped so `tests/lab.mjs` was never at risk.
+
+### Settled with Brad but NOT built (2026-09-18)
+
+Decided from rendered comparisons, deliberately held back so the visual items land one at
+a time. Numbers are final, so these can be built without redoing the analysis.
+
+- **Gate foot colour.** Brad's rule: the foot matches the tier the stair leaves, the top
+  stays on the tier it climbs into. Taken literally this nearly erases the gate, because
+  adjacent terrace colours are only ~1.17 apart in brightness by design, so tier colours
+  cannot carry a gate's visibility. Final recipe: three-stop gradient, foot at
+  `source × 0.76`, pure source at 28%, destination at 100%, **plus** a foot shadow band
+  over 42% of the cell at alpha `.66`. With the keylines that measures 1.43 mean cell
+  contrast against today's 1.36, so the gate ends up slightly more visible than now, which
+  also serves the "make the stairs more obvious" ask. Bonus: today's invented shades make
+  outer gates more prominent than inner ones (1.92 vs 1.69); deriving from tier colours
+  makes all five gates on a board read with equal weight.
+- **Stair side keylines**, 2px in `COL.wall` down the two climb edges. Brad wants these
+  first and will decide on side shadowing afterwards. Note they re-close the wall keyline
+  gap that gates currently have, reversing that earlier decision.
+
+### Parked
+
+- **Reflections on every piece**, guards and Ronin both. A hard-line gloss rendered well
+  on the guards, but the Ronin's yellow line collided with the gold katana and Brad did not
+  like it. To be taken up as a standalone piece of work on the pieces themselves.
+- **Shadow approaches Brad rejected.** Do not re-propose any of these: a
+  projected-silhouette hexagon shadow (V1/V2/V3, "I don't think I like it"); a wall
+  side-face on the shadow-facing edges; a contact band hugging each terrace edge; the
+  two-pass graduated offset shadow that was built and reverted; a zero-offset ambient wrap;
+  widening the blur alone; and raising the single-pass opacity to 0.70. Also **graduated
+  tiers are out** — Brad asked for both tiers matched on 2026-09-18.
+- **The lit edge is available but unused.** A bright 1-2px catch inside each tier's top and
+  left edges, `rgba(255,252,242,.5)` at width `cell*.035`. Brad asked to see it isolated and
+  did not rule on it. It is the cheapest thing tried and arguably did more for the raised
+  read than any shadow change. Worth putting to him again.
+
+### Design audit findings, NOT yet fixed (2026-09-18)
+
+Measured in the browser at 320/360/375/390/414/1280. Real defects, awaiting their own pass:
+
+- **`attempt 1` wraps in the stats modal**, on desktop as well as mobile
+  (`ronin_daily_v1.html:1135`). `.dist .row` is flex, the label has `min-width:auto` and
+  `flex-shrink:1`, and the bar takes up to 90% of the row, so the label gets 50.8px when it
+  needs ~55px. Row heights come out 28/17/17px. Only hits the row with the widest bar,
+  which is why it looks intermittent. Fix is `white-space:nowrap` or `flex:none` on the label.
+- **"You have been overwhelmed" widows at every width, desktop included**, always breaking
+  as "You have been / overwhelmed". Captured modal and final loss modal heading.
+- **Six status-line messages widow at 375px**, three stranding a lone emoji (`⚠`, `⛩`,
+  `🏮`) on its own line. Also one at 360px and one at 414px. Full list in the session below.
+- **Minor:** "You know their ways a little better now." strands `now.` at 360px only. The
+  win screen's Ko-fi line strands `roll` at 320px only. Button row heights stagger
+  35.5/35.5/36.5/37.5px because MOVE and HINT use larger font sizes.
+
+**Checked and cleared, do not chase these:** Shippori Mincho B1 *is* loading and painting
+(h1 measures 154.41px with it, 164.96px without) — the audit script's `notResolving` flag
+is a false positive from its probe string. The stats bar numbers are **8.23:1**, not the
+1.27:1 the sampler reports, because it skips an element's own background. No horizontal
+overflow at any width. 62KB total with zero embedded base64.
+
+**Structural note:** the file has **no media queries and no fluid type at all**. Every size
+is fixed px plus `max-width`, which is why these widows cluster — a 24px heading has to
+survive a 252px modal on a 320px phone with nothing adapting underneath it.
+
+
+### The status-line widows in full, measured on the real element
+
+| width | message ends | alone on the last line |
+|---|---|---|
+| 375 | ...up to 3 cells a | `turn.` |
+| 375 | ...the guards will take you. | `⚠` |
+| 375 | ...(or RESCUE) to finish! | `⛩` |
+| 375 | ...trust your instincts. | `🏮` |
+| 375 | ...refresh to play today's | `puzzle.` |
+| 375 | ...first, inside the | `keep.` |
+| 360 | ...cross walls at the stair | `tiles.` |
+| 390 | ...up to 3 cells a | `turn.` |
+| 390 | ...the guards will take you. | `⚠` |
+| 414 | ...return tomorrow, or practice | `below.` |
+
+### Shadow lengths that were measured and rejected
+
+Brad picked the third of four sun heights. For reference if it is ever revisited, of 150
+playable cells the deep-shaded count went 9 / 18 / 25 / 33 across the four, while the
+endpoint-dot contrast in the deepest shade stayed flat at 1.37–1.40 for the last three.
+So the per-cell penalty does not worsen with length; only the affected area grows. Brad's
+call was to leave the endpoint dots alone, since low contrast there is deliberate hierarchy.
 
 ## Straight-move routing fixed + two rule findings (2026-09-15)
 
