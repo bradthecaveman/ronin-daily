@@ -767,6 +767,38 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     noShadow(); for (const k of stairs) if (!outerGate(k)) drawStair(k, 'lit');
     ctx.restore();
 
+    // The lit edge: the sun is up-left, so each raised tier catches the light along its
+    // top and left edges. The drop shadow says "raised" by what falls away behind a
+    // tier; this says it by what the edge itself catches. Skips the gate cells, since
+    // there is no wall standing there to catch anything.
+    {
+      // the wall keyline is 2px straddling the boundary and is drawn later, so the
+      // catch starts at the wall's inner edge or it gets painted over
+      const lw = cell * .035, off = 1 + lw / 2;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,252,242,.5)';
+      ctx.lineWidth = lw;
+      ctx.lineCap = 'butt';
+      const litEdges = (c0, c1) => {
+        const e = c0 * cell;
+        for (let i = c0; i <= c1; i++) {
+          if (!stairs.has(RE.key(c0, i))) {           // along the top edge
+            ctx.beginPath();
+            ctx.moveTo(i * cell, e + off); ctx.lineTo((i + 1) * cell, e + off);
+            ctx.stroke();
+          }
+          if (!stairs.has(RE.key(i, c0))) {           // down the left edge
+            ctx.beginPath();
+            ctx.moveTo(e + off, i * cell); ctx.lineTo(e + off, (i + 1) * cell);
+            ctx.stroke();
+          }
+        }
+      };
+      litEdges(2, 10);
+      litEdges(4, 8);
+      ctx.restore();
+    }
+
     // grid — one subtle tone across all rings
     ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
     for (let i = 1; i < 13; i++) {

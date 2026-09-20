@@ -52,8 +52,10 @@ Three commits are waiting. The next push puts all three live.
 - **Gates cut through the walls, "variant D"** (2026-09-20). The whole gate item, chosen from
   four rendered variants. Drawing only. Full spec and the rejected variants are in the
   session below, under "Gates as cuts".
+- **The lit edge** (2026-09-20). Approved at the strength rendered, after a flaw in the
+  recorded spec was found and fixed. See "The lit edge" below.
 
-`index.html` was re-synced in all three, so the source and the deployed copy are identical.
+`index.html` was re-synced in all four, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -72,10 +74,12 @@ survive. No loss, the rejected parameters are recorded below.
    emoji at 375px. Full list in the session below. Run `/site-check` with this one.
 2. **Rules box review** — Brad's next stage, and three findings are already waiting there.
 
-**Open from the gate work:** the lit edge, a 1 to 2px catch inside each tier's top and left
-edges at `rgba(255,252,242,.5)`, width `cell*.035`. Brad asked to see it isolated on
-2026-09-18 and never ruled. Cheapest thing tried and it did more for the raised read than
-any shadow variant. Worth putting to him again.
+**In progress:** piece reflections, guards first. Brad rejected constant-brightness marks
+(crescent, chord, inset band) as "too hard and vector based". What he wants is a terminator:
+a hard edge where the light starts, brightest right at that line, falling away to nothing by
+the rim, "like light on a phone screen". That mechanism is built and rendering correctly in
+`_guard-gloss.html`; the open question is only the strength. The Ronin comes after, and is
+the one that failed last time, when its yellow line collided with the gold katana.
 
 **Parked:** reflections on every piece, guards and Ronin both. A hard line rendered well on
 the guards but the Ronin's yellow collided with the katana. To be its own piece of work.
@@ -268,6 +272,27 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## The lit edge — BUILT (2026-09-20)
+
+A thin warm-white catch just inside the top and left edges of each raised tier, the two
+sun-facing sides. The drop shadow says "raised" by what falls away behind a tier; this says it
+by what the edge itself catches. `rgba(255,252,242,.5)` at width `cell*.035`, as recorded on
+2026-09-18. It skips the gate cells, since there is no wall standing there to catch anything,
+which keeps it consistent with the notches.
+
+**The recorded spec had a flaw, now fixed.** It put the catch starting on the tier boundary.
+The wall keyline is 2px straddling that boundary and is drawn later, so it covered all but
+about 0.4px of the catch. Drawn exactly to spec, three quarters of the effect was invisible.
+It now starts at the wall's inner edge, `1 + lw/2`. If the version Brad saw on 2026-09-18 was
+drawn to the recorded spec, he was ruling on a quarter of it, which may be why it went
+unruled for two days.
+
+Measured: tier surface `rgb(233,224,196)`, the catch `rgb(244,238,219)` across about 1.5px.
+At 375px the line is 0.91 CSS px, which still paints at full strength at device pixel ratio 2.
+On an old non-retina screen it would be weaker. Brad: "keep it at this strength."
+
+Gate at build: rules 20/20, parity 40/40, bench 0 fallback boards and replay 10/10 both modes.
 
 ## Gates as cuts — the gate item, BUILT (2026-09-20)
 
