@@ -42,15 +42,18 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Two commits are waiting. The next push puts both live.
+Three commits are waiting. The next push puts all three live.
 
 - **Straight-move zigzag fixed** (`4f0ee10`, 2026-09-15). Display only, boards proven
   byte-identical to the previous engine.
 - **Terrace elevation shadows, the stacked-pass x2 spec** (2026-09-18). Built to the signed-off
   table, plus the `#boardFrame` `box-shadow` removed so the outer board sits on the ground,
   which Brad approved on the day. Drawing only. Measurements under "Shadow methodology".
+- **Gates cut through the walls, "variant D"** (2026-09-20). The whole gate item, chosen from
+  four rendered variants. Drawing only. Full spec and the rejected variants are in the
+  session below, under "Gates as cuts".
 
-`index.html` was re-synced in both, so the source and the deployed copy are identical.
+`index.html` was re-synced in all three, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -64,12 +67,15 @@ survive. No loss, the rejected parameters are recorded below.
 
 ### Next up, in Brad's order
 
-1. **Gate foot colour** and **stair side keylines** — settled with Brad from rendered
-   comparisons, numbers final, NOT built. Recipe in the session below.
-2. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
+1. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
    wrapping in the stats modal, and a set of widows including three that strand a lone
-   emoji at 375px. Full list in the session below.
-3. **Rules box review** — Brad's next stage, and three findings are already waiting there.
+   emoji at 375px. Full list in the session below. Run `/site-check` with this one.
+2. **Rules box review** — Brad's next stage, and three findings are already waiting there.
+
+**Open from the gate work:** the lit edge, a 1 to 2px catch inside each tier's top and left
+edges at `rgba(255,252,242,.5)`, width `cell*.035`. Brad asked to see it isolated on
+2026-09-18 and never ruled. Cheapest thing tried and it did more for the raised read than
+any shadow variant. Worth putting to him again.
 
 **Parked:** reflections on every piece, guards and Ronin both. A hard line rendered well on
 the guards but the Ronin's yellow collided with the katana. To be its own piece of work.
@@ -91,7 +97,7 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-18 (terrace shadows BUILT to the signed-off stacked-pass x2 spec, and the #boardFrame box-shadow dropped on Brad's call; drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed. Gate foot recipe and stair keylines settled but NOT built. Reflections parked on all pieces. Design audit run, findings recorded above and not yet fixed. Prior: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; committed locally as 4f0ee10 with index.html re-synced, not pushed. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
+*Last updated: 2026-09-20 (gates BUILT as variant D: pure tier-to-tier foot, 1px gradient jambs, gate cells cut out of the tier silhouette so the shadow carries the gaps, stair drawn under its tier's shadow and lit back up as it climbs, gate grid line restored, two wall/jamb alignment faults fixed. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; three commits now stacked. Prior: 2026-09-18 (terrace shadows BUILT to the signed-off stacked-pass x2 spec, and the #boardFrame box-shadow dropped on Brad's call; drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed. Reflections parked on all pieces. Design audit run, findings recorded above and not yet fixed. Prior: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; committed locally as 4f0ee10 with index.html re-synced, not pushed. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
 games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
 Prior: 2026-07-19
 DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.))*
@@ -262,6 +268,75 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## Gates as cuts — the gate item, BUILT (2026-09-20)
+
+Brad picked **variant D** from four. This replaced the gate recipe settled on 2026-09-18,
+which he moved away from during the session. What shipped:
+
+1. **Foot colour is a pure transition**, bottom tier straight to top tier. `src` held flat to
+   28% of the climb, then running to the destination tier. **No foot shadow band.** The
+   2026-09-18 recipe had the foot at `source × 0.76` plus a band at alpha `.66` over 42% of
+   the cell. Brad asked for it at half, then at nothing: "a pure transition from bottom tier
+   to top tier". The `shade()` helper that recipe needed is gone.
+2. **Jambs, 1px**, down the two climb edges, gradient from `COL.wall` at the ring wall to the
+   destination tier colour at the top, so the wall turns into the gate and dissolves. The
+   2026-09-18 spec said 2px solid; Brad asked for 1px and the gradient.
+3. **The gate cells are cut out of the tier silhouette** with an even-odd path, so the stacked
+   shadow passes cast the gaps for free, correctly blurred. This is what makes the tiers stop
+   reading as three stacked squares. Brad: "I like the notches."
+4. **The stair is drawn in three passes at three depths.** `tile` goes under its own tier so
+   the tier's shadow falls across it for real. `lit` paints the tile back with alpha ramping
+   0 at the foot to 1 at the top, which tapers that shadow out as the stair climbs back to
+   tier level, and carries the treads. `jambs` go on top with the other keylines.
+5. **Grid line at the gate restored.** The old order let the tile fill swallow the grid lines
+   on its own left and top edges, so a gate boundary had no line at all when every other cell
+   boundary does. The new ordering puts the main grid pass after the tiles, which fixes it
+   with no extra code.
+6. **Two alignment faults fixed**, both found by Brad off a render and confirmed on a
+   device-pixel map. The ring wall stopped at the boundary while the jamb started at the cell
+   edge, leaving the corner pixel at (boundary − 1) unpainted: jambs now start 1px beyond the
+   boundary, which is the wall's outer edge. And the far jamb sat at `boundary − 0.5` while
+   this board's grid convention puts a boundary line at `boundary + 0.5`, so it was one pixel
+   high: it now lands on the grid line.
+
+**Measured**, r8 c10, % darkening along the climb from foot to top, plus the ground outside:
+
+| | foot | .3 | .5 | .7 | top | ground |
+|---|---|---|---|---|---|---|
+| before any of this | 0 | — | — | — | — | 73.3 |
+| D as built | 35.2 | 30.3 | 23.0 | 14.6 | −5.1 | 32.3 |
+
+Negative means it has reached the middle tier's own lit colour. The foot lands within 3
+points of the ground it meets, against a 73 point cliff before. 14 probe points away from any
+gate are byte-identical to the pre-change render, so nothing else moved.
+
+**One difference from the render Brad approved.** The scratch copy left canvas shadow state
+set when it drew the stairs between the terrace passes, so every stair fill and tread was
+casting a stray wide shadow at alpha .12. The build clears it. That makes the foot 6 points
+lighter and the ground just outside 2 points lighter than the approved render, and it happens
+to land on the "foot flush with the ground" option Brad was offered and never answered. He was
+told. If he wants the foot deeper again, it is a deliberate darkening, not a restored bug.
+
+**Rejected along the way, do not re-propose:**
+
+- **A, the wash.** A ground-coloured wedge painted over the shadow out through the opening,
+  62% at the mouth fading over 2.2 cells, softened with a canvas blur filter. Brad liked the
+  theatre of it. Rejected in favour of D. Three problems it had: it dilutes rather than
+  removes (73.3 → 42.8, never to zero), its strength is fixed so it cannot know how deep the
+  shadow under it is, and it paints one tier's colour so it needs clipping or it can smear the
+  wrong tone onto a neighbouring tier. It also needed `ctx.filter`, which older iOS Safari
+  ignores, and it would have rendered as a hard-edged wedge there.
+- **B**, the notch with the stair still sitting on top of the shadow, which needed a
+  `getImageData` per gate per frame to sample the ground and paint the shade back on.
+- **C**, the notch with the stair under the shadow but no relight. The stair got *darker* as
+  it climbed, 34.6 at the foot to 78.4 at the top, which is backwards: the top of the climb is
+  flush with the lit tier. Brad: "the top just doesn't read correctly."
+
+D needs no canvas readback and no blur filter, so both of A's and B's shipping risks are gone.
+
+Gate at build: rules 20/20, parity 40/40, bench 0 fallback boards and replay 10/10.
+Browser-verified at desktop and 375px, no console errors, no horizontal overflow at either.
 
 ## Shadow methodology — what finally worked, and why (2026-09-18)
 
