@@ -78,14 +78,28 @@ survive. No loss, the rejected parameters are recorded below.
 
 ### Next up, in Brad's order
 
-1. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
+1. **The throne** — decided 2026-09-22, specced in full below, NOT yet built. Five decisions
+   covering the Emperor's disc, the red tile, the centre tile's shadow, the lit edge and the
+   wall keyline corners. Numbers are final, so it can be built without redoing the analysis.
+   One question is still open, the shadow's draw order. See "The throne" below.
+2. **The win flourish** — decided 2026-09-22, specced in full below, NOT yet built. The
+   square board gets a win moment for the first time: a blood wipe out from the throne,
+   the word VICTORY! and then the modal. Every number is settled. See "The win flourish".
+3. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
    wrapping in the stats modal, and a set of widows including three that strand a lone
    emoji at 375px. Full list in the session below. Run `/site-check` with this one.
-2. **Rules box review** — Brad's next stage, and three findings are already waiting there.
+   **One of its findings is wrong and is corrected under the flourish section below.**
+4. **Rules box review** — Brad's next stage, and three findings are already waiting there.
 
-**The visual pass is finished.** Terrace shadows, gates, the lit edge and piece reflections
-are all built and committed. Nothing on the visual list is outstanding, and the "reflections
-on every piece" item that was parked on 2026-09-18 is now done and can be struck off.
+**Build order.** The throne first, then the flourish, one at a time, per the standing rule in
+`CLAUDE.md`. They touch different code but they overlap visually: the flourish's settled wash
+is judged against the throne as revised, so building the flourish first would mean judging it
+against a board that is about to change.
+
+**The 2026-09-18 to 09-22 visual pass is finished and committed.** Terrace shadows, gates,
+the lit edge and piece reflections are all built, and the "reflections on every piece" item
+parked on 2026-09-18 is done and can be struck off. The throne is a new item opened on
+2026-09-22, decided but not built, and it is the only visual work outstanding.
 
 ### Parked for the rules-section review
 
@@ -104,10 +118,26 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-22 (piece reflections BUILT as variant 1: a hard terminator on the board's own light bearing, cached as a sprite per piece size; the Ronin's katana redrawn on that same curve with its gold light starting at the blade's outer edge. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; five commits now stacked. The visual pass is finished. Prior: 2026-09-20 (gates BUILT as variant D: pure tier-to-tier foot, 1px gradient jambs, gate cells cut out of the tier silhouette so the shadow carries the gaps, stair drawn under its tier's shadow and lit back up as it climbs, gate grid line restored, two wall/jamb alignment faults fixed. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; three commits now stacked. Prior: 2026-09-18 (terrace shadows BUILT to the signed-off stacked-pass x2 spec, and the #boardFrame box-shadow dropped on Brad's call; drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed. Reflections parked on all pieces. Design audit run, findings recorded above and not yet fixed. Prior: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; committed locally as 4f0ee10 with index.html re-synced, not pushed. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
+*Last updated: 2026-09-22 (THE WIN FLOURISH DECIDED, NOT BUILT: the square board gets a win
+moment for the first time. Round pulse out from the throne to the half diagonal so the corners
+fill, `#6d0a12` on a MULTIPLY blend (plain alpha goes muddy, not bloody, the darker you push
+it), effective alpha .95, flat, throne spared. Wipe 1800ms, VICTORY! lands at 1296ms in the
+wordmark's own treatment (Shippori 800 at 0.30em, size fitted to the board), hold 1850ms,
+modal at 3650ms carrying "The Emperor's revenge is swift and merciless" with `.modal h2` moved
+to Shippori. Tap to skip with a 250ms dead zone so the winning tap cannot cancel it. Also
+corrected a wrong finding in the 09-18 design audit: the loss heading does NOT widow on
+desktop, the modal text box is capped at 424px and it fits. Prior, same day:
+THE THRONE DECIDED, NOT BUILT: gold disc to `cell*.35` with the
+core at `.168`, the red tile fills its cell (inset 0, radius 0), the centre tile takes the
+tier shadow stack at half length, no lit edge on it, and the wall keyline corners get a 2px
+patch. Four sizes and three shadow lengths were rendered off a scratchpad copy; nothing was
+built and no file in the repo changed but this one. Also found and measured a real defect
+Brad spotted: butt-capped keyline segments leave a 1px hole at nine of the twelve block
+corners, missing from the 09-18 audit. One question left open, the centre tile's shadow
+draw order. Prior: 2026-09-22 (piece reflections BUILT as variant 1: a hard terminator on the board's own light bearing, cached as a sprite per piece size; the Ronin's katana redrawn on that same curve with its gold light starting at the blade's outer edge. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; five commits now stacked. The visual pass is finished. Prior: 2026-09-20 (gates BUILT as variant D: pure tier-to-tier foot, 1px gradient jambs, gate cells cut out of the tier silhouette so the shadow carries the gaps, stair drawn under its tier's shadow and lit back up as it climbs, gate grid line restored, two wall/jamb alignment faults fixed. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; three commits now stacked. Prior: 2026-09-18 (terrace shadows BUILT to the signed-off stacked-pass x2 spec, and the #boardFrame box-shadow dropped on Brad's call; drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed. Reflections parked on all pieces. Design audit run, findings recorded above and not yet fixed. Prior: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; committed locally as 4f0ee10 with index.html re-synced, not pushed. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
 games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
 Prior: 2026-07-19
-DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.))*
+DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.)))*
 
 ## ⮕ Circular board redesign (v2) — DEPLOYED AS BETA (2026-07-13)
 
@@ -275,6 +305,224 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## The win flourish — DECIDED 2026-09-22, NOT yet built
+
+Until now the square board has had **no win moment at all**: `ascend()` calls `finalizeDay(true)`
+and the modal opens 250ms later. This ports round's flourish across and then takes it further.
+Source to port from is `round.html:935`. Built and tuned in a scratchpad copy with a replay
+bar; nothing in the repo changed. Every number below is settled.
+
+### The shape of it
+
+**A round pulse, not square.** The first port walked the square board's own rings
+(`RE.ringOf = max(|r-6|,|c-6|)`, concentric square annuli). Brad's call was to keep it round
+as the round board has it. So it is one continuous front travelling out from the throne, drawn
+as a radial gradient rather than stepped rings, and the radius runs to the **half diagonal**
+(`px * Math.SQRT1_2`) so the circle keeps growing past the board edges until the corners are
+covered. It reaches full coverage at `FX_SPREAD` = 0.38 of the run, unchanged from round.
+
+The flash that decayed ring by ring in round becomes a band riding just behind the front, the
+same width in time: `maxR * (0.16 / FX_SPREAD)`.
+
+### The colour: multiply, not alpha
+
+**This is the part that is not obvious.** Laying a darker red over the board with plain alpha
+does not read bloodier, it reads muddier: the board is cream, so the darker the hex the more
+the result lands in a desaturated brown middle. `globalCompositeOperation = 'multiply'`
+darkens *through* the board instead, so the tier tones, keylines and terrace shadows still
+read underneath and the red stays saturated.
+
+Settled values, "Blood deep": `#6d0a12`, multiply, rest `.90`, flash `.15`, no corona.
+With the strength dial at 1.9 the effective alpha caps at **0.95**. Pooling is **off**: the
+wash is flat, not graduated.
+
+### The throne is spared, and the reason is counter-intuitive
+
+The blood runs out **from** the Emperor's cell but none settles on it. Implemented by painting
+that one cell back from the pre-flourish snapshot, which keeps it exact.
+
+Brad asked for this and an early measurement said it was wrong. Measured properly it depends
+entirely on how dark the wash is, and it **flips**. Throne red tile against the inner tier
+beside it:
+
+| wash strength | throne covered | throne spared |
+|---|---|---|
+| 1.0 | 1.76:1 | 1.48:1 |
+| 1.9 (as set) | 1.63:1 | **1.75:1** |
+
+Unwashed, for reference, the throne reads 2.7:1. So at light settings sparing it makes the
+throne blend, because an unwashed mid red sits in a lightly darkened red surround and the two
+converge. Once the surround is dark enough, the unwashed throne is the only bright thing left
+and sparing wins. **Spared is correct at this strength and only at this strength.** If the
+wash is ever lightened, re-measure before keeping it.
+
+### Timing, all of it
+
+| moment | ms | note |
+|---|---|---|
+| wipe duration | 1800 | `FX_DUR`, up from round's 1150 |
+| front reaches the corners | 684 | 0.38 of the run |
+| VICTORY! begins to fade in | 1296 | 0.72 of the run, over 0.22 of it |
+| hold on the finished frame | 1850 | Brad's number, dialled by eye |
+| modal opens | **3650** | against 250ms today, and round's 1550ms |
+
+### The word
+
+**VICTORY!** in caps, `Shippori Mincho B1` at 800, tracked at **0.30em**. That is exactly the
+RONIN wordmark's treatment (`.brand h1` is 9px on 30px). A sentence could not carry that
+spacing, which is why the earlier sentence caption never looked related to the masthead and
+eight letters do.
+
+**The size fits itself to the board** rather than being fixed: the size is solved so the word
+fills 72% of the board width including its tracking. That lands at **47px on desktop and 29px
+at 375px**, against the wordmark's 30px, so on a phone it comes in at almost exactly masthead
+size. Sits at 62% of the board height, below the throne. Ink `#f6eeda`, shadow
+`rgba(28,4,6,.9)` at `size * 0.55`, drawn twice to deepen it.
+
+The exclamation is **kept**. At 0.30em it floats away from the Y, which is what uniform
+tracking does to terminal punctuation. Brad ruled to keep it rather than tighten to 0.16em,
+which would have cost the wordmark match.
+
+### Where the line lives
+
+**"The Emperor's revenge is swift and merciless" is the modal heading**, replacing
+"The Emperor is free". It was tried on the canvas first and taken off, so it is said once, in
+one place. **`.modal h2` moves to Shippori** so the canvas word and the modal heading speak in
+one voice: `font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif`.
+
+### Tap to skip
+
+A tap anywhere **snaps the flourish to its finished frame** and opens the modal immediately,
+rather than freezing a half-drawn wipe. Without it a player waits 3.65 seconds with nothing to
+do, every win.
+
+**It needs a dead zone at the start.** The very tap that wins the game will otherwise bleed
+straight through and cancel the flourish it just triggered. 250ms, measured working: a tap at
+120ms is ignored, a tap at 680ms skips and the far corner jumps from 207 luminance to 35.6,
+which is the settled frame rather than wherever the front had got to. **At build time decide
+which chrome must not swallow the skip** — HOLD and HINT in particular.
+
+### Rejected, do not re-propose
+
+- **Round's own values on this board.** `#bc002d` at .26 flat reads as pale pink over cream.
+- **Darker reds with plain alpha.** `#7d0d18` at .42 and `#6a0a12` at .58 both go muddy
+  rather than bloody. This is why multiply is not optional.
+- **Pooling, the graduated wash.** Built and dialled to 0, Brad wants it flat.
+- **Square ring pulse.** Faithful to this board's geometry but not what Brad wanted.
+- **The sentence on the canvas.** Two lines of Shippori below centre. Replaced by the word,
+  and it also said the same thing as the modal 400ms apart.
+- **Dropping the exclamation, and tightening the tracking to 0.16em.** Both looked at and ruled
+  out on 2026-09-22.
+
+### A correction to the 2026-09-18 design audit
+
+That audit records **"You have been overwhelmed" widowing at every width, desktop included.**
+The desktop half of that is **wrong**. `.modal` is `max-width:460px` with 18px padding each
+side, so the heading's text box is capped at **424px on any desktop, however wide the window**.
+At 24px the string measures 352px in Iowan Old Style and 364px in Shippori, so it fits on one
+line and does not widow. Measured on the real modal, not a probe, in both faces.
+
+It **does** widow at 320, 375 and 414px, in both faces, and the font change does not fix it.
+That part of the audit stands and is still to be fixed.
+
+One thing the font change does fix for free: at 320px the new win heading widows as
+`merciless` alone in Iowan, but breaks as `and merciless` in Shippori.
+
+### Observation, not a defect
+
+Once the modal opens it dims the board, so VICTORY! sits behind the overlay scrim. It gets
+2.35 seconds clear first. If that ever reads as a waste, the word could fade as the modal
+rises rather than being dimmed by it.
+
+## The throne — DECIDED 2026-09-22, NOT yet built
+
+Brad's question was what the Emperor looks like if he fills the centre square. Four sizes
+were rendered off a scratchpad copy of the real board, then a second round on the red tile,
+then the shadow, then the corners. Nothing was built. Every number below was measured at
+cell 40, the desktop size, and eyeballed again at the phone board size. Note for anyone
+repeating this: the browser emulator reports `innerWidth` a little wide, so a 375px check
+renders at cell 26 rather than the 25 a real phone gets. Close enough to judge a look, not
+close enough to quote. The five decisions are final.
+
+### The five decisions
+
+1. **Gold disc grows to `cell * .35`**, from `.27` today. The red core dot goes to
+   `cell * .168`, from `.13`, which holds the core at 48% of the disc exactly as it is now.
+   For scale: today's gold sun is 21.6px in a 40px cell and a guard stone is 33.6px, so the
+   Emperor is currently the smallest thing on the board. At `.35` he is 28px.
+2. **The red throne tile fills its cell.** Inset goes from `max(2, cell * .07)` to 0 and the
+   corner radius from 3 to 0. This removes the pale halo between the red and the dark wall
+   keyline, which was the tier colour showing through the inset plus the tile's own drop
+   shadow falling inside its own cell. The inset is 2px on a 25px cell against 2.8px on a
+   40px cell, so the halo is proportionally wider on a phone and the fill does more there.
+3. **The centre tile gets the tier shadow stack at half length.** The same five
+   `TERRACE_SHADOW` passes and the same alphas, with every offset and blur multiplied by
+   0.5. This replaces the single pass at offset `.07/.09`, blur `.18`, alpha `.4`. The
+   centre tile is the highest block on the board but casts the weakest shadow, one pass at
+   2.8 by 3.6px with 7px of blur where a tier gets five passes running out to 48 by 62px
+   with 100px of blur. That mismatch is why it read as a sticker on the inner tier.
+4. **No lit edge on the centre tile.** Tried and rejected on the day. The tiers' catch,
+   `rgba(255,252,242,.5)` at `cell * .035`, reads as a subtle catch on the cream tiers but
+   as a pink stripe on the red, because the same colour has far more contrast against red.
+   If it is ever revisited it needs a lower alpha for the red, not the tier value.
+5. **Wall keyline corners get a 2px patch.** See the fault below. `lineCap: 'square'` was
+   the other candidate and was rejected.
+
+### Rejected, do not re-propose
+
+- **The gold filling the tile, `.43` or a rounded gold square.** Both work as drawings but
+  the red throne stops reading as red: at `.43` it survives only as four corner slivers, and
+  as a square not at all. The Emperor becomes gold with a red dot, which changes what he is
+  rather than how big he is.
+- **The full unscaled tier stack on the centre tile.** It throws a shadow longer than the
+  block is wide, so a one-cell tile smudges about two cells of the keep.
+- **The first two passes of the stack only.** Crisp, but it loses the long falloff that is
+  what makes the tiers read tall in the first place.
+- **`lineCap: 'square'` for the wall keylines.** It closes all twelve corners correctly with
+  a one-word change, but a square cap extends every segment 1px at both ends, including
+  where a segment stops at a gate. Measured: the gate gap goes from 39px to 38px and a nub
+  pokes into the doorway. Not worth nibbling at gate work that was only settled on 09-20.
+
+### The wall keyline corners are wrong, and have been all along
+
+Brad spotted this and it is real. It is not in the 2026-09-18 design audit.
+
+The wall keylines are drawn as separate one-cell segments with `lineCap = 'butt'`
+(`ronin_daily_v1.html:907`). A 2px line centred on the boundary covers 1px either side, but
+a butt cap stops dead at the segment's end, so where a vertical segment meets a horizontal
+one the 1px square on the outside of the turn is covered by neither. The outer wall is not
+affected because it is a single `strokeRect`, a closed path that mitres its own corners.
+
+Measured at all twelve corners of the three blocks. Wall colour is `#42382f`.
+
+| corner | middle tier | inner tier | centre tile | reads as |
+|---|---|---|---|---|
+| top-left | `#dbcfae` | `#e9e0c4` | `#f7f1de` | clean hole, exactly the surface underneath |
+| top-right | `#c1b598` | `#cdc3ab` | `#dbd4c3` | no wall, just darkened by shadow |
+| bottom-left | `#b5aa8f` | `#c2b99f` | `#d0cab8` | no wall, just darkened by shadow |
+| bottom-right | `#433b2e` | `#473e33` | `#655e53` | looks right, by accident |
+
+Nine of twelve are visibly wrong. The three that pass do so only because the block's own
+drop shadow lands exactly on the gap and fills it with something near wall colour.
+
+**The fix: fill a 2px square at each block corner after the keylines are drawn.** Verified to
+bring all twelve to exactly `#42382f`, with the gate gap measuring 39px before and after.
+
+**A patch square can never be orphaned in a gate.** This is from the generator, not a sample.
+Outer gates are placed at offsets 3 to 9 along rows and columns 2 and 10, inner gates at
+offsets 5 to 7 along rows and columns 4 and 8 (`tests/engine.mjs:263`). None of those can
+occupy or touch any of the twelve corner intersections, on any board the generator can ever
+produce.
+
+### Open question, for whoever builds this
+
+The tiers cast their shadows before the grid is drawn, so the grid lines sit on top of them.
+The centre tile is drawn after the grid (grid at `ronin_daily_v1.html:886`, tile at `:895`),
+so its shadow lands on top of the grid lines instead. At today's 7px blur nobody would
+notice. At the half-length stack it starts to show. Squaring it up means moving the tile's
+fill earlier in the draw, which changes what paints over what. Not ruled on. Put it to Brad
+with both rendered rather than deciding it in the build.
 
 ## Piece reflections — BUILT (2026-09-22)
 
