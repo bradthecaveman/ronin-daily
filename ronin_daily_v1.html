@@ -892,14 +892,23 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     // the jambs are wall, so they sit above the grid, like the wall keylines below
     for (const k of stairs) drawStair(k, 'jambs');
 
-    // emperor tile — inset red tile, fully inside its cell
+    // emperor tile — the red throne fills its whole cell, edge to edge. Inset it and a pale
+    // halo of tier colour shows between the red and the wall keyline, which reads as a stamp
+    // sitting in a slot rather than a block. The halo is proportionally wider on a phone,
+    // so the fill does more at 375px than it does here.
+    // Its shadow is the tier stack at half length: same five passes and same alphas as
+    // TERRACE_SHADOW, offsets and blurs halved. The centre tile is the highest block on the
+    // board and used to cast the weakest shadow of anything on it.
     {
-      const x = 6 * cell + inset, y = 6 * cell + inset, w = cell - 2 * inset;
+      const x = 6 * cell, y = 6 * cell;
       ctx.save();
-      ctx.shadowColor = 'rgba(46,38,30,.4)'; ctx.shadowBlur = cell * .18;
-      ctx.shadowOffsetX = cell * .07; ctx.shadowOffsetY = cell * .09;
       ctx.fillStyle = COL.emperorTile;
-      ctx.beginPath(); ctx.roundRect(x, y, w, w, 3); ctx.fill();
+      for (const [ox, oy, blur, a] of TERRACE_SHADOW) {
+        ctx.shadowColor = 'rgba(40,32,24,' + a + ')';
+        ctx.shadowBlur = cell * blur * .5;
+        ctx.shadowOffsetX = cell * ox * .5; ctx.shadowOffsetY = cell * oy * .5;
+        ctx.fillRect(x, y, cell, cell);
+      }
       ctx.restore();
     }
 
@@ -922,6 +931,19 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
         }
       }
     }
+    // Square off the corners. Each keyline above is its own one-cell segment with a butt
+    // cap, so where a vertical meets a horizontal the 1px square on the OUTSIDE of the turn
+    // is covered by neither and the corner reads bitten. It shows worst at the top-left of
+    // each block, where nothing else fills it; the bottom-right only looks right because the
+    // block's own drop shadow happens to land there. The outer wall is fine, it is one
+    // strokeRect and mitres itself.
+    // Safe to paint blind: gates are generated at offsets 3 to 9 along rows and columns 2
+    // and 10, and 5 to 7 along 4 and 8, so no gate can ever occupy or touch these twelve
+    // intersections. See tests/engine.mjs genCandidate.
+    ctx.fillStyle = COL.wall;
+    for (const [a, b] of [[2, 11], [4, 9], [6, 7]])
+      for (const gx of [a, b]) for (const gy of [a, b])
+        ctx.fillRect(gx * cell - 1, gy * cell - 1, 2, 2);
 
     if (!G.layout) return;
 
@@ -968,27 +990,34 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       }
     }
 
-    // emperor — red disc filling the inset tile, small pale sun crest
+    // emperor — gold sun on the red throne, small red core
+    // The sun is cell*.35 across the radius. At the old .27 it was 21.6px in a 40px cell
+    // against a guard stone's 33.6px, which made the Emperor the smallest thing on the
+    // board. The core stays at 48% of the disc, as it always was.
     const ex0 = cx(6), ey0 = cy(6);
+    const empR = cell * .35;
     {
       // gold sun disc with red core — the throne should be impossible to miss
       ctx.save();
       ctx.shadowColor = 'rgba(46,38,30,.38)'; ctx.shadowBlur = cell * .12;
       ctx.shadowOffsetX = cell * .05; ctx.shadowOffsetY = cell * .07;
-      const eg = ctx.createRadialGradient(ex0, ey0, 0, ex0, ey0, cell * .27);
+      const eg = ctx.createRadialGradient(ex0, ey0, 0, ex0, ey0, empR);
       eg.addColorStop(0, '#c3922f');
       eg.addColorStop(.6, '#cd9c39');
       eg.addColorStop(.88, '#f2cd6f');
       eg.addColorStop(1, '#d3a344');
       ctx.fillStyle = eg;
-      ctx.beginPath(); ctx.arc(ex0, ey0, cell * .27, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex0, ey0, empR, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       ctx.fillStyle = COL.emperorTile;
-      ctx.beginPath(); ctx.arc(ex0, ey0, cell * .13, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex0, ey0, cell * .168, 0, Math.PI * 2); ctx.fill();
     }
     if (canAscend() && !G.sel && !G.busy && G.phase === 'play') {
+      // the ready-to-rescue pulse has to clear the bigger sun: it used to breathe .30 to
+      // .35 of a cell, which the disc now occupies, so it moves out to .38 to .43. The
+      // cell edge is at .50, so it still has room and does not bleed into its neighbours.
       ctx.strokeStyle = COL.emperor; ctx.lineWidth = 2.5; ctx.globalAlpha = .55 + .4 * Math.sin(now / 260);
-      ctx.beginPath(); ctx.arc(ex0, ey0, cell * (.30 + .05 * Math.sin(now / 260)), 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ex0, ey0, cell * (.38 + .05 * Math.sin(now / 260)), 0, Math.PI * 2); ctx.stroke();
       ctx.globalAlpha = 1;
     }
 

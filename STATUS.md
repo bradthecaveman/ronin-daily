@@ -48,8 +48,10 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Five commits are waiting. The next push puts all five live, and that is the whole
-visual pass landing on roninpuzzles.com at once.
+Seven commits are waiting. **The next push puts all seven live at once**, which is the whole
+visual pass from 09-15 to 09-22 landing on roninpuzzles.com in one go, not just the most
+recent piece of work. That is a bigger call than any single item on the list and it is Brad's.
+It is why the live board still looks flat: none of this has ever been deployed.
 
 - **Straight-move zigzag fixed** (`4f0ee10`, 2026-09-15). Display only, boards proven
   byte-identical to the previous engine.
@@ -63,8 +65,11 @@ visual pass landing on roninpuzzles.com at once.
   recorded spec was found and fixed. See "The lit edge" below.
 - **Piece reflections, guards and Ronin** (2026-09-22). Brad's "variant 1". The Ronin's
   katana is redrawn on the reflection's own curve. See "Piece reflections" below.
+- **The throne and the flourish written up** (`014dfe6`, 2026-09-22). Docs only, no code.
+- **The throne** (2026-09-22). All five decisions built, plus the pulse ring moved out to
+  clear the bigger sun. Drawing only. See "The throne" below.
 
-`index.html` was re-synced in all five, so the source and the deployed copy are identical.
+`index.html` was re-synced in all seven, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -78,28 +83,22 @@ survive. No loss, the rejected parameters are recorded below.
 
 ### Next up, in Brad's order
 
-1. **The throne** — decided 2026-09-22, specced in full below, NOT yet built. Five decisions
-   covering the Emperor's disc, the red tile, the centre tile's shadow, the lit edge and the
-   wall keyline corners. Numbers are final, so it can be built without redoing the analysis.
-   One question is still open, the shadow's draw order. See "The throne" below.
-2. **The win flourish** — decided 2026-09-22, specced in full below, NOT yet built. The
+1. **The win flourish** — decided 2026-09-22, specced in full below, NOT yet built. The
    square board gets a win moment for the first time: a blood wipe out from the throne,
    the word VICTORY! and then the modal. Every number is settled. See "The win flourish".
-3. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
+2. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
    wrapping in the stats modal, and a set of widows including three that strand a lone
    emoji at 375px. Full list in the session below. Run `/site-check` with this one.
    **One of its findings is wrong and is corrected under the flourish section below.**
-4. **Rules box review** — Brad's next stage, and three findings are already waiting there.
+3. **Rules box review** — Brad's next stage, and three findings are already waiting there.
 
-**Build order.** The throne first, then the flourish, one at a time, per the standing rule in
-`CLAUDE.md`. They touch different code but they overlap visually: the flourish's settled wash
-is judged against the throne as revised, so building the flourish first would mean judging it
-against a board that is about to change.
+**The throne is built and the flourish is not.** That was the deliberate order: they touch
+different code but overlap visually, and the flourish's settled wash has to be judged against
+the throne as revised rather than against a board that was about to change.
 
-**The 2026-09-18 to 09-22 visual pass is finished and committed.** Terrace shadows, gates,
-the lit edge and piece reflections are all built, and the "reflections on every piece" item
-parked on 2026-09-18 is done and can be struck off. The throne is a new item opened on
-2026-09-22, decided but not built, and it is the only visual work outstanding.
+**The visual pass is otherwise finished.** Terrace shadows, gates, the lit edge, piece
+reflections and now the throne are all built and committed. Nothing else on the visual list is
+outstanding except the flourish.
 
 ### Parked for the rules-section review
 
@@ -118,7 +117,13 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-22 (THE WIN FLOURISH DECIDED, NOT BUILT: the square board gets a win
+*Last updated: 2026-09-22 (THE THRONE BUILT: all five decisions plus the pulse ring moved to
+.38-.43 to clear the bigger sun, which the spec had not anticipated. Gate green, engine block
+proven byte-identical to HEAD, browser-verified desktop and 375px, index.html re-synced,
+committed locally and NOT pushed; seven commits now stacked and the next push puts the whole
+visual pass live at once. The draw-order question is CLOSED as not mattering: measured 19.0
+against 19.8 luminance on a grid line under the shadow, indistinguishable, so it stays where
+it was. Prior, same day: THE WIN FLOURISH DECIDED, NOT BUILT: the square board gets a win
 moment for the first time. Round pulse out from the throne to the half diagonal so the corners
 fill, `#6d0a12` on a MULTIPLY blend (plain alpha goes muddy, not bloody, the darker you push
 it), effective alpha .95, flat, throne spared. Wipe 1800ms, VICTORY! lands at 1296ms in the
@@ -435,7 +440,23 @@ Once the modal opens it dims the board, so VICTORY! sits behind the overlay scri
 2.35 seconds clear first. If that ever reads as a waste, the word could fade as the modal
 rises rather than being dimmed by it.
 
-## The throne — DECIDED 2026-09-22, NOT yet built
+## The throne — BUILT (2026-09-22)
+
+Gate at build: **rules 20/20, parity 40/40, bench exit 0 with zero fallback boards in both
+modes and replay 10/10 in both.** That exit code is worth trusting rather than skimming:
+`bench.mjs` sets `failed` on any below-band board and ends `process.exit(failed ? 1 : 0)`,
+so a 0 is a real pass, not an absence of complaint.
+
+Drawing only, and proven so rather than assumed: the `<script id="engine">` block was compared
+byte for byte against HEAD and is identical, so no board, par or result can have moved.
+
+Browser-verified at desktop and 375px. All twelve block corners read exactly `#42382f` where
+nine of them were showing bare surface colour before. The throne reads `#a63b31` into its cell
+corner. No console errors, no horizontal scroll. **Also checked, because the corner patch
+would have hidden it:** the throne's wall keyline is at full strength on all four edge
+midpoints. It looks weaker than before only because the red now meets it directly instead of
+through a pale gap, so it reads as the block's own edge rather than a frame around it.
+
 
 Brad's question was what the Emperor looks like if he fills the centre square. Four sizes
 were rendered off a scratchpad copy of the real board, then a second round on the red tile,
@@ -515,14 +536,32 @@ offsets 5 to 7 along rows and columns 4 and 8 (`tests/engine.mjs:263`). None of 
 occupy or touch any of the twelve corner intersections, on any board the generator can ever
 produce.
 
-### Open question, for whoever builds this
+### The draw-order question, CLOSED 2026-09-22: it does not matter
 
-The tiers cast their shadows before the grid is drawn, so the grid lines sit on top of them.
-The centre tile is drawn after the grid (grid at `ronin_daily_v1.html:886`, tile at `:895`),
-so its shadow lands on top of the grid lines instead. At today's 7px blur nobody would
-notice. At the half-length stack it starts to show. Squaring it up means moving the tile's
-fill earlier in the draw, which changes what paints over what. Not ruled on. Put it to Brad
-with both rendered rather than deciding it in the build.
+The worry was that the tiers cast their shadows before the grid, so grid lines sit on top of
+them, while the centre tile is drawn after the grid and its shadow would therefore lie on top
+of the grid lines instead.
+
+**Built both and measured: the difference is nil.** Taking a horizontal grid line where the
+throne's shadow crosses it, the line reads as a luminance step of **19.0 as built and 19.8 if
+the tile is moved up with the terraces**, against 17.9 for the same line clear of the shadow
+altogether. At half length the shadow is soft and thin enough where it crosses a grid line
+that painting the grid over it or under it is indistinguishable.
+
+**Left as built**, drawn after the grid where it has always been. Smaller diff and no
+reordering of a draw sequence that the gates, the lit edge and the reflections all depend on.
+If the shadow is ever lengthened, this stops being free and should be re-measured.
+
+### One change the spec did not anticipate
+
+**The ready-to-rescue pulse had to move.** It breathed at `cell * (.30 + .05 * sin)`, which
+the sun now occupies at `.35`. It is now `.38 + .05 * sin`, so it runs .38 to .43 with the
+cell edge at .50, and it does not bleed into neighbouring cells.
+
+Worth knowing why the tight end is not a problem: **the radius and the opacity share the same
+sine**, so the ring is brightest exactly when it is widest and has faded to alpha .15 by the
+time it is at its tightest. The moment where the ring would sit on the sun's edge is the
+moment it is almost invisible. That was luck rather than design, but it holds.
 
 ## Piece reflections — BUILT (2026-09-22)
 
