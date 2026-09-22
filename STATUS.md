@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-## Where things stand — 2026-09-18
+## Where things stand — 2026-09-22
 
 Read this block first. Everything below it is history, kept in full.
 
@@ -16,11 +16,17 @@ Read this block first. Everything below it is history, kept in full.
   because it wasn't being played. Still deployed, still reachable by URL, and the link is
   commented out in `index.html` ready to restore. Brad has not given up on it.
 
-### The game itself has barely changed since 2026-07-24
+### No gameplay has changed since 2026-07-24, but the board looks different
 
 One gameplay change in that time: **modals now anchor to the top of the window instead of
 dead-centre** (`52cfe4c`, 2026-07-31, applied to `index.html`, `ronin_daily_v1.html` and
-`round.html`). Everything else in the repo since then was Fives, which no longer lives here.
+`round.html`).
+
+Everything committed since is **drawing only**: the terrace shadows, the gates, the lit edge
+and the piece reflections. The engine has not been touched, so no board, par or result can
+have changed, and the release gate was re-run on each one anyway. What has changed is how the
+castle reads: tiers with gateways cut through them rather than three stacked squares, light
+caught on their sunward edges, and pieces that catch that same light.
 
 ### Fives has moved out
 
@@ -42,7 +48,8 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Three commits are waiting. The next push puts all three live.
+Five commits are waiting. The next push puts all five live, and that is the whole
+visual pass landing on roninpuzzles.com at once.
 
 - **Straight-move zigzag fixed** (`4f0ee10`, 2026-09-15). Display only, boards proven
   byte-identical to the previous engine.
@@ -54,8 +61,10 @@ Three commits are waiting. The next push puts all three live.
   session below, under "Gates as cuts".
 - **The lit edge** (2026-09-20). Approved at the strength rendered, after a flaw in the
   recorded spec was found and fixed. See "The lit edge" below.
+- **Piece reflections, guards and Ronin** (2026-09-22). Brad's "variant 1". The Ronin's
+  katana is redrawn on the reflection's own curve. See "Piece reflections" below.
 
-`index.html` was re-synced in all four, so the source and the deployed copy are identical.
+`index.html` was re-synced in all five, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -74,15 +83,9 @@ survive. No loss, the rejected parameters are recorded below.
    emoji at 375px. Full list in the session below. Run `/site-check` with this one.
 2. **Rules box review** — Brad's next stage, and three findings are already waiting there.
 
-**In progress:** piece reflections, guards first. Brad rejected constant-brightness marks
-(crescent, chord, inset band) as "too hard and vector based". What he wants is a terminator:
-a hard edge where the light starts, brightest right at that line, falling away to nothing by
-the rim, "like light on a phone screen". That mechanism is built and rendering correctly in
-`_guard-gloss.html`; the open question is only the strength. The Ronin comes after, and is
-the one that failed last time, when its yellow line collided with the gold katana.
-
-**Parked:** reflections on every piece, guards and Ronin both. A hard line rendered well on
-the guards but the Ronin's yellow collided with the katana. To be its own piece of work.
+**The visual pass is finished.** Terrace shadows, gates, the lit edge and piece reflections
+are all built and committed. Nothing on the visual list is outstanding, and the "reflections
+on every piece" item that was parked on 2026-09-18 is now done and can be struck off.
 
 ### Parked for the rules-section review
 
@@ -101,7 +104,7 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-20 (gates BUILT as variant D: pure tier-to-tier foot, 1px gradient jambs, gate cells cut out of the tier silhouette so the shadow carries the gaps, stair drawn under its tier's shadow and lit back up as it climbs, gate grid line restored, two wall/jamb alignment faults fixed. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; three commits now stacked. Prior: 2026-09-18 (terrace shadows BUILT to the signed-off stacked-pass x2 spec, and the #boardFrame box-shadow dropped on Brad's call; drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed. Reflections parked on all pieces. Design audit run, findings recorded above and not yet fixed. Prior: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; committed locally as 4f0ee10 with index.html re-synced, not pushed. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
+*Last updated: 2026-09-22 (piece reflections BUILT as variant 1: a hard terminator on the board's own light bearing, cached as a sprite per piece size; the Ronin's katana redrawn on that same curve with its gold light starting at the blade's outer edge. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; five commits now stacked. The visual pass is finished. Prior: 2026-09-20 (gates BUILT as variant D: pure tier-to-tier foot, 1px gradient jambs, gate cells cut out of the tier silhouette so the shadow carries the gaps, stair drawn under its tier's shadow and lit back up as it climbs, gate grid line restored, two wall/jamb alignment faults fixed. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; three commits now stacked. Prior: 2026-09-18 (terrace shadows BUILT to the signed-off stacked-pass x2 spec, and the #boardFrame box-shadow dropped on Brad's call; drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed. Reflections parked on all pieces. Design audit run, findings recorded above and not yet fixed. Prior: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; committed locally as 4f0ee10 with index.html re-synced, not pushed. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
 games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
 Prior: 2026-07-19
 DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.))*
@@ -272,6 +275,86 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## Piece reflections — BUILT (2026-09-22)
+
+Brad's "variant 1", chosen over a version with no katana at all. Drawing only.
+
+### What a reflection is here
+
+A **terminator**: a hard edge where the light starts, brightest right at that line, falling
+away to nothing by the rim. Brad's words: "like light on a phone screen". The edge is an arc
+that follows the counter's own curve, but only slightly, so it reads as a curved line rather
+than a crescent wrapping the rim. Everything sits on the board's own light bearing,
+`Math.atan2(-.81, -.58)`, which is the direction of the piece drop shadow's `(.05, .07)`
+offset. Guards and Ronin use the same geometry and the same strength, so one sun lights both.
+
+Shared parameters, in `REFLECT`:
+
+| | value | what it controls |
+|---|---|---|
+| `peak` | .14 | alpha right at the hard edge |
+| `edge` | .35 | where the edge crosses the light axis, as a fraction of the radius |
+| `bow` | 6.5 | how far the line's middle sits off a straight line between its own ends, in px at the desktop piece radius of 16.8, held as a fraction of the radius so the shape is the same at every board size |
+| `depth` | .65 | how far the light carries out from the edge; .65 reaches the rim |
+
+Guards take tint `236,228,207` and no radial shift. The Ronin takes gold `230,186,72` and a
+shift of `r * KATANA_W`, so its light starts exactly at the outer edge of the blade. Both
+arcs share a centre, so the gap between blade and light stays even along the whole length
+rather than pinching at the ends.
+
+**The katana was redrawn**, not removed. It now lies along the reflection's own terminator,
+tapering to a point at each end, half-width `r * .11`. Blade and light share one curve
+instead of pulling against each other.
+
+Measured on a guard: body `51` untouched below the cut, `76` at the peak one pixel past the
+edge, against `77` predicted for alpha .14, easing to 68-70 by the rim. Identical at 375px,
+where the piece radius drops from 16.8 to 10.5.
+
+### How it is drawn, and why not the obvious way
+
+The reflection is built **once per piece size into a cached sprite** and stamped with one
+`drawImage` per piece. The sprite is: an annular band filled with a radial gradient (so
+nothing inside the hard edge is painted at all), then both ends tapered away with two
+`destination-out` linear gradients, then masked to the piece with `destination-in`.
+
+The first implementation drew the angular taper as a fan of constant-alpha wedges. **Do not
+go back to that.** Two faults, both found by measuring rather than looking:
+
+1. **Alpha quantisation.** 48 wedges is invisible on a thin band and obvious as radial
+   stripes once the lit area is large.
+2. **Overlap stacking.** The wedges overlapped by a fixed angle to avoid hairline gaps, so
+   at 120 wedges each overlapped its neighbour by about a third of its width and the alpha
+   compounded. The reflection measured .19 when it was set to .14. Raising the wedge count
+   made the banding vanish while making the brightness error worse, which is the trap.
+
+### Rejected, do not re-propose
+
+- **Constant-brightness marks**: a crescent riding the rim, a straight chord across the lit
+  half, a crisp band set in from the rim. Brad: "a little too hard and vector based".
+- **The straight chord** also collides with the Ronin's katana: guards would wear the mark
+  that means "this is the Ronin".
+- **A filled crescent.** Light carrying from a 66% edge all the way to the rim turns the
+  stone into a two-tone disc. Strengths .22, .32, .50 and .70 were all seen and rejected.
+- **A tight wrap concentric with the rim.** Brad wanted "a slight curve, not a wrap".
+- **For the Ronin: dropping the katana entirely** with gold at .50. Seen at full board size
+  and rejected. On record as the reason: the katana is the Ronin's only shape cue, and
+  without it the Ronin is separated from a guard by a 1.95:1 luminance ratio and hue alone,
+  on 21px pieces at 375px.
+- **Shifting the blade inside the terminator** (.18, .26, .34 of the radius) to let the light
+  show beyond it. Rejected because shifting it inward also slides it off the piece's centre,
+  since both are measured along the same axis. The accepted fix was to leave the blade on the
+  terminator and push the light's start outward instead.
+
+### One measurement trap worth keeping
+
+The bow was twice reported wrong before it was right. Measuring it across the piece's own
+chord under-reports it, because the line's endpoints are further out than that chord. The
+correct value is `bow = r(1 - edge²) / (2 · curl)`, where `curl` is how far back the arc's
+centre sits in piece radii. Confirmed against the pixels at three points across the line.
+
+Gate at build: rules 20/20, parity 40/40, bench 0 fallback boards and replay 10/10 both
+modes. Browser-verified at desktop and 375px, no console errors, no horizontal overflow.
 
 ## The lit edge — BUILT (2026-09-20)
 

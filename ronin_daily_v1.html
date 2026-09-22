@@ -645,6 +645,89 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     [ .84, 1.10, 1.60,  .18],
     [1.20, 1.56, 2.50,  .12]
   ];
+
+  // ---------- piece reflections ----------
+  // The board's sun is up-left: a piece's shadow is offset (.05, .07) of a cell, so the
+  // light runs along this bearing from the piece centre.
+  const LIGHT_A = Math.atan2(-.81, -.58);
+  // A hard terminator where the light starts, brightest right at that line, falling away
+  // to nothing by the rim, on an arc that follows the counter's own curve. Built once per
+  // piece size and stamped, so it costs one drawImage per piece instead of a fan of fills
+  // every frame. BOW is how far the middle of the line sits off a straight line between
+  // its two ends, in px at the desktop piece radius of 16.8, held as a fraction of the
+  // radius so the shape is identical at every board size.
+  const REFLECT = { peak: .14, edge: .35, bow: 6.5, depth: .65 };
+  let glossCache = {};
+  function glossSprite(r, tint, peak, edge, bowPx, depth, rcShift) {
+    const key = [r, tint, peak, edge, bowPx, depth, rcShift].join('|');
+    if (glossCache[key]) return glossCache[key];
+    if (Object.keys(glossCache).length > 8) glossCache = {};   // board resized, start over
+    const dpr = window.devicePixelRatio || 1;
+    const S = Math.ceil(2 * r), cvs = document.createElement('canvas');
+    cvs.width = Math.ceil(S * dpr); cvs.height = Math.ceil(S * dpr);
+    const q = cvs.getContext('2d');
+    q.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const lx = Math.cos(LIGHT_A), ly = Math.sin(LIGHT_A);
+    const pxv = -ly, pyv = lx;                       // across the line
+    const c0 = S / 2;
+    // the arc's centre, set back along the light axis. Further back flattens the curve;
+    // the hard edge stays on the same point of that axis either way.
+    const curl = (1 - edge * edge) / (2 * (bowPx / 16.8));
+    const m = r * curl, ox = c0 - lx * m, oy = c0 - ly * m;
+    // rcShift pushes the hard edge outward without moving the arc's centre, so the curve
+    // is unchanged and only where the light starts moves
+    const Rc = m + r * edge + rcShift, R1 = Rc + r * depth;
+    // 1. the band, as an annulus, so nothing inside the hard edge is painted at all
+    const band = q.createRadialGradient(ox, oy, Rc, ox, oy, R1);
+    band.addColorStop(0, 'rgba(' + tint + ',' + peak + ')');
+    band.addColorStop(1, 'rgba(' + tint + ',0)');
+    q.fillStyle = band;
+    q.beginPath();
+    q.arc(ox, oy, R1, 0, Math.PI * 2);
+    q.arc(ox, oy, Rc, 0, Math.PI * 2, true);
+    q.fill('evenodd');
+    // 2. taper both ends away so the line does not stop dead at the rim
+    q.globalCompositeOperation = 'destination-out';
+    for (const sgn of [1, -1]) {
+      const g2 = q.createLinearGradient(
+        c0 + pxv * sgn * r * 1.02, c0 + pyv * sgn * r * 1.02,
+        c0 + pxv * sgn * r * .42, c0 + pyv * sgn * r * .42);
+      g2.addColorStop(0, 'rgba(0,0,0,1)');
+      g2.addColorStop(1, 'rgba(0,0,0,0)');
+      q.fillStyle = g2;
+      q.fillRect(0, 0, S, S);
+    }
+    // 3. keep only what falls on the piece
+    q.globalCompositeOperation = 'destination-in';
+    q.fillStyle = '#000';
+    q.beginPath(); q.arc(c0, c0, r, 0, Math.PI * 2); q.fill();
+    glossCache[key] = { cvs, S };
+    return glossCache[key];
+  }
+  const stampGloss = (ctx2, x, y, sp) => ctx2.drawImage(sp.cvs, x - sp.S / 2, y - sp.S / 2, sp.S, sp.S);
+  // the katana, laid along the reflection's own terminator so the blade and the line of
+  // light share one curve. Tapers to a point at each end.
+  const KATANA_W = .11;
+  function katanaPath(ctx2, x, y, r) {
+    const lx = Math.cos(LIGHT_A), ly = Math.sin(LIGHT_A);
+    const curl = (1 - REFLECT.edge * REFLECT.edge) / (2 * (REFLECT.bow / 16.8));
+    const m = r * curl, ox = x - lx * m, oy = y - ly * m;
+    const Rb = m + r * REFLECT.edge;
+    const uEnd = REFLECT.edge * r - r * r * (1 - REFLECT.edge * REFLECT.edge) / (2 * m);
+    const vEnd = Math.sqrt(Math.max(0, r * r - uEnd * uEnd));
+    const aSpan = Math.asin(Math.min(1, vEnd / Rb)) * .94;
+    const W = r * KATANA_W, N = 40, outer = [], inner = [];
+    for (let i = 0; i <= N; i++) {
+      const f = i / N, a = LIGHT_A - aSpan + 2 * aSpan * f, w = W * Math.sin(Math.PI * f);
+      outer.push([ox + Math.cos(a) * (Rb + w), oy + Math.sin(a) * (Rb + w)]);
+      inner.push([ox + Math.cos(a) * (Rb - w), oy + Math.sin(a) * (Rb - w)]);
+    }
+    ctx2.beginPath();
+    ctx2.moveTo(outer[0][0], outer[0][1]);
+    for (let i = 1; i <= N; i++) ctx2.lineTo(outer[i][0], outer[i][1]);
+    for (let i = N; i >= 0; i--) ctx2.lineTo(inner[i][0], inner[i][1]);
+    ctx2.closePath();
+  }
   function draw(now) {
     const px = cell * 13;
     ctx.clearRect(0, 0, px, px);
@@ -926,6 +1009,10 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       ctx.beginPath(); ctx.arc(x, y, pieceR, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
+    {
+      const sp = glossSprite(pieceR, '236,228,207', REFLECT.peak, REFLECT.edge, REFLECT.bow, REFLECT.depth, 0);
+      for (const g of vis.army) stampGloss(ctx, cx(g.c), cy(g.r), sp);
+    }
     // ronin — red like the Emperor's line, marked by a curved katana slash
     {
       const x = cx(vis.ronin.c), y = cy(vis.ronin.r);
@@ -940,13 +1027,14 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       ctx.fillStyle = rg;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
-      // curved katana slash, tapered points — gold, echoing the Emperor
+      // the katana, on the reflection's terminator — gold, echoing the Emperor
       ctx.fillStyle = '#e6ba48';
-      ctx.beginPath();
-      ctx.moveTo(x - r * .62, y + r * .66);
-      ctx.quadraticCurveTo(x + r * .52, y + r * .42, x + r * .66, y - r * .62);
-      ctx.quadraticCurveTo(x + r * .24, y + r * .12, x - r * .62, y + r * .66);
-      ctx.closePath(); ctx.fill();
+      katanaPath(ctx, x, y, r);
+      ctx.fill();
+      // the Ronin's light is gold rather than white, and starts at the blade's outer
+      // edge, so the two arcs are concentric and the gap between them stays even
+      stampGloss(ctx, x, y, glossSprite(r, '230,186,72', REFLECT.peak, REFLECT.edge,
+        REFLECT.bow, REFLECT.depth, r * KATANA_W));
     }
 
     // capture flash — time-based decay so it fades correctly even if frames were skipped
