@@ -48,7 +48,7 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Seven commits are waiting. **The next push puts all seven live at once**, which is the whole
+Eight commits are waiting. **The next push puts all eight live at once**, which is the whole
 visual pass from 09-15 to 09-22 landing on roninpuzzles.com in one go, not just the most
 recent piece of work. That is a bigger call than any single item on the list and it is Brad's.
 It is why the live board still looks flat: none of this has ever been deployed.
@@ -66,10 +66,12 @@ It is why the live board still looks flat: none of this has ever been deployed.
 - **Piece reflections, guards and Ronin** (2026-09-22). Brad's "variant 1". The Ronin's
   katana is redrawn on the reflection's own curve. See "Piece reflections" below.
 - **The throne and the flourish written up** (`014dfe6`, 2026-09-22). Docs only, no code.
-- **The throne** (2026-09-22). All five decisions built, plus the pulse ring moved out to
-  clear the bigger sun. Drawing only. See "The throne" below.
+- **The throne** (`420dede`, 2026-09-22). All five decisions built, plus the pulse ring moved
+  out to clear the bigger sun. Drawing only. See "The throne" below.
+- **The win flourish** (2026-09-22). The square board's first win moment: blood wipe, VICTORY!,
+  the modal at 3650ms, tap to skip. Drawing and timing only. See "The win flourish" below.
 
-`index.html` was re-synced in all seven, so the source and the deployed copy are identical.
+`index.html` was re-synced in all eight, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -83,22 +85,16 @@ survive. No loss, the rejected parameters are recorded below.
 
 ### Next up, in Brad's order
 
-1. **The win flourish** — decided 2026-09-22, specced in full below, NOT yet built. The
-   square board gets a win moment for the first time: a blood wipe out from the throne,
-   the word VICTORY! and then the modal. Every number is settled. See "The win flourish".
-2. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
+1. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
    wrapping in the stats modal, and a set of widows including three that strand a lone
    emoji at 375px. Full list in the session below. Run `/site-check` with this one.
    **One of its findings is wrong and is corrected under the flourish section below.**
-3. **Rules box review** — Brad's next stage, and three findings are already waiting there.
+2. **Rules box review** — Brad's next stage, and three findings are already waiting there.
 
-**The throne is built and the flourish is not.** That was the deliberate order: they touch
-different code but overlap visually, and the flourish's settled wash has to be judged against
-the throne as revised rather than against a board that was about to change.
-
-**The visual pass is otherwise finished.** Terrace shadows, gates, the lit edge, piece
-reflections and now the throne are all built and committed. Nothing else on the visual list is
-outstanding except the flourish.
+**The visual pass is finished.** Terrace shadows, gates, the lit edge, piece reflections, the
+throne and the win flourish are all built. Nothing on the visual list is outstanding. The
+throne was built before the flourish on purpose, because the flourish's settled wash had to be
+judged against the throne as revised rather than a board that was about to change.
 
 ### Parked for the rules-section review
 
@@ -117,7 +113,13 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-22 (THE THRONE BUILT: all five decisions plus the pulse ring moved to
+*Last updated: 2026-09-22 (THE WIN FLOURISH BUILT, so the square board has a win moment for
+the first time: blood wipe out from the throne on a multiply blend, the throne spared, VICTORY!
+in the wordmark's treatment at 1296ms, the modal at 3650ms carrying the revenge line, and a tap
+anywhere to skip with a 250ms dead zone so the winning tap cannot cancel it. Measured win to
+modal at 3637ms against 3650 intended. New debug hooks playWinFlourish and clearFlourish,
+matching round's, because autoWin takes 18s to play a day out. Loss path and the finished-day
+reload both confirmed untouched. Prior, same day: THE THRONE BUILT: all five decisions plus the pulse ring moved to
 .38-.43 to clear the bigger sun, which the spec had not anticipated. Gate green, engine block
 proven byte-identical to HEAD, browser-verified desktop and 375px, index.html re-synced,
 committed locally and NOT pushed; seven commits now stacked and the next push puts the whole
@@ -311,7 +313,53 @@ Brad's side. The github.io URL 301-redirects to the domain, so links already sha
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
 
-## The win flourish — DECIDED 2026-09-22, NOT yet built
+## The win flourish — BUILT (2026-09-22)
+
+Built exactly to the spec below. Drawing and timing only: the `<script id="engine">` block is
+byte-identical to the previous commit, so no board, par or result has moved.
+
+Gate at build: **rules 20/20, parity 40/40, bench exit 0 with zero fallback boards in both
+modes and replay 10/10 in both.**
+
+**New debug hooks**, matching what the round board has always had:
+`RoninDebug.playWinFlourish()` runs the wipe on the board as it stands without having to win
+first, and `RoninDebug.clearFlourish()` puts the board back. Anyone testing this again should
+use those rather than `autoWin()`, which takes about 18 seconds to play a day out.
+
+### Verified, and these are the ones that could have gone wrong
+
+- **The modal lands where it should.** On a clean run the game finalised at 17698ms, the
+  3650ms timer registered at 17683 and fired at 21334, and the overlay opened at 21335.
+  **Gap from win to modal: 3637ms against the intended 3650.**
+- **The skip guard holds.** A tap 121ms after the win is ignored, which is the case that
+  matters: the tap that wins the game must not cancel the thing it just triggered. A tap at
+  902ms opened the modal 2ms later instead of at 3650ms.
+- **A skip lands on the finished frame, not a frozen half-wipe.** After skipping at 902ms the
+  board read washed at the corner and mid-board, with the word fully drawn.
+- **Reloading a finished day does not replay it.** The restore path calls `showEndModal`
+  directly rather than going through `finalizeDay`, so the board comes back clean with the
+  modal on top. Measured: corner 207.2, which is the unwashed board.
+- **The spared throne is exact, not approximate.** At 375px, five probe points across the
+  throne tile are pixel-identical with the wash up and with it down. It is blitted back from
+  the snapshot at 1:1, so there is no resampling.
+- **The corners really are covered.** `maxR` is the half diagonal, which only just reaches
+  them, so this was worth checking rather than assuming. Fifteen samples along the top-left
+  diagonal and the top edge all read washed at 700ms.
+- **The loss path is untouched.** `attemptFailed` handles attempts 1 and 2 with its own modal
+  and never reaches `finalizeDay`; the third goes through it and takes the `!won` branch,
+  which keeps the original 650ms and never starts a flourish.
+- Browser-verified at desktop and 375px. At 375px the board is 325px and the word measures
+  210px of ink across it.
+
+### One pre-existing wart this made visible
+
+On a win the status line under the board still reads whatever it said during play, usually
+"Beside the Emperor, tap him (or RESCUE) to finish". `finalizeDay` has never set a message on
+a win and still does not. It was easy to miss when the modal arrived after 250ms. Now that the
+board sits there for 3.65 seconds first, it is on screen the whole time. Not a regression and
+not fixed here, but worth a line when the rules-box work happens.
+
+## The win flourish — as specced, 2026-09-22
 
 Until now the square board has had **no win moment at all**: `ascend()` calls `finalizeDay(true)`
 and the modal opens 250ms later. This ports round's flourish across and then takes it further.

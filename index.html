@@ -114,7 +114,8 @@
     padding:18px 18px 16px; box-shadow:0 18px 50px rgba(0,0,0,.35);
     max-height:88vh; overflow-y:auto; position:relative;
   }
-  .modal h2{ margin:0 0 6px; font-family:"Iowan Old Style",Palatino,Georgia,serif; letter-spacing:1px; }
+  /* the wordmark's face, so the canvas VICTORY! and the heading under it speak as one */
+  .modal h2{ margin:0 0 6px; font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif; letter-spacing:1px; }
   .modal .x{
     position:absolute; top:10px; right:12px; border:none; background:none;
     font-size:20px; cursor:pointer; color:var(--ink-soft);
@@ -1076,7 +1077,108 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     }
   }
 
-  function loop(now) { stepTweens(now); draw(now); requestAnimationFrame(loop); }
+  // ---------- win flourish ----------
+  // Ported from round.html's, with one change: its pulse walked polar rings because its
+  // board is a ring graph, and this is a single continuous front. On Ascend a blood wipe
+  // runs out from the freed Emperor until it has covered the board, VICTORY! comes up in
+  // the wordmark's own treatment, it holds, and then the modal arrives.
+  //
+  // The wash is MULTIPLY, not plain alpha. Laying a dark red over this cream board with
+  // alpha lands in a desaturated middle: the darker the hex the muddier it gets, not the
+  // bloodier. Multiply darkens through the board, so the tier tones, the keylines and the
+  // terrace shadows all still read underneath it and the red stays saturated.
+  const FX = {
+    hi: '#6d0a12', rest: .95, flash: .15,      // rest is already at its ceiling
+    dur: 1800, spread: .38, decay: .16,        // spread and decay are fractions of the run
+    wordAt: .72, wordFade: .22, wordFill: .72, wordTrack: .30, wordY: .62,
+    hold: 1850, skipGuard: 250
+  };
+  const FX_RGB = [1, 3, 5].map(i => parseInt(FX.hi.slice(i, i + 2), 16)).join(',');
+  let fx = null, snapCv = null, fxModalTimer = null;
+
+  function playWinFlourish() {
+    snapCv = document.createElement('canvas');
+    snapCv.width = canvas.width; snapCv.height = canvas.height;
+    snapCv.getContext('2d').drawImage(canvas, 0, 0);
+    fx = { t0: performance.now() };
+  }
+  function clearFlourish() {
+    fx = null; snapCv = null;
+    clearTimeout(fxModalTimer); fxModalTimer = null;
+  }
+  const setTracking = (v) => { try { ctx.letterSpacing = v + 'px'; } catch (e) { /* older engines */ } };
+
+  function drawWinFrame(now) {
+    const px = cell * 13, p = Math.min(1, (now - fx.t0) / FX.dur);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore();
+    ctx.drawImage(snapCv, 0, 0, px, px);            // the board stays underneath throughout
+    // half diagonal, so the circle keeps growing past the edges until the corners are covered
+    const C = px / 2, maxR = px * Math.SQRT1_2;
+    const front = Math.min(1, p / FX.spread), rf = maxR * front;
+    if (rf > .5) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = `rgba(${FX_RGB},${FX.rest})`;
+      ctx.beginPath(); ctx.arc(C, C, rf, 0, Math.PI * 2); ctx.fill();
+      // the flash rides just behind the front: a band as wide as the front travels in
+      // FX.decay of the run, which is the continuous form of round's per-ring fade
+      if (p < FX.spread + FX.decay) {
+        const bw = maxR * Math.min(1, FX.decay / FX.spread), inner = Math.max(0, rf - bw);
+        const gr = ctx.createRadialGradient(C, C, inner, C, C, Math.max(inner + .5, rf));
+        gr.addColorStop(0, `rgba(${FX_RGB},0)`);
+        gr.addColorStop(1, `rgba(${FX_RGB},${FX.flash})`);
+        ctx.fillStyle = gr;
+        ctx.beginPath(); ctx.arc(C, C, rf, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // the blood runs out FROM the throne, but none settles on it, so the Emperor stays the
+    // one clear thing on the board. Painting his cell back from the snapshot keeps it exact.
+    {
+      const s = 6 * cell, d = canvas.width / px;
+      ctx.drawImage(snapCv, s * d, s * d, cell * d, cell * d, s, s, cell, cell);
+    }
+    if (p > FX.wordAt) {
+      const a = Math.min(1, (p - FX.wordAt) / FX.wordFade);
+      const face = '"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif';
+      ctx.save();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      // one word can carry the wordmark's own .3em tracking, which a sentence could not.
+      // Size is solved against the board rather than fixed, so it reads the same at 520px
+      // and at 325px: it lands near the masthead's own 30px on a phone.
+      const REF = 100;
+      ctx.font = `800 ${REF}px ${face}`; setTracking(FX.wordTrack * REF);
+      const size = Math.max(18, Math.floor(REF * (px * FX.wordFill) / ctx.measureText('VICTORY!').width));
+      ctx.font = `800 ${size}px ${face}`; setTracking(FX.wordTrack * size);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#f6eeda';
+      ctx.shadowColor = 'rgba(28,4,6,.9)'; ctx.shadowBlur = Math.round(size * .55);
+      // canvas lays the tracking after the last letter too, so centring needs half of it back
+      const x = px / 2 + FX.wordTrack * size / 2, y = px * FX.wordY + (1 - a) * size * .28;
+      ctx.fillText('VICTORY!', x, y);
+      ctx.fillText('VICTORY!', x, y);              // second pass deepens the shadow
+      setTracking(0);
+      ctx.restore();
+    }
+  }
+
+  // A tap anywhere jumps to the finished frame and brings the modal straight up, so nobody
+  // is held for 3.65s. The guard matters: without it the very tap that won the game bleeds
+  // through and cancels the flourish it just triggered.
+  function skipFlourish() {
+    if (!fx || modalOpen()) return false;
+    if (performance.now() - fx.t0 < FX.skipGuard) return false;
+    clearTimeout(fxModalTimer); fxModalTimer = null;
+    fx.t0 = performance.now() - FX.dur;            // snap to the settled frame, do not freeze mid-wipe
+    showEndModal(true);
+    return true;
+  }
+  window.addEventListener('pointerdown', (e) => {
+    if (skipFlourish()) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+
+  function loop(now) { stepTweens(now); if (fx) drawWinFrame(now); else draw(now); requestAnimationFrame(loop); }
   // guarantees tween/turn progress even when the tab is hidden and rAF is paused
   setInterval(() => { if (document.hidden) stepTweens(performance.now()); }, 120);
 
@@ -1293,8 +1395,12 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     G.busy = false;
     saveDay(true);
     updateHud(); updateButtons();
-    if (document.hidden) showEndModal(won);
-    else setTimeout(() => showEndModal(won), won ? 250 : 650);
+    // a hidden tab has no rAF, so the flourish would never run: go straight to the modal
+    if (document.hidden) { showEndModal(won); return; }
+    if (!won) { setTimeout(() => showEndModal(won), 650); return; }
+    // the win gets the flourish, and the modal waits behind it
+    playWinFlourish();
+    fxModalTimer = setTimeout(() => { fxModalTimer = null; showEndModal(true); }, FX.dur + FX.hold);
   }
 
   // ---------- modals ----------
@@ -1389,7 +1495,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       : `The Emperor waits… <b>(par ${G.layout.par})</b>`;
     const isDaily = G.mode === 'daily';
     openModal(`
-      <h2 style="text-align:center;margin-bottom:1px">${won ? 'The Emperor is free' : 'You have been overwhelmed'}</h2>
+      <h2 style="text-align:center;margin-bottom:1px">${won ? 'The Emperor’s revenge is swift and merciless' : 'You have been overwhelmed'}</h2>
       <div class="splashSub">${isDaily ? 'RONIN #' + G.dayNum : 'PRACTICE'}${G.diff === 'hard' ? ' · ⚔ HARD' : ''}</div>
       ${resDots()}
       <div class="headline" style="margin:2px 0 12px">${headline}</div>
@@ -1501,6 +1607,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 
   // ---------- game setup ----------
   function beginBoard(layout, mode) {
+    clearFlourish();          // a new board must not open under a previous win's wash
     G.mode = mode;
     G.layout = layout;
     G.attempt = 1; G.squares = [null, null, null];
@@ -1604,6 +1711,10 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       await waitIdle();
       return G.phase;
     },
+    // the round board has had this since it was built: play the win flourish on the board
+    // as it stands, without having to win first. No modal, and it leaves no state behind.
+    playWinFlourish,
+    clearFlourish,
   };
 
   // ---------- boot ----------
