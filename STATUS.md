@@ -48,9 +48,9 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Ten commits are waiting. **The next push puts all ten live at once**, which is the whole
-visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes landing on roninpuzzles.com
-in one go, not just the most recent piece of work. That is a bigger call than any single item
+Eleven commits are waiting. **The next push puts all eleven live at once**, which is the
+whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes landing on
+roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
 on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
 been deployed.
 
@@ -77,8 +77,12 @@ been deployed.
 - **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
   eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
   under "Design audit findings" below.
+- **Ko-fi line widow fixed, two findings closed** (2026-09-24). `roll` no longer strands on
+  the win screen at 320px. The "overwhelmed" widow is closed as will-not-fix on Brad's call,
+  and the `now.` strand is closed as not reproducible at any real device width. Only the
+  button-row stagger is left, and it needs Brad's ruling rather than a fix.
 
-`index.html` was re-synced in all ten, so the source and the deployed copy are identical.
+`index.html` was re-synced in all eleven, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -116,15 +120,27 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-24 (TWO DESIGN AUDIT FINDINGS FIXED: the `attempt 1` stats-modal wrap
+*Last updated: 2026-09-24 (THE DESIGN AUDIT LIST IS DOWN TO ONE ITEM. Ko-fi win line fixed:
+`roll` stranded at a true 320px, joined "sausage roll" with a non-breaking space, verified
+through the real win path. Two findings CLOSED without code: the "overwhelmed" widow is
+Brad's will-not-fix ("overwhelmed is long enough to not feel like a widow", so the test is the
+length of the stranded word, not the break), and the `now.` strand is not reproducible at any
+real device width. Only the button-row stagger is left and it needs Brad's ruling, since it
+may be deliberate hierarchy. **Also found: `scripts/audit.js` labels widths by
+`window.innerWidth`, which runs 15px wide in this browser pane, so every width in the 09-18
+findings is ~15px off. Use `document.documentElement.clientWidth`.** And a styled probe span
+under-reports text set in `<b><i>`; measure the real element. Gate re-run clean.
+Prior: 2026-09-24 (TWO DESIGN AUDIT FINDINGS FIXED: the `attempt 1` stats-modal wrap
 (one CSS rule, `.dist .row span:first-child{ white-space:nowrap; flex:none; }`) and all eight
 status-line widows from 09-18, joined with a real non-breaking space rather than reworded.
 Drawing/copy untouched otherwise, byte-exact everywhere but the eight join points. Gate
 re-run: rules 20/20, parity 40/40, bench 0 fallback + replay 10/10 both modes. Browser-verified
 each fix at its own problem width against the actual fixed source strings. `index.html`
-re-synced; ten commits now stacked locally, still none pushed. Still open from the same audit:
-the "You have been overwhelmed" widow at 320/375/414px, and the three minor strands (now./
-roll/button-row stagger). Prior: 2026-09-24 (FLOURISH RETIMED AND THE CAPTION CUT. VICTORY! is gone: Brad called
+re-synced; ten commits now stacked locally, still none pushed. The "You have been overwhelmed"
+widow is CLOSED the same day as will-not-fix: Brad's call, "overwhelmed is long enough to not
+feel like a widow", so the test is the length of the stranded word, not the break itself.
+Still open from the same audit: the three minor strands (now./roll/button-row stagger).
+Prior: 2026-09-24 (FLOURISH RETIMED AND THE CAPTION CUT. VICTORY! is gone: Brad called
 it overkill on 09-24, the wash carries the moment and the modal already says it. The modal was
 scheduled at dur + hold, which floored it at 1800ms even with hold at 0 and left 1116ms of
 motionless board, so it now has its own number measured from the win: modalAt 1250ms, giving
@@ -1009,10 +1025,14 @@ Measured in the browser at 320/360/375/390/414/1280. Real defects, awaiting thei
   flex:none; }`. Re-measured with a seeded 20/0/0 distribution (the worst case, widest
   possible bar): all three rows now 17px. Browser-verified at 1280px only, since the wrap
   was never width-dependent — it was the bar's own width squeezing the label.
-- **"You have been overwhelmed" widows at every width, desktop included**, always breaking
-  as "You have been / overwhelmed". Captured modal and final loss modal heading. **Still
-  open.** (The desktop half of this was later corrected — see below — it does not widow on
-  desktop, only at 320/375/414px.)
+- **CLOSED 2026-09-24, will not fix.** ~~"You have been overwhelmed" widows at every width,
+  desktop included~~, always breaking as "You have been / overwhelmed". Captured modal and
+  final loss modal heading. The desktop half of the finding was wrong and was corrected
+  separately (see below): it does not widow on desktop, only at 320/375/414px. **Brad's call
+  on 09-24: leave it. "overwhelmed is long enough to not feel like a widow."** The rule he is
+  applying is about the length of the stranded word, not the fact of the break, so do not
+  re-propose this one. A short word alone still counts, which is why `now.` and `roll` below
+  are a different question.
 - **FIXED 2026-09-24.** ~~Six status-line messages widow at 375px, three stranding a lone
   emoji (`⚠`, `⛩`, `🏮`) on its own line. Also one at 360px and one at 414px.~~ Eight
   messages in total, all fixed the same way: a ` ` (real non-breaking space, not the
@@ -1026,9 +1046,43 @@ Measured in the browser at 320/360/375/390/414/1280. Real defects, awaiting thei
   (375, 390), "...(or RESCUE) to finish! ⛩" (375), "...trust your instincts. 🏮" (375),
   "...refresh to play today's puzzle." (375), "...first, inside the keep." (375), "...cross
   walls at the stair tiles." (360), "...or practice below." (414).
-- **Minor, still open:** "You know their ways a little better now." strands `now.` at 360px
-  only. The win screen's Ko-fi line strands `roll` at 320px only. Button row heights stagger
-  35.5/35.5/36.5/37.5px because MOVE and HINT use larger font sizes.
+- **FIXED 2026-09-24.** ~~The win screen's Ko-fi line strands `roll` at 320px only.~~
+  Confirmed real at a true 320px layout width (iPhone SE): "enjoyed the rescue? buy the ronin
+  a sausage roll" broke with `roll` alone. Same non-breaking-space fix, joining
+  "sausage roll", which is a compound that should never break anyway. Verified through the
+  real win path (`startPractice` + `autoWin`, not an injected modal) at 320px: last line now
+  reads "sausage roll". Still one line at 375px, unchanged. **The footer's copy of the same
+  phrase was checked and left alone** — it is 156px on one line at 320px and does not break.
+- **CLOSED 2026-09-24, not reproducible.** ~~"You know their ways a little better now."
+  strands `now.` at 360px only.~~ Re-measured on the real element at true layout widths: at
+  360px the whole sentence fits on **one line** (308px box), and at 320px it breaks as
+  "...a little / **better now.**", two words on the last line. It does not strand at any real
+  device width. See the width-labelling note below for why the original finding said 360.
+- **Minor, still open:** button row heights stagger 35.5/35.5/36.5/37.5px because MOVE and
+  HINT use larger font sizes. **Not yet put to Brad** — this may well be deliberate hierarchy
+  (MOVE is the primary action), so ask before changing it.
+
+### The 09-18 audit's width labels run ~15px wide — read them with care
+
+Found on 2026-09-24 while chasing the `now.` strand. In this browser pane, `window.innerWidth`
+reports **15px wider than the actual layout viewport**: at an emulated 360, `innerWidth` is
+375 while `document.documentElement.clientWidth` is 360, and the body and `#status` both
+measure 360. CSS wrapping follows the layout viewport, so `clientWidth` is the honest number.
+
+`scripts/audit.js` labels its output `viewport: window.innerWidth`, so **every width in the
+09-18 findings is about 15px wider than the width actually rendered.** Its "360" was really
+~345, which is why `now.` appeared to strand there and does not at a real 360. This does not
+undermine the findings that were re-confirmed at real widths (the eight status-line messages,
+the `attempt 1` wrap, the `roll` strand); it only means the width *labels* were off.
+
+**Measure `document.documentElement.clientWidth`, not `innerWidth`**, and quote that. Related
+trap already on record: an emulated resize leaves `resize()` holding a stale viewport width on
+the square board, so reload after resizing.
+
+**One more measurement trap, same day.** A probe span styled from the paragraph's own computed
+font under-reports a line set in `<b><i>`, because the real text is bolder and wider than the
+probe. That mis-predicted where "You know their ways..." would break. Measure the real element
+with `getClientRects()` per word, never a styled probe standing in for it.
 
 Release gate re-run after these two fixes: rules 20/20, parity 40/40, bench 0 fallback
 boards and replay 10/10 in both modes. Neither fix touches the `<script id="engine">` block
