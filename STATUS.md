@@ -48,7 +48,7 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Eight commits are waiting. **The next push puts all eight live at once**, which is the whole
+Nine commits are waiting. **The next push puts all nine live at once**, which is the whole
 visual pass from 09-15 to 09-22 landing on roninpuzzles.com in one go, not just the most
 recent piece of work. That is a bigger call than any single item on the list and it is Brad's.
 It is why the live board still looks flat: none of this has ever been deployed.
@@ -68,10 +68,13 @@ It is why the live board still looks flat: none of this has ever been deployed.
 - **The throne and the flourish written up** (`014dfe6`, 2026-09-22). Docs only, no code.
 - **The throne** (`420dede`, 2026-09-22). All five decisions built, plus the pulse ring moved
   out to clear the bigger sun. Drawing only. See "The throne" below.
-- **The win flourish** (2026-09-22). The square board's first win moment: blood wipe, VICTORY!,
-  the modal at 3650ms, tap to skip. Drawing and timing only. See "The win flourish" below.
+- **The win flourish** (`9dc8650`, 2026-09-22). The square board's first win moment: blood
+  wipe, tap to skip. Drawing and timing only. See "The win flourish" below.
+- **Flourish retimed, caption cut** (2026-09-24). VICTORY! removed as overkill, and the modal
+  unhooked from the animation length so it can arrive at 1250ms instead of a 1800ms floor.
+  The modal now fades up over 500ms. Drawing, timing and one CSS rule.
 
-`index.html` was re-synced in all eight, so the source and the deployed copy are identical.
+`index.html` was re-synced in all nine, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -113,7 +116,13 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-22 (THE WIN FLOURISH BUILT, so the square board has a win moment for
+*Last updated: 2026-09-24 (FLOURISH RETIMED AND THE CAPTION CUT. VICTORY! is gone: Brad called
+it overkill on 09-24, the wash carries the moment and the modal already says it. The modal was
+scheduled at dur + hold, which floored it at 1800ms even with hold at 0 and left 1116ms of
+motionless board, so it now has its own number measured from the win: modalAt 1250ms, giving
+611ms of still board, measured. It also fades up over 500ms, scoped to the end-of-day modal so
+the rules and stats panels still snap in. RoninDebug.FX exposed so timings can be retuned from
+the console. Prior: 2026-09-22 (THE WIN FLOURISH BUILT, so the square board has a win moment for
 the first time: blood wipe out from the throne on a multiply blend, the throne spared, VICTORY!
 in the wordmark's treatment at 1296ms, the modal at 3650ms carrying the revenge line, and a tap
 anywhere to skip with a 250ms dead zone so the winning tap cannot cancel it. Measured win to
@@ -144,7 +153,7 @@ corners, missing from the 09-18 audit. One question left open, the centre tile's
 draw order. Prior: 2026-09-22 (piece reflections BUILT as variant 1: a hard terminator on the board's own light bearing, cached as a sprite per piece size; the Ronin's katana redrawn on that same curve with its gold light starting at the blade's outer edge. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; five commits now stacked. The visual pass is finished. Prior: 2026-09-20 (gates BUILT as variant D: pure tier-to-tier foot, 1px gradient jambs, gate cells cut out of the tier silhouette so the shadow carries the gaps, stair drawn under its tier's shadow and lit back up as it climbs, gate grid line restored, two wall/jamb alignment faults fixed. Drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed; three commits now stacked. Prior: 2026-09-18 (terrace shadows BUILT to the signed-off stacked-pass x2 spec, and the #boardFrame box-shadow dropped on Brad's call; drawing only, gate re-run, browser-verified desktop and 375px, committed locally and NOT pushed. Reflections parked on all pieces. Design audit run, findings recorded above and not yet fixed. Prior: 2026-09-15 (straight-move zigzag fixed in `pathTo`, display only, boards proven unchanged against HEAD; committed locally as 4f0ee10 with index.html re-synced, not pushed. Guard-rule wording and gate legibility parked for the rules-section review. Prior: 2026-07-24 (custom domain roninpuzzles.com live; Ko-fi donations wired into both
 games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
 Prior: 2026-07-19
-DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.)))*
+DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.))))*
 
 ## ⮕ Circular board redesign (v2) — DEPLOYED AS BETA (2026-07-13)
 
@@ -321,10 +330,11 @@ byte-identical to the previous commit, so no board, par or result has moved.
 Gate at build: **rules 20/20, parity 40/40, bench exit 0 with zero fallback boards in both
 modes and replay 10/10 in both.**
 
-**New debug hooks**, matching what the round board has always had:
-`RoninDebug.playWinFlourish()` runs the wipe on the board as it stands without having to win
-first, and `RoninDebug.clearFlourish()` puts the board back. Anyone testing this again should
-use those rather than `autoWin()`, which takes about 18 seconds to play a day out.
+**New debug hooks.** `RoninDebug.playWinFlourish()` runs the wipe on the board as it stands
+without having to win first, and `clearFlourish()` puts the board back. Both match what the
+round board has always had. `RoninDebug.FX` is also exposed live, so the timings can be
+retuned from the console without editing the file. Use these rather than `autoWin()`, which
+takes about 18 seconds to play a day out.
 
 ### Verified, and these are the ones that could have gone wrong
 
@@ -410,51 +420,68 @@ converge. Once the surround is dark enough, the unwashed throne is the only brig
 and sparing wins. **Spared is correct at this strength and only at this strength.** If the
 wash is ever lightened, re-measure before keeping it.
 
-### Timing, all of it
+### Timing, as shipped 2026-09-24
 
 | moment | ms | note |
 |---|---|---|
-| wipe duration | 1800 | `FX_DUR`, up from round's 1150 |
-| front reaches the corners | 684 | 0.38 of the run |
-| VICTORY! begins to fade in | 1296 | 0.72 of the run, over 0.22 of it |
-| hold on the finished frame | 1850 | Brad's number, dialled by eye |
-| modal opens | **3650** | against 250ms today, and round's 1550ms |
+| wipe duration | 1800 | `FX.dur`. The animation curve only, see below |
+| front reaches the corners | 684 | 0.38 of the run, measured at 698 |
+| flash has finished fading | 972 | 0.54 of the run. **Nothing moves on screen after this** |
+| modal starts fading up | **1250** | `FX.modalAt`, measured at 1309 |
+| modal fully up | 1750 | `FX.modalFade` 500ms, measured 442 to full opacity |
 
-### The word
+**`FX.modalAt` is measured from the win, not from the end of the animation, and that matters.**
+It was originally `dur + hold`, which meant the modal could never arrive before the animation
+finished even with hold at 0: the floor was 1800ms, leaving 1116ms of motionless board. Brad
+tried 0 on the slider on 09-24, found it still too long, and asked for that gap halved. It
+cannot be expressed as a hold, so the modal got its own number. **Do not re-tie it to `dur`.**
 
-**VICTORY!** in caps, `Shippori Mincho B1` at 800, tracked at **0.30em**. That is exactly the
-RONIN wordmark's treatment (`.brand h1` is 9px on 30px). A sentence could not carry that
-spacing, which is why the earlier sentence caption never looked related to the masthead and
-eight letters do.
+Still board before the modal is now **566ms by the numbers and 611ms measured**, against 1116
+at the old floor. The modal arrives 278ms after the last movement on screen, so pulling
+`modalAt` below about 1000 would start it while the flash is still fading.
 
-**The size fits itself to the board** rather than being fixed: the size is solved so the word
-fills 72% of the board width including its tracking. That lands at **47px on desktop and 29px
-at 375px**, against the wordmark's 30px, so on a phone it comes in at almost exactly masthead
-size. Sits at 62% of the board height, below the throne. Ink `#f6eeda`, shadow
-`rgba(28,4,6,.9)` at `size * 0.55`, drawn twice to deepen it.
+### The modal fades up
 
-The exclamation is **kept**. At 0.30em it floats away from the Y, which is what uniform
-tracking does to terminal punctuation. Brad ruled to keep it rather than tighten to 0.16em,
-which would have cost the wordmark match.
+500ms ease on the end-of-day modal only. `#overlay` goes from `display:none` to `display:flex`,
+which a transition cannot cross, so `.open` puts it on screen at opacity 0 and `.shown` is
+added two frames later to give the transition two states to run between. `closeModal` clears
+all three classes, or the next open would start already visible.
+
+**Scoped to the end-of-day modal deliberately.** The rules and stats panels still snap in:
+those are controls someone tapped, not a moment arriving, and half a second of fade on the
+stats button reads as lag. A loss snaps in too, since there is no flourish behind it. There is
+a `prefers-reduced-motion` opt-out.
+
+### The VICTORY! caption: built, then cut
+
+Built on 09-22 and removed on 09-24. Brad: overkill. The wash carries the moment on its own
+and the modal already says it. Recorded because it was a lot of work and the reasoning is
+worth keeping if anyone is tempted again: caps, `Shippori Mincho B1` 800, tracked at 0.30em,
+which is exactly the wordmark's 9px on 30px. Size was solved against the board rather than
+fixed, landing at 47px on desktop and 29px at 375px against the masthead's own 30px.
+
+The thing that made it work typographically is the thing that made it too much: one word can
+carry logo tracking, so it read as the masthead shouting, at the exact moment the board had
+just gone blood red. Two strong gestures on top of each other.
+
+Removing it took its five config values and a now-unused tracking helper with it.
 
 ### Where the line lives
 
 **"The Emperor's revenge is swift and merciless" is the modal heading**, replacing
-"The Emperor is free". It was tried on the canvas first and taken off, so it is said once, in
-one place. **`.modal h2` moves to Shippori** so the canvas word and the modal heading speak in
-one voice: `font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif`.
+"The Emperor is free". **`.modal h2` is Shippori**, so the end of a run speaks in the same
+voice as the masthead: `font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif`.
+That was chosen while the canvas word still existed, and it still earns its place without it.
 
 ### Tap to skip
 
 A tap anywhere **snaps the flourish to its finished frame** and opens the modal immediately,
-rather than freezing a half-drawn wipe. Without it a player waits 3.65 seconds with nothing to
-do, every win.
+rather than freezing a half-drawn wipe.
 
 **It needs a dead zone at the start.** The very tap that wins the game will otherwise bleed
 straight through and cancel the flourish it just triggered. 250ms, measured working: a tap at
-120ms is ignored, a tap at 680ms skips and the far corner jumps from 207 luminance to 35.6,
-which is the settled frame rather than wherever the front had got to. **At build time decide
-which chrome must not swallow the skip** — HOLD and HINT in particular.
+121ms is ignored, a tap at 902ms opens the modal 2ms later instead of waiting. **Still to
+decide: which chrome must not swallow the skip**, HOLD and HINT in particular.
 
 ### Rejected, do not re-propose
 
@@ -463,8 +490,9 @@ which chrome must not swallow the skip** — HOLD and HINT in particular.
   rather than bloody. This is why multiply is not optional.
 - **Pooling, the graduated wash.** Built and dialled to 0, Brad wants it flat.
 - **Square ring pulse.** Faithful to this board's geometry but not what Brad wanted.
-- **The sentence on the canvas.** Two lines of Shippori below centre. Replaced by the word,
-  and it also said the same thing as the modal 400ms apart.
+- **Any caption on the canvas at all.** Two lines of Shippori below centre came first, then
+  VICTORY! in the wordmark's treatment. Both built, both cut. The wash is the moment and the
+  modal carries the words.
 - **Dropping the exclamation, and tightening the tracking to 0.16em.** Both looked at and ruled
   out on 2026-09-22.
 

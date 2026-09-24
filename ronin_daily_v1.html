@@ -109,12 +109,19 @@
     align-items:flex-start; justify-content:center; z-index:50; padding:6vh 16px 16px;
   }
   #overlay.open{ display:flex; }
+  /* The end-of-day modal fades up instead of snapping in. Only .fade opts into it, so the
+     rules and stats panels still appear instantly: those are controls, not a moment.
+     display cannot be transitioned, so .shown is added a frame later, once .open has
+     actually put the element on screen at opacity 0. */
+  #overlay.fade{ opacity:0; transition:opacity .5s ease; }
+  #overlay.fade.shown{ opacity:1; }
+  @media (prefers-reduced-motion: reduce){ #overlay.fade{ transition:none; opacity:1; } }
   .modal{
     background:var(--paper); border-radius:14px; max-width:460px; width:100%;
     padding:18px 18px 16px; box-shadow:0 18px 50px rgba(0,0,0,.35);
     max-height:88vh; overflow-y:auto; position:relative;
   }
-  /* the wordmark's face, so the canvas VICTORY! and the heading under it speak as one */
+  /* the wordmark's face, so the end of a run speaks in the same voice as the masthead */
   .modal h2{ margin:0 0 6px; font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif; letter-spacing:1px; }
   .modal .x{
     position:absolute; top:10px; right:12px; border:none; background:none;
@@ -1080,18 +1087,26 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   // ---------- win flourish ----------
   // Ported from round.html's, with one change: its pulse walked polar rings because its
   // board is a ring graph, and this is a single continuous front. On Ascend a blood wipe
-  // runs out from the freed Emperor until it has covered the board, VICTORY! comes up in
-  // the wordmark's own treatment, it holds, and then the modal arrives.
+  // runs out from the freed Emperor until it has covered the board, it holds, and then the
+  // modal arrives. A VICTORY! caption was built on the canvas and taken out again: it was
+  // overkill next to the wash, and the modal already says it.
   //
   // The wash is MULTIPLY, not plain alpha. Laying a dark red over this cream board with
   // alpha lands in a desaturated middle: the darker the hex the muddier it gets, not the
   // bloodier. Multiply darkens through the board, so the tier tones, the keylines and the
   // terrace shadows all still read underneath it and the red stays saturated.
+  //
+  // `dur` is the animation curve only: the front lands at spread (.38) and the flash is
+  // gone by spread + decay (.54), so nothing changes on screen after 972ms. The modal used
+  // to be scheduled at dur + hold, which meant it could never arrive before the end of the
+  // animation even at hold 0, and the last 1116ms was a motionless board. So the modal now
+  // has its own number, measured from the win, independent of the animation length.
   const FX = {
     hi: '#6d0a12', rest: .95, flash: .15,      // rest is already at its ceiling
     dur: 1800, spread: .38, decay: .16,        // spread and decay are fractions of the run
-    wordAt: .72, wordFade: .22, wordFill: .72, wordTrack: .30, wordY: .62,
-    hold: 1850, skipGuard: 250
+    modalAt: 1250,                             // ms from the win. Board is fully red at 684.
+    modalFade: 500,                            // the modal fades up rather than snapping in
+    skipGuard: 250
   };
   const FX_RGB = [1, 3, 5].map(i => parseInt(FX.hi.slice(i, i + 2), 16)).join(',');
   let fx = null, snapCv = null, fxModalTimer = null;
@@ -1106,7 +1121,6 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     fx = null; snapCv = null;
     clearTimeout(fxModalTimer); fxModalTimer = null;
   }
-  const setTracking = (v) => { try { ctx.letterSpacing = v + 'px'; } catch (e) { /* older engines */ } };
 
   function drawWinFrame(now) {
     const px = cell * 13, p = Math.min(1, (now - fx.t0) / FX.dur);
@@ -1139,33 +1153,11 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       const s = 6 * cell, d = canvas.width / px;
       ctx.drawImage(snapCv, s * d, s * d, cell * d, cell * d, s, s, cell, cell);
     }
-    if (p > FX.wordAt) {
-      const a = Math.min(1, (p - FX.wordAt) / FX.wordFade);
-      const face = '"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif';
-      ctx.save();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      // one word can carry the wordmark's own .3em tracking, which a sentence could not.
-      // Size is solved against the board rather than fixed, so it reads the same at 520px
-      // and at 325px: it lands near the masthead's own 30px on a phone.
-      const REF = 100;
-      ctx.font = `800 ${REF}px ${face}`; setTracking(FX.wordTrack * REF);
-      const size = Math.max(18, Math.floor(REF * (px * FX.wordFill) / ctx.measureText('VICTORY!').width));
-      ctx.font = `800 ${size}px ${face}`; setTracking(FX.wordTrack * size);
-      ctx.globalAlpha = a;
-      ctx.fillStyle = '#f6eeda';
-      ctx.shadowColor = 'rgba(28,4,6,.9)'; ctx.shadowBlur = Math.round(size * .55);
-      // canvas lays the tracking after the last letter too, so centring needs half of it back
-      const x = px / 2 + FX.wordTrack * size / 2, y = px * FX.wordY + (1 - a) * size * .28;
-      ctx.fillText('VICTORY!', x, y);
-      ctx.fillText('VICTORY!', x, y);              // second pass deepens the shadow
-      setTracking(0);
-      ctx.restore();
-    }
   }
 
   // A tap anywhere jumps to the finished frame and brings the modal straight up, so nobody
-  // is held for 3.65s. The guard matters: without it the very tap that won the game bleeds
-  // through and cancels the flourish it just triggered.
+  // is held through the whole run. The guard matters: without it the very tap that won the
+  // game bleeds through and cancels the flourish it just triggered.
   function skipFlourish() {
     if (!fx || modalOpen()) return false;
     if (performance.now() - fx.t0 < FX.skipGuard) return false;
@@ -1400,12 +1392,21 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     if (!won) { setTimeout(() => showEndModal(won), 650); return; }
     // the win gets the flourish, and the modal waits behind it
     playWinFlourish();
-    fxModalTimer = setTimeout(() => { fxModalTimer = null; showEndModal(true); }, FX.dur + FX.hold);
+    fxModalTimer = setTimeout(() => { fxModalTimer = null; showEndModal(true); }, FX.modalAt);
   }
 
   // ---------- modals ----------
-  function openModal(html) { $('modalContent').innerHTML = html; $('overlay').classList.add('open'); }
-  function closeModal() { $('overlay').classList.remove('open'); }
+  function openModal(html, fade) {
+    $('modalContent').innerHTML = html;
+    const o = $('overlay');
+    o.classList.remove('shown');
+    o.classList.toggle('fade', !!fade);
+    o.classList.add('open');
+    // two frames: one for .open to take the element out of display:none at opacity 0,
+    // the next to flip .shown so the transition has two states to run between
+    if (fade) requestAnimationFrame(() => requestAnimationFrame(() => o.classList.add('shown')));
+  }
+  function closeModal() { $('overlay').classList.remove('open', 'fade', 'shown'); }
   const modalOpen = () => $('overlay').classList.contains('open');
   $('modalX').onclick = closeModal;
   $('overlay').onclick = (e) => { if (e.target === $('overlay')) closeModal(); };
@@ -1511,7 +1512,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       ${won ? `<div style="text-align:center;margin-top:10px;font-size:12px">
         <a href="https://ko-fi.com/bradtheronin" target="_blank" rel="noopener" style="color:var(--ink-soft);text-decoration:underline">enjoyed the rescue? buy the ronin a sausage roll</a>
       </div>` : ''}
-    `);
+    `, won);          // the win fades up behind the wash; a loss still snaps in
     if (isDaily) {
       $('shareBtn').onclick = async () => {
         try { await navigator.clipboard.writeText(shareText()); $('shareFeedback').textContent = 'copied to clipboard!'; }
@@ -1715,6 +1716,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     // as it stands, without having to win first. No modal, and it leaves no state behind.
     playWinFlourish,
     clearFlourish,
+    FX,          // live, so the flourish can be retimed from the console without an edit
   };
 
   // ---------- boot ----------
