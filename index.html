@@ -141,6 +141,7 @@
   .statgrid .l{ font-size:11px; color:var(--ink-soft); letter-spacing:1px; text-transform:uppercase; }
   .dist{ margin:10px 0 2px; }
   .dist .row{ display:flex; align-items:center; gap:8px; margin:4px 0; font-size:12px; }
+  .dist .row span:first-child{ white-space:nowrap; flex:none; }
   .dist .bar{ background:var(--indigo); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; min-width:18px; text-align:right; }
   #countdown{ text-align:center; font-size:13px; color:var(--ink-soft); margin-top:14px; }
   .splashSub{ text-align:center; color:var(--ink-soft); font-size:11.5px; letter-spacing:2.5px; margin:0 0 10px; }
@@ -1300,7 +1301,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const ep = res.path[0];
     G.sel = ep.hold ? { r: G.ronin.r, c: G.ronin.c, hold: true } : { r: ep.r, c: ep.c };
     refreshHints(); updateHud();
-    if (!G.sel) { setMsg('The maps are smudged here — trust your instincts. 🏮'); return; }
+    if (!G.sel) { setMsg('The maps are smudged here — trust your instincts. 🏮'); return; }
     setMsg(`The old maps mark a route — rescue in ${res.par} from here. Take it, or find your own. 🏮`);
   }
 
@@ -1344,7 +1345,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 
   function postChecks() {
     const opts = RE.roninOptions(G.ronin, G.army, G.layout.stairs, G.diffCfg.steps);
-    if (canAscend()) setMsg('Beside the Emperor — tap him (or RESCUE) to finish! ⛩');
+    if (canAscend()) setMsg('Beside the Emperor — tap him (or RESCUE) to finish! ⛩');
     else if (!opts.length) { attemptFailed('cornered'); return; }
     else setMsg('');
     refreshHints(); updateHud();
@@ -1555,7 +1556,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
 
     if (r === 6 && c === 6) {
       if (canAscend() && !G.sel) ascend();
-      else setMsg('Reach a tile beside the Emperor first, inside the keep.');
+      else setMsg('Reach a tile beside the Emperor first, inside the keep.');
       return;
     }
     // round's input model: snap to the nearest legal endpoint within tolerance
@@ -1570,13 +1571,13 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       if (G.sel && !G.sel.hold && G.sel.r === best.r && G.sel.c === best.c) { executeMove(); return; } // second tap commits
       G.sel = { r: best.r, c: best.c };
       refreshHints();
-      setMsg(preview && preview.captured ? 'That path ends in capture — the guards will take you. ⚠' : 'Tap again, or hit MOVE.');
+      setMsg(preview && preview.captured ? 'That path ends in capture — the guards will take you. ⚠' : 'Tap again, or hit MOVE.');
       return;
     }
     // not a legal endpoint — explain, and clear any pending selection
     if (guardAt(r, c)) setMsg('A guard holds that tile.');
     else if (r === G.ronin.r && c === G.ronin.c) setMsg('');
-    else setMsg('Out of reach this turn — cross walls at the stair tiles.');
+    else setMsg('Out of reach this turn — cross walls at the stair tiles.');
     G.sel = null; G.selPath = null;
     refreshHints();
   });
@@ -1617,7 +1618,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     G.ronin = { ...layout.ronin };
     G.army = layout.army.map(p => ({ ...p }));
     syncVis(); refreshHints(); updateHud();
-    $('status').innerHTML = `<b><i>Rescue the Emperor in the tower.</i></b><br>Tap a marked cell to plan your move — up to ${G.diffCfg.steps} cells a turn.`;
+    $('status').innerHTML = `<b><i>Rescue the Emperor in the tower.</i></b><br>Tap a marked cell to plan your move — up to ${G.diffCfg.steps} cells a turn.`;
   }
 
   function startPractice(seed) {
@@ -1653,7 +1654,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
           G.finalMoves = saved.moves;
           if (saved.moves != null) G.moveCount = saved.moves;
           updateHud(); updateButtons();
-          setMsg('Today’s rescue is decided — return tomorrow, or practice below.');
+          setMsg('Today’s rescue is decided — return tomorrow, or practice below.');
           showEndModal(saved.squares.includes('w'));
         } else {
           G.attempt = G.squares.filter(s => s !== null).length + 1;
@@ -1676,7 +1677,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   // day rollover notice
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && G.mode === 'daily' && RE.dayNumber() !== G.dayNum) {
-      setMsg('A new castle has risen — refresh to play today’s puzzle.');
+      setMsg('A new castle has risen — refresh to play today’s puzzle.');
     }
   });
 

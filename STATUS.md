@@ -48,10 +48,11 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Nine commits are waiting. **The next push puts all nine live at once**, which is the whole
-visual pass from 09-15 to 09-22 landing on roninpuzzles.com in one go, not just the most
-recent piece of work. That is a bigger call than any single item on the list and it is Brad's.
-It is why the live board still looks flat: none of this has ever been deployed.
+Ten commits are waiting. **The next push puts all ten live at once**, which is the whole
+visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes landing on roninpuzzles.com
+in one go, not just the most recent piece of work. That is a bigger call than any single item
+on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
+been deployed.
 
 - **Straight-move zigzag fixed** (`4f0ee10`, 2026-09-15). Display only, boards proven
   byte-identical to the previous engine.
@@ -73,8 +74,11 @@ It is why the live board still looks flat: none of this has ever been deployed.
 - **Flourish retimed, caption cut** (2026-09-24). VICTORY! removed as overkill, and the modal
   unhooked from the animation length so it can arrive at 1250ms instead of a 1800ms floor.
   The modal now fades up over 500ms. Drawing, timing and one CSS rule.
+- **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
+  eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
+  under "Design audit findings" below.
 
-`index.html` was re-synced in all nine, so the source and the deployed copy are identical.
+`index.html` was re-synced in all ten, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -88,11 +92,7 @@ survive. No loss, the rejected parameters are recorded below.
 
 ### Next up, in Brad's order
 
-1. **Design audit fixes** — real defects found 2026-09-18 and not yet fixed: `attempt 1`
-   wrapping in the stats modal, and a set of widows including three that strand a lone
-   emoji at 375px. Full list in the session below. Run `/site-check` with this one.
-   **One of its findings is wrong and is corrected under the flourish section below.**
-2. **Rules box review** — Brad's next stage, and three findings are already waiting there.
+1. **Rules box review** — Brad's next stage, and three findings are already waiting there.
 
 **The visual pass is finished.** Terrace shadows, gates, the lit edge, piece reflections, the
 throne and the win flourish are all built. Nothing on the visual list is outstanding. The
@@ -116,7 +116,15 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-24 (FLOURISH RETIMED AND THE CAPTION CUT. VICTORY! is gone: Brad called
+*Last updated: 2026-09-24 (TWO DESIGN AUDIT FINDINGS FIXED: the `attempt 1` stats-modal wrap
+(one CSS rule, `.dist .row span:first-child{ white-space:nowrap; flex:none; }`) and all eight
+status-line widows from 09-18, joined with a real non-breaking space rather than reworded.
+Drawing/copy untouched otherwise, byte-exact everywhere but the eight join points. Gate
+re-run: rules 20/20, parity 40/40, bench 0 fallback + replay 10/10 both modes. Browser-verified
+each fix at its own problem width against the actual fixed source strings. `index.html`
+re-synced; ten commits now stacked locally, still none pushed. Still open from the same audit:
+the "You have been overwhelmed" widow at 320/375/414px, and the three minor strands (now./
+roll/button-row stagger). Prior: 2026-09-24 (FLOURISH RETIMED AND THE CAPTION CUT. VICTORY! is gone: Brad called
 it overkill on 09-24, the wash carries the moment and the modal already says it. The modal was
 scheduled at dur + hold, which floored it at 1800ms even with hold at 0 and left 1116ms of
 motionless board, so it now has its own number measured from the win: modalAt 1250ms, giving
@@ -989,22 +997,42 @@ a time. Numbers are final, so these can be built without redoing the analysis.
   did not rule on it. It is the cheapest thing tried and arguably did more for the raised
   read than any shadow change. Worth putting to him again.
 
-### Design audit findings, NOT yet fixed (2026-09-18)
+### Design audit findings (2026-09-18, first two fixed 2026-09-24)
 
 Measured in the browser at 320/360/375/390/414/1280. Real defects, awaiting their own pass:
 
-- **`attempt 1` wraps in the stats modal**, on desktop as well as mobile
-  (`ronin_daily_v1.html:1135`). `.dist .row` is flex, the label has `min-width:auto` and
-  `flex-shrink:1`, and the bar takes up to 90% of the row, so the label gets 50.8px when it
-  needs ~55px. Row heights come out 28/17/17px. Only hits the row with the widest bar,
-  which is why it looks intermittent. Fix is `white-space:nowrap` or `flex:none` on the label.
+- **FIXED 2026-09-24.** ~~`attempt 1` wraps in the stats modal, on desktop as well as
+  mobile~~ (`ronin_daily_v1.html:1135`). `.dist .row` is flex, the label has `min-width:auto`
+  and `flex-shrink:1`, and the bar takes up to 90% of the row, so the label gets 50.8px when
+  it needs ~55px. Row heights came out 28/17/17px, only on the row with the widest bar,
+  which is why it looked intermittent. Fix: `.dist .row span:first-child{ white-space:nowrap;
+  flex:none; }`. Re-measured with a seeded 20/0/0 distribution (the worst case, widest
+  possible bar): all three rows now 17px. Browser-verified at 1280px only, since the wrap
+  was never width-dependent — it was the bar's own width squeezing the label.
 - **"You have been overwhelmed" widows at every width, desktop included**, always breaking
-  as "You have been / overwhelmed". Captured modal and final loss modal heading.
-- **Six status-line messages widow at 375px**, three stranding a lone emoji (`⚠`, `⛩`,
-  `🏮`) on its own line. Also one at 360px and one at 414px. Full list in the session below.
-- **Minor:** "You know their ways a little better now." strands `now.` at 360px only. The
-  win screen's Ko-fi line strands `roll` at 320px only. Button row heights stagger
+  as "You have been / overwhelmed". Captured modal and final loss modal heading. **Still
+  open.** (The desktop half of this was later corrected — see below — it does not widow on
+  desktop, only at 320/375/414px.)
+- **FIXED 2026-09-24.** ~~Six status-line messages widow at 375px, three stranding a lone
+  emoji (`⚠`, `⛩`, `🏮`) on its own line. Also one at 360px and one at 414px.~~ Eight
+  messages in total, all fixed the same way: a ` ` (real non-breaking space, not the
+  `&nbsp;` entity — `setMsg` writes via `textContent`/`innerHTML` string concatenation, so
+  the entity would have rendered as literal text) joining the final two tokens of each
+  message, so the line-break can no longer fall between them. Wording unchanged, byte-exact
+  everywhere else. Re-verified live at each message's own problem width (375, 390, 360, 414)
+  against the exact fixed source strings, fetched rather than retyped to rule out a typo
+  reintroducing a plain space: none widow any more, all now carry 2+ words on the last line.
+  The messages: "...up to 3 cells a turn." (375, 390), "...the guards will take you. ⚠"
+  (375, 390), "...(or RESCUE) to finish! ⛩" (375), "...trust your instincts. 🏮" (375),
+  "...refresh to play today's puzzle." (375), "...first, inside the keep." (375), "...cross
+  walls at the stair tiles." (360), "...or practice below." (414).
+- **Minor, still open:** "You know their ways a little better now." strands `now.` at 360px
+  only. The win screen's Ko-fi line strands `roll` at 320px only. Button row heights stagger
   35.5/35.5/36.5/37.5px because MOVE and HINT use larger font sizes.
+
+Release gate re-run after these two fixes: rules 20/20, parity 40/40, bench 0 fallback
+boards and replay 10/10 in both modes. Neither fix touches the `<script id="engine">` block
+(one CSS rule, eight message strings), so the gate was never in doubt, but it was run anyway.
 
 **Checked and cleared, do not chase these:** Shippori Mincho B1 *is* loading and painting
 (h1 measures 154.41px with it, 164.96px without) — the audit script's `notResolving` flag
