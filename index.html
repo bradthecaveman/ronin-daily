@@ -106,9 +106,11 @@
   #footer{ padding:8px 14px 20px; font-size:12px; color:var(--ink-soft); text-align:center; }
   #footer a{ color:var(--indigo); cursor:pointer; text-decoration:underline; }
   /* modals */
+  /* positionModal() sets .modal's margin-top to centre it on the board, so the
+     vertical pad here is only the clamp floor, not the resting position */
   #overlay{
     position:fixed; inset:0; background:rgba(24,26,33,.55); display:none;
-    align-items:flex-start; justify-content:center; z-index:50; padding:6vh 16px 16px;
+    align-items:flex-start; justify-content:center; z-index:50; padding:16px;
   }
   #overlay.open{ display:flex; }
   /* The end-of-day modal fades up instead of snapping in. Only .fade opts into it, so the
@@ -642,7 +644,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     canvas.style.width = px + 'px'; canvas.style.height = px + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', () => { resize(); positionModal(); });
 
   // ---------- drawing ----------
   const cx = (c) => (c + .5) * cell, cy = (r) => (r + .5) * cell;
@@ -1399,12 +1401,29 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   }
 
   // ---------- modals ----------
+  const MODAL_PAD = 16;
+  // Centre the panel on the board rather than the window. Pinning every panel to a fixed
+  // top made short ones ride high: the win modal sat 192px above the board's centre on
+  // desktop. Clamped, so a panel taller than the space still fits on screen.
+  function positionModal() {
+    const modal = $('modal'), frame = $('boardFrame');
+    if (!modal || !frame || !$('overlay').classList.contains('open')) return;
+    const b = frame.getBoundingClientRect();
+    const h = modal.offsetHeight;
+    const ideal = b.top + (b.height - h) / 2;
+    const top = Math.max(MODAL_PAD, Math.min(ideal, window.innerHeight - h - MODAL_PAD));
+    modal.style.marginTop = (top - MODAL_PAD) + 'px';
+  }
+  // Some panels grow after they open: the stats countdown fills in, SHARE adds its
+  // feedback line. Re-centre when the height actually changes.
+  if (window.ResizeObserver) new ResizeObserver(positionModal).observe($('modal'));
   function openModal(html, fade) {
     $('modalContent').innerHTML = html;
     const o = $('overlay');
     o.classList.remove('shown');
     o.classList.toggle('fade', !!fade);
     o.classList.add('open');
+    positionModal();   // after .open, so the panel has a measurable height
     // two frames: one for .open to take the element out of display:none at opacity 0,
     // the next to flip .shown so the transition has two states to run between
     if (fade) requestAnimationFrame(() => requestAnimationFrame(() => o.classList.add('shown')));

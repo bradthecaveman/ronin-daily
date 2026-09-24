@@ -99,9 +99,11 @@
   #footer{ padding:8px 14px 20px; font-size:12px; color:var(--ink-soft); text-align:center; line-height:1.9; }
   #footer a{ color:var(--indigo); cursor:pointer; text-decoration:underline; }
   /* modals */
+  /* positionModal() sets .modal's margin-top to centre it on the board, so the
+     vertical pad here is only the clamp floor, not the resting position */
   #overlay{
     position:fixed; inset:0; background:rgba(24,26,33,.55); display:none;
-    align-items:flex-start; justify-content:center; z-index:50; padding:6vh 16px 16px;
+    align-items:flex-start; justify-content:center; z-index:50; padding:16px;
   }
   #overlay.open{ display:flex; }
   .modal{
@@ -623,7 +625,10 @@ return { hash32, mulberry32, shuffle, refCounts, makeRingEngine, RING_MODES };
     }
   }
   let rzT = null; // emulated/rotating viewports can fire resize before the final size settles
-  window.addEventListener('resize', () => { resize(); clearTimeout(rzT); rzT = setTimeout(resize, 150); });
+  window.addEventListener('resize', () => {
+    resize(); positionModal();
+    clearTimeout(rzT); rzT = setTimeout(() => { resize(); positionModal(); }, 150);
+  });
 
   // ---------- static board layer (lifted from the ring references) ----------
   // Tier board (easy/normal) = ronin-ring-reference-3-tier.html; every-ring board
@@ -1195,7 +1200,21 @@ return { hash32, mulberry32, shuffle, refCounts, makeRingEngine, RING_MODES };
   }
 
   // ---------- modals ----------
-  function openModal(html) { $('modalContent').innerHTML = html; $('overlay').classList.add('open'); }
+  const MODAL_PAD = 16;
+  // Centre the panel on the board rather than the window, so short panels stop riding high.
+  // Clamped, so a panel taller than the space still fits on screen.
+  function positionModal() {
+    const modal = $('modal'), frame = $('boardFrame');
+    if (!modal || !frame || !$('overlay').classList.contains('open')) return;
+    const b = frame.getBoundingClientRect();
+    const h = modal.offsetHeight;
+    const ideal = b.top + (b.height - h) / 2;
+    const top = Math.max(MODAL_PAD, Math.min(ideal, window.innerHeight - h - MODAL_PAD));
+    modal.style.marginTop = (top - MODAL_PAD) + 'px';
+  }
+  // Some panels grow after they open, so re-centre when the height actually changes.
+  if (window.ResizeObserver) new ResizeObserver(positionModal).observe($('modal'));
+  function openModal(html) { $('modalContent').innerHTML = html; $('overlay').classList.add('open'); positionModal(); }
   function closeModal() { $('overlay').classList.remove('open'); }
   const modalOpen = () => $('overlay').classList.contains('open');
   $('modalX').onclick = closeModal;

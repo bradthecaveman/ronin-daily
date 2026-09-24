@@ -20,7 +20,8 @@ Read this block first. Everything below it is history, kept in full.
 
 One gameplay change in that time: **modals now anchor to the top of the window instead of
 dead-centre** (`52cfe4c`, 2026-07-31, applied to `index.html`, `ronin_daily_v1.html` and
-`round.html`).
+`round.html`). **Superseded on 2026-09-24**: panels now centre on the board itself, which
+serves the same intent better. See "Pop-ups centre on the board".
 
 Everything committed since is **drawing only**: the terrace shadows, the gates, the lit edge
 and the piece reflections. The engine has not been touched, so no board, par or result can
@@ -48,9 +49,9 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Twelve commits are waiting. **The next push puts all twelve live at once**, which is the
-whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes landing on
-roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
+Thirteen commits are waiting. **The next push puts all thirteen live at once**, which is the
+whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes and modal centring
+landing on roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
 on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
 been deployed.
 
@@ -77,6 +78,9 @@ been deployed.
 - **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
   eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
   under "Design audit findings" below.
+- **Pop-ups centre on the board** (2026-09-24, and the first change to `round.html` in this
+  batch). Every panel now centres on the board instead of sitting at a fixed 6vh; the win
+  modal was 192px above the board's centre on desktop. See "Pop-ups centre on the board".
 - **The control row evened up** (2026-09-24). Every control is now one 80x37 box, RESCUE
   included. Button padding trimmed to keep the bar on one row at 360 and 375, and RESCUE
   lost its ⛩ to fit. **This is the last design-audit item; the list is now clear.**
@@ -85,7 +89,7 @@ been deployed.
   and the `now.` strand is closed as not reproducible at any real device width. Only the
   button-row stagger is left, and it needs Brad's ruling rather than a fix.
 
-`index.html` was re-synced in all twelve, so the source and the deployed copy are identical.
+`index.html` was re-synced in all thirteen, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -123,7 +127,17 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-24 (THE DESIGN AUDIT LIST IS CLEAR. Control row evened up on Brad's
+*Last updated: 2026-09-24 (POP-UPS NOW CENTRE ON THE BOARD, both games. Brad's ask. Every
+panel centres on `#boardFrame` instead of sitting at a fixed 6vh from the top, which had left
+short panels riding high: the win modal sat 192px above the board's centre on desktop, stats
+164px, while the tall rules panel looked right at 375 only by coincidence. `positionModal()`
+sets margin-top from the measured board and panel, clamped both ends so nothing can leave the
+screen, and a ResizeObserver re-runs it because the stats countdown fills in after openModal
+and left it 7px out. This SUPERSEDES 52cfe4c (07-31), though that commit's reasoning still
+holds: window-centre is too low, the board is the thing to cover. Offset is 0px for every
+panel on both games at 1280x900 and 375x812. First change to `round.html` in this batch, so
+the next push touches it too. Gates clean, square and ring.
+Prior: 2026-09-24 (THE DESIGN AUDIT LIST IS CLEAR. Control row evened up on Brad's
 call: every control is one explicit 80x37 box, HOLD/UNDO/MOVE/HINT/RESCUE. The stagger was
 NOT what the audit said — only MOVE has a larger font (its +1px), while HINT's +2px was the
 🏮 glyph's line box, proven by swapping the label. Button padding went 11px to 8px so a
@@ -357,6 +371,61 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## Pop-ups centre on the board, BUILT (2026-09-24, BOTH GAMES)
+
+Brad: "can we make sure the rules board and the win modal, basically any of the other windows
+that pop up, can we centralise those to the board." Every panel now centres on `#boardFrame`
+rather than sitting at a fixed distance from the top of the window.
+
+### This revisits 52cfe4c, and the reason it existed still holds
+
+On 2026-07-31 the modals were moved from dead-centre to `align-items:flex-start` with a 6vh
+top pad, because dead-centre "read as too low": the board sits high on the page, so a panel
+centred in the *window* left a band of dimmed empty space below it.
+
+**That complaint was right, and centring on the board is a better answer to it than 6vh.**
+Window-centre is too low; a fixed top pad is only correct for one panel height. The board is
+the thing the panel should cover, so centre on that. Dead-centre is still wrong and should
+not be re-proposed.
+
+### Why the shorter panels looked worst
+
+Every panel was pinned at the same top regardless of its height, so the shorter it was, the
+higher it rode. Measured before the change:
+
+| panel | height | above the board's centre, 1280x900 | at 375x842 |
+|---|---|---|---|
+| win modal | 227px | **192px** | 139px |
+| stats | 283px | **164px** | 94px |
+| rules / help | 471px | 70px | 0px |
+
+The rules panel looked right at 375 purely by coincidence: 6vh of an 842px window happened to
+land its centre on the board's. That is why this read as "some of them are off" rather than
+"all of them are off".
+
+### How it works
+
+`positionModal()` measures `#boardFrame` and the panel, then sets the panel's `margin-top` so
+the two centres line up. `#overlay` keeps `align-items:flex-start` and its 16px pad is now
+only the clamp floor, not the resting position.
+
+- **Clamped both ends**, so a panel taller than the space can never run off screen:
+  `max(16, min(ideal, innerHeight - height - 16))`.
+- **Called on open, on resize, and from a `ResizeObserver` on `#modal`.** The observer is not
+  optional: the stats countdown fills in *after* `openModal` returns and made the panel 14px
+  taller, which left it 7px off centre until the observer re-ran it. SHARE's feedback line
+  does the same thing.
+- Round's debounced re-settle calls it twice, matching how that game already re-runs `resize`.
+
+### Verified
+
+Offset from the board's centre is **0px** for every panel on both games: splash, rules, stats,
+attempt-failed and the win modal, at 1280x900 and 375x812. Nothing clipped at either end.
+
+Clamp checked at deliberately short windows, where `max-height:88vh` does most of the work:
+at 375x500 the rules panel caps at 440px and sits 44 to 484 with internal scroll; at 320x360
+it caps at 317px and sits 27 to 344. No page overflow at any width checked.
 
 ## The control row — one box for every control, BUILT (2026-09-24)
 
