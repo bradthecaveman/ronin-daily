@@ -141,12 +141,17 @@
   .headline{ text-align:center; font-size:16px; margin:2px 0 10px; }
   .headline b{ color:var(--vermillion); }
   .statgrid{ display:flex; justify-content:space-around; text-align:center; margin:14px 0 4px; }
-  .statgrid .n{ font-size:26px; font-weight:800; }
+  .statgrid .n{ font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif; font-size:26px; font-weight:700; }
   .statgrid .l{ font-size:11px; color:var(--ink-soft); letter-spacing:1px; text-transform:uppercase; }
   .dist{ margin:10px 0 2px; }
   .dist .row{ display:flex; align-items:center; gap:8px; margin:4px 0; font-size:12px; }
-  .dist .row span:first-child{ white-space:nowrap; flex:none; }
+  /* fixed label width: proportional digits make "attempt 1" narrower than 2 and 3, which
+     started its bar left of the others, and "failed" is shorter again */
+  .dist .row span:first-child{ white-space:nowrap; flex:none; width:58px; font-variant-numeric:tabular-nums; }
   .dist .bar{ background:var(--indigo); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; min-width:18px; text-align:right; }
+  .dist .bar.zero{ text-align:center; padding:2px 0; min-width:0; }
+  .dist .row.fails{ margin-top:10px; }
+  .dist .row.fails .bar{ background:var(--vermillion); }
   #countdown{ text-align:center; font-size:13px; color:var(--ink-soft); margin-top:14px; }
   .splashSub{ text-align:center; color:var(--ink-soft); font-size:11.5px; letter-spacing:2.5px; margin:0 0 10px; }
   .resDots{ display:flex; gap:10px; justify-content:center; margin:12px 0 6px; }
@@ -1469,13 +1474,18 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       if (winsOn(d)) { run++; max = Math.max(max, run); }
       else if (results[d] || d < today) run = 0;
     }
-    return { played, wins, cur, max, dist };
+    return { played, wins, cur, max, dist, fails: played - wins };
   }
 
   function statsHtml(includeDist = true) {
     const s = calcStats();
     const pc = s.played ? Math.round(100 * s.wins / s.played) : 0;
-    const maxD = Math.max(1, ...s.dist);
+    const maxD = Math.max(1, ...s.dist, s.fails);
+    // a zero bar gets a fixed narrow pill so the 0 sits centred in it, rather than a
+    // percentage-width bar with the number pushed to its right edge
+    const bar = (label, n, rowCls) => `
+      <div class="row${rowCls}"><span>${label}</span>
+      <span class="bar${n ? '' : ' zero'}" style="width:${n ? Math.max(8, 90 * n / maxD) + '%' : '22px'}">${n}</span></div>`;
     return `
       <div class="statgrid">
         <div><div class="n">${s.played}</div><div class="l">played</div></div>
@@ -1484,9 +1494,8 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
         <div><div class="n">${s.max}</div><div class="l">best</div></div>
       </div>
       ${includeDist ? `<div class="dist">
-        ${[0, 1, 2].map(i => `
-          <div class="row"><span>attempt ${i + 1}</span>
-          <span class="bar" style="width:${Math.max(8, 90 * s.dist[i] / maxD)}%">${s.dist[i]}</span></div>`).join('')}
+        ${[0, 1, 2].map(i => bar(`attempt ${i + 1}`, s.dist[i], '')).join('')}
+        ${bar('failed', s.fails, ' fails')}
       </div>` : ''}`;
   }
 
@@ -1515,7 +1524,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const perfect = won && G.finalMoves === G.layout.par;
     const headline = won
       ? `${G.finalMoves} moves · par ${G.layout.par}${perfect ? ' — <b>perfect ⚔️</b>' : ''}`
-      : `The Emperor waits… <b>(par ${G.layout.par})</b>`;
+      : 'The Emperor waits…';
     const isDaily = G.mode === 'daily';
     openModal(`
       <h2 style="text-align:center;margin-bottom:1px">${won ? 'The Emperor’s revenge is swift and merciless' : 'You have been overwhelmed'}</h2>

@@ -49,9 +49,9 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Thirteen commits are waiting. **The next push puts all thirteen live at once**, which is the
-whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes and modal centring
-landing on roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
+Fourteen commits are waiting. **The next push puts all fourteen live at once**, which is the
+whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes, modal centring and
+panel work landing on roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
 on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
 been deployed.
 
@@ -78,6 +78,9 @@ been deployed.
 - **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
   eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
   under "Design audit findings" below.
+- **Statistics panel and the loss screen** (2026-09-24, square only). Bars aligned, a fails
+  bar added, zero bars narrowed, the big numbers moved to Shippori, and par dropped from the
+  loss headline. See "Statistics panel and the loss screen".
 - **Pop-ups centre on the board** (2026-09-24, and the first change to `round.html` in this
   batch). Every panel now centres on the board instead of sitting at a fixed 6vh; the win
   modal was 192px above the board's centre on desktop. See "Pop-ups centre on the board".
@@ -89,7 +92,7 @@ been deployed.
   and the `now.` strand is closed as not reproducible at any real device width. Only the
   button-row stagger is left, and it needs Brad's ruling rather than a fix.
 
-`index.html` was re-synced in all thirteen, so the source and the deployed copy are identical.
+`index.html` was re-synced in all fourteen, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -127,7 +130,16 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-24 (POP-UPS NOW CENTRE ON THE BOARD, both games. Brad's ask. Every
+*Last updated: 2026-09-24 (STATISTICS PANEL AND LOSS SCREEN reworked on Brad's review, SQUARE
+ONLY. Attempt bars now align (fixed 58px label; proportional digits had made `attempt 1`
+narrower and started its bar left), a `failed` bar added in vermillion after a gap, zero bars
+narrowed to a 22px pill with the 0 centred, the four big numbers moved from system sans 800 to
+Shippori 700, and par dropped from the loss headline (the SHARE string still carries it,
+deliberately). Also established: the difficulty control does NOT filter the stats, it closes
+the panel and switches the board, though stats are stored per difficulty — undecided whether
+that should change. `round.html` is NOT mirrored and still lacks even the earlier `attempt 1`
+wrap fix. Gate clean.
+Prior: 2026-09-24 (POP-UPS NOW CENTRE ON THE BOARD, both games. Brad's ask. Every
 panel centres on `#boardFrame` instead of sitting at a fixed 6vh from the top, which had left
 short panels riding high: the win modal sat 192px above the board's centre on desktop, stats
 164px, while the tall rules panel looked right at 375 only by coincidence. `positionModal()`
@@ -371,6 +383,52 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## Statistics panel and the loss screen, BUILT (2026-09-24, SQUARE ONLY)
+
+Brad reviewed the panels as a set and called five things. Four were changes, one was a
+question that turned out to matter.
+
+### What changed
+
+1. **The bars now line up.** The three attempt bars started at different x positions because
+   the label is proportional-digit text: `attempt 1` measured narrower than `attempt 2` and
+   `3`, so its bar began further left. The label now has a **fixed 58px width** plus
+   `font-variant-numeric:tabular-nums`. 58px is exact: measured label scroll width is 58px,
+   so nothing clips. All four bars now start at the same x, verified.
+2. **A fails bar.** `calcStats()` returns `fails: played - wins`, meaning days finished with
+   no rescue at all. Rendered as a fourth row **after a 10px gap and in `--vermillion`**,
+   which is the red the failed attempt-dots already use, rather than the `--indigo` brick of
+   the attempt bars. Brad's call, over a flush fourth row: the attempt bars answer "when did
+   you win", the fails bar answers "did you win at all", and flush-and-same-colour read as
+   "attempt 4". `maxD` now includes `fails` so all four scale together.
+3. **Zero bars are narrower, with the 0 centred.** A zero bar was a percentage-width pill
+   (~34px) with the number shoved to its right edge. Zero now takes a **fixed 22px** pill
+   with `text-align:center`, measured at 8px of space either side of the glyph.
+4. **The big stat numbers are Shippori now.** They were the body system sans at weight 800,
+   which is why Brad read them as thicker and less refined next to the wordmark. Now
+   `Shippori Mincho B1` at 700, the same face as the masthead and the modal headings.
+5. **The loss screen no longer names par.** `The Emperor waits… (par N)` is now just
+   `The Emperor waits…`. **The shared text still carries par** (`shareText()` is a separate
+   string) — left alone deliberately, since Brad asked about the screen. Flag if that should
+   follow.
+
+### The difficulty control is not a stats filter, and looks like one
+
+Brad asked whether pressing it shows that difficulty's stats. **It does not.** `setDiff()`
+writes the new difficulty, then calls `closeModal()` and `startDaily()`: the panel closes and
+the board is replaced with that difficulty's castle for today.
+
+Stats *are* per difficulty — `calcStats()` reads `modeState(readStore())`, which is
+`s.modes[G.diff]` — so reopening the panel afterwards does show that difficulty's figures.
+But the control reads as a filter sitting inside a stats panel while actually being a
+"switch the game" button. **Not changed, and not yet decided.** Worth a ruling.
+
+### Not mirrored to round
+
+`round.html` has the same panel and the same loss headline (`round.html:1304`), and none of
+this was applied there. It also **never received the 09-24 `attempt 1` wrap fix**, so that
+original defect is still live on the round board. Awaiting Brad's call on mirroring.
 
 ## Pop-ups centre on the board, BUILT (2026-09-24, BOTH GAMES)
 
