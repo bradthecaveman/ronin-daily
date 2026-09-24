@@ -130,7 +130,14 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-24 (STATISTICS PANEL AND LOSS SCREEN reworked on Brad's review, SQUARE
+*Last updated: 2026-09-24 (THREE DECISIONS, NO CODE. The loss share KEEPS par even though the
+loss screen no longer shows it, and that difference is deliberate. The stats difficulty
+control STAYS a switch rather than becoming a filter: Brad asked for filtering, then reversed
+when it emerged that the segment is the only route to hard mode, so filtering would have
+needed a new home for switching. And round.html is deliberately LEFT BEHIND on the stats panel
+and loss headline, unlike the modal centring earlier today which was mirrored. All three are
+recorded below so they are not re-opened.
+Prior: 2026-09-24 (STATISTICS PANEL AND LOSS SCREEN reworked on Brad's review, SQUARE
 ONLY. Attempt bars now align (fixed 58px label; proportional digits had made `attempt 1`
 narrower and started its bar left), a `failed` bar added in vermillion after a gap, zero bars
 narrowed to a 22px pill with the 0 centred, the four big numbers moved from system sans 800 to
@@ -410,10 +417,11 @@ question that turned out to matter.
    `Shippori Mincho B1` at 700, the same face as the masthead and the modal headings.
 5. **The loss screen no longer names par.** `The Emperor waits… (par N)` is now just
    `The Emperor waits…`. **The shared text still carries par** (`shareText()` is a separate
-   string) — left alone deliberately, since Brad asked about the screen. Flag if that should
-   follow.
+   string). **DECIDED 2026-09-24: leave the share alone.** The two are deliberately different:
+   par is noise on the screen of someone who just lost, but it is the tease that makes a
+   shared loss worth answering. Do not "tidy" this into consistency.
 
-### The difficulty control is not a stats filter, and looks like one
+### The difficulty control is a switch, not a filter — CLOSED 2026-09-24, leave it
 
 Brad asked whether pressing it shows that difficulty's stats. **It does not.** `setDiff()`
 writes the new difficulty, then calls `closeModal()` and `startDaily()`: the panel closes and
@@ -421,14 +429,30 @@ the board is replaced with that difficulty's castle for today.
 
 Stats *are* per difficulty — `calcStats()` reads `modeState(readStore())`, which is
 `s.modes[G.diff]` — so reopening the panel afterwards does show that difficulty's figures.
-But the control reads as a filter sitting inside a stats panel while actually being a
-"switch the game" button. **Not changed, and not yet decided.** Worth a ruling.
 
-### Not mirrored to round
+**Brad first asked for it to filter in place, then reversed and left it as it is, once the
+cost was on the table.** The cost: `modeSegHtml` is rendered in exactly one place, the stats
+panel (`ronin_daily_v1.html:1637`), so that segment is **the only way a player can reach hard
+mode at all** — `RoninDebug.setDiff` is a debug hook, not player-facing. Making it a filter
+means inventing somewhere else for switching to live, which is a bigger change than the wart
+is worth.
+
+**Do not re-propose filtering without also answering where switching goes.** The three shapes
+already considered and declined: a PLAY HARD TODAY button that appears when viewing the other
+difficulty; a permanent "playing normal today · switch" line; and moving the choice to the
+rules panel.
+
+### Not mirrored to round — DECIDED 2026-09-24, leave round alone
 
 `round.html` has the same panel and the same loss headline (`round.html:1304`), and none of
 this was applied there. It also **never received the 09-24 `attempt 1` wrap fix**, so that
-original defect is still live on the round board. Awaiting Brad's call on mirroring.
+original defect is still live on the round board.
+
+**Brad's call: leave round.** Note this diverges from the modal-centring change earlier the
+same day, which he did want mirrored — the difference is that centring was a fault on every
+panel, while this is a set of refinements to a board nobody is currently playing. So the two
+games are now deliberately out of step on the stats panel and the loss headline. Anyone
+picking round back up should read this section first.
 
 ## Pop-ups centre on the board, BUILT (2026-09-24, BOTH GAMES)
 
