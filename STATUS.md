@@ -48,7 +48,7 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Eleven commits are waiting. **The next push puts all eleven live at once**, which is the
+Twelve commits are waiting. **The next push puts all twelve live at once**, which is the
 whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes landing on
 roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
 on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
@@ -77,12 +77,15 @@ been deployed.
 - **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
   eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
   under "Design audit findings" below.
+- **The control row evened up** (2026-09-24). Every control is now one 80x37 box, RESCUE
+  included. Button padding trimmed to keep the bar on one row at 360 and 375, and RESCUE
+  lost its ⛩ to fit. **This is the last design-audit item; the list is now clear.**
 - **Ko-fi line widow fixed, two findings closed** (2026-09-24). `roll` no longer strands on
   the win screen at 320px. The "overwhelmed" widow is closed as will-not-fix on Brad's call,
   and the `now.` strand is closed as not reproducible at any real device width. Only the
   button-row stagger is left, and it needs Brad's ruling rather than a fix.
 
-`index.html` was re-synced in all eleven, so the source and the deployed copy are identical.
+`index.html` was re-synced in all twelve, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -120,7 +123,16 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-24 (THE DESIGN AUDIT LIST IS DOWN TO ONE ITEM. Ko-fi win line fixed:
+*Last updated: 2026-09-24 (THE DESIGN AUDIT LIST IS CLEAR. Control row evened up on Brad's
+call: every control is one explicit 80x37 box, HOLD/UNDO/MOVE/HINT/RESCUE. The stagger was
+NOT what the audit said — only MOVE has a larger font (its +1px), while HINT's +2px was the
+🏮 glyph's line box, proven by swapping the label. Button padding went 11px to 8px so a
+uniform box still fits `MOVE ⚠` (79px) and the bar stays ONE row at 360 and 375; RESCUE lost
+its ⛩ to fit, MOVE kept its ⚠ because colour alone is a weaker warning. 320 is two rows as it
+already was. `updateButtons()` had to switch from `inline-block` to `flex` or the centring
+would have been overridden. Gate clean. Full numbers and the rejected options under "The
+control row" below.
+Prior: 2026-09-24 (THE DESIGN AUDIT LIST IS DOWN TO ONE ITEM. Ko-fi win line fixed:
 `roll` stranded at a true 320px, joined "sausage roll" with a non-breaking space, verified
 through the real win path. Two findings CLOSED without code: the "overwhelmed" widow is
 Brad's will-not-fix ("overwhelmed is long enough to not feel like a widow", so the test is the
@@ -345,6 +357,64 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## The control row — one box for every control, BUILT (2026-09-24)
+
+Brad: "lets give every control the same explicit width and height." Every control is now
+**80 × 37px**: HOLD, UNDO, MOVE, HINT and RESCUE.
+
+### What was actually causing the stagger
+
+The 09-18 audit blamed "MOVE and HINT use larger font sizes". Half right. Measured on a live
+board: HOLD and UNDO 35.5px, MOVE 36.5px, HINT 37.5px.
+
+- **MOVE's +1px is the font**, 13.5px against everything else's 12.5px. That is deliberate
+  hierarchy and it survives the change — MOVE still reads larger inside the same box.
+- **HINT's +2px was the 🏮 glyph**, not the font. Its font-size is 12.5px, identical to
+  HOLD and UNDO. Swapping the label to a plain "HINT" dropped it to exactly 35.5px. An emoji
+  carries a taller line box than the text beside it, and with `line-height:normal` that sets
+  the button's height.
+
+An explicit `height` fixes the class of bug, not just this instance: no future glyph or label
+can set the row's height again.
+
+### The width problem, and why RESCUE lost its ⛩
+
+Natural widths, measured with `min-width` off: HOLD 62.4, UNDO 63.8, MOVE 66.8, **MOVE ⚠
+85.0**, HINT 73.1, **RESCUE ⛩ 97.1**. The trailing glyphs are what make the two wide ones
+wide: the ⚠ costs MOVE 18px and the ⛩ costs RESCUE 17px.
+
+One row of four needs each button under **84.2px at 375, 80.5px at 360, 70.5px at 320**
+(viewport minus 20px container padding and 18px of gaps, divided by four). So a uniform box
+big enough for `MOVE ⚠` at the old padding would have pushed the control bar onto two rows on
+every common phone, where it is one row today.
+
+Resolved by trimming the button padding from `9px 11px` to `9px 8px`, which takes `MOVE ⚠`
+to 79px and fits an 80px box with room, **and** dropping the ⛩ from RESCUE. Brad picked this
+over the alternatives. The ⚠ on MOVE was deliberately kept: the red `.danger` fill carries
+the same warning, but colour alone is a weaker signal than colour plus a glyph.
+
+**Rejected, with the numbers:**
+
+- **A 92px uniform box keeping every glyph.** Honest uniformity with no label changes, but
+  the bar wraps to two rows at 375 and 360. Rejected: those are the common widths.
+- **Leaving RESCUE at its own 97px** as a deliberate exception. Rejected because Brad asked
+  for *every* control to match.
+- **`align-items:stretch` on `#controls`.** A one-word fix that equalises heights only, but
+  it lets the lantern's accidental line box set the height for all of them.
+
+### Verified
+
+All five controls measure exactly 80 × 37 including `MOVE ⚠` and the gold RESCUE, with every
+label on **one line** and no overflow in either axis (widest label is `MOVE ⚠` at 60px of ink
+inside an 80px box). Control bar is **one row at 1280, 375 and 360**. At 320 it is two rows,
+which it already was: the four natural widths summed 285.3px against 320 − 38 = 282 available.
+No horizontal page overflow at any width checked.
+
+**One implementation trap.** `updateButtons()` shows HINT and RESCUE with
+`style.display = 'inline-block'`, which would have overridden the `display:flex` that centres
+the label inside the fixed box. Both now set `'flex'`. Anything else made visible from JS
+needs the same treatment.
 
 ## The win flourish — BUILT (2026-09-22)
 
@@ -1058,9 +1128,12 @@ Measured in the browser at 320/360/375/390/414/1280. Real defects, awaiting thei
   360px the whole sentence fits on **one line** (308px box), and at 320px it breaks as
   "...a little / **better now.**", two words on the last line. It does not strand at any real
   device width. See the width-labelling note below for why the original finding said 360.
-- **Minor, still open:** button row heights stagger 35.5/35.5/36.5/37.5px because MOVE and
-  HINT use larger font sizes. **Not yet put to Brad** — this may well be deliberate hierarchy
-  (MOVE is the primary action), so ask before changing it.
+- **FIXED 2026-09-24, and the audit's explanation was wrong.** ~~Button row heights stagger
+  35.5/35.5/36.5/37.5px because MOVE and HINT use larger font sizes.~~ Only MOVE has a larger
+  font (13.5px against 12.5px), and that accounts for its +1px. **HINT's +2px was the 🏮
+  glyph inflating the line box, nothing to do with font size** — measured by swapping the
+  label to plain "HINT", which dropped it to exactly 35.5px. Brad's call was to even it up.
+  See "The control row" below.
 
 ### The 09-18 audit's width labels run ~15px wide — read them with care
 

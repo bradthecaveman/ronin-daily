@@ -92,12 +92,14 @@
   #controls{ display:flex; gap:6px; padding:10px 10px 6px; flex-wrap:wrap; justify-content:center; align-items:center; }
   #controls button{
     font-size:12.5px; font-weight:700; letter-spacing:.5px; cursor:pointer;
-    padding:9px 11px; border-radius:9px; border:1.5px solid transparent;
-    background:transparent; color:var(--ink-soft); min-width:0;
+    padding:9px 8px; border-radius:9px; border:1.5px solid transparent;
+    background:transparent; color:var(--ink-soft);
+    /* explicit height stops the 🏮 and ⚠ glyphs setting their own line box */
+    width:80px; height:37px; display:flex; align-items:center; justify-content:center;
   }
   #controls button:disabled{ opacity:.3; cursor:default; }
   #controls #holdBtn, #controls #undoBtn{ border-color:var(--paper-2); background:var(--paper-2); }
-  #controls #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; min-width:86px; font-size:13.5px; }
+  #controls #moveBtn{ background:var(--indigo); border-color:var(--indigo); color:#fff; font-size:13.5px; }
   #controls #moveBtn.danger{ background:var(--vermillion); border-color:var(--vermillion); }
   #controls #rescueBtn{ display:none; background:var(--gold); border-color:var(--gold); color:var(--ink); }
   #controls #hintBtn{ border-color:var(--gold); color:var(--ink); }
@@ -176,7 +178,7 @@
   <button id="undoBtn">UNDO</button>
   <button id="moveBtn">MOVE</button>
   <button id="hintBtn">🏮 HINT</button>
-  <button id="rescueBtn">RESCUE ⛩</button>
+  <button id="rescueBtn">RESCUE</button>
 </div>
 
 <div id="footer">
@@ -1213,8 +1215,8 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     $('holdBtn').disabled = !play || !!G.sel;
     $('moveBtn').classList.toggle('danger', !!(preview && preview.captured));
     $('moveBtn').textContent = preview && preview.captured ? 'MOVE ⚠' : 'MOVE';
-    $('rescueBtn').style.display = (play && canAscend() && !G.sel) ? 'inline-block' : 'none';
-    $('hintBtn').style.display = hintAvailable() ? 'inline-block' : 'none';
+    $('rescueBtn').style.display = (play && canAscend() && !G.sel) ? 'flex' : 'none';
+    $('hintBtn').style.display = hintAvailable() ? 'flex' : 'none';
     $('hintBtn').disabled = !play;
   }
 
