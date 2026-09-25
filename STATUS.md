@@ -15,8 +15,11 @@ Read this block first. Everything below it is history, kept in full.
 - **RONIN ◯ (the round board) is hidden, not retired.** Unlinked from `index.html` on
   2026-07-24 because it wasn't being played. Still deployed, still reachable by URL, and the
   link is commented out ready to restore. Brad has not given up on it.
-- **The live site is twenty-four commits behind this repo.** Everything below is local only, so
-  roninpuzzles.com still shows the flat pre-visual-pass board and the old share string.
+- **Everything is live. The repo and the site are in step for the first time since 09-15.**
+  Twenty-four commits were pushed on 2026-09-25 in one go: the whole visual pass, the panel and
+  share work, the difficulty rename, and the new rules box. Verified after the Pages rebuild by
+  fetching `roninpuzzles.com` and `round.html` and diffing both against the local copies, not by
+  assuming the build succeeded. Nothing is waiting to ship.
 
 ### No board has changed, and that is proven
 
@@ -53,11 +56,16 @@ repo and its own domain, `fivesgame.online`. What remains here is a **215-line s
 `tests/lab.mjs` is tracked, modified, and deliberately left unstaged. It has been that way for
 months. **Do not stage it.**
 
-### Committed locally, NOT pushed — twenty-four commits
+### Pushed and live — the twenty-four commits, 2026-09-25
 
-**The next push puts all twenty-four live at once.** That is the whole visual pass plus two days
-of panel and share work landing on roninpuzzles.com in one go, not just the most recent piece.
-That is a bigger call than any single item and it is Brad's.
+**All of this went live in one push**, ending the backlog that had been building since 09-15.
+Pages build `8b83f1e` completed and both pages were then fetched and compared byte for byte
+against the local files. Kept below as the record of what landed together.
+
+**The one thing that reached existing players' data** was the schema v3 storage migration
+shipped with the `normal` to `easy` rename: history moves from `modes.normal` to `modes.easy`
+on first load. Tested against a real pre-rename save before the push. **No board moved**, and
+that is proven rather than assumed: the engine block hashes identical across the whole batch.
 
 The visual pass, 09-15 to 09-22, all drawing only:
 
@@ -104,10 +112,13 @@ Clean apart from `tests/lab.mjs`, as above.
 
 ### Next up
 
-1. **Gate legibility on the board** — the one rules finding this session did NOT close. The
+1. **Watch for anything odd on the live site**, especially a player opening the game and
+   finding their stats missing. That would be the schema v3 migration, and it is the only part
+   of this release that edits data someone already had.
+2. **Gate legibility on the board** — the one rules finding this session did NOT close. The
    carousel now teaches the gate rule; whether the gates read clearly on the real board is a
    separate drawing question and is still open.
-2. **Brad has one more topic** to open in a fresh session as of 2026-09-25. Not yet named.
+3. **Brad has one more topic** to open in a fresh session as of 2026-09-25. Not yet named.
 
 **The design-audit list is clear** and **the visual pass is finished.** Nothing is outstanding
 on either.
@@ -137,7 +148,15 @@ on either.
   engine generate identical boards.
 - **Never change a mode's `salt`**, or every past board regenerates.
 
-*Last updated: 2026-09-25 (THE RONIN NOW WALKS THE ROUTE IT DRAWS, and the gate caption
+*Last updated: 2026-09-25 (PUSHED. ALL TWENTY-FOUR COMMITS ARE LIVE at roninpuzzles.com,
+ending a backlog that had been stacking since 09-15: the full visual pass, the stats and share
+work, the difficulty rename with its storage migration, and the new rules box with the
+carousel. Verified rather than assumed — waited for the Pages build, then fetched both
+`index.html` and `round.html` from the domain and diffed them against the local copies, byte
+identical. `round.html` went with it and still carries the old rules box by choice. The only
+thing that touches data a player already had is the schema v3 migration, so that is the thing
+to watch. Repo and site are in step for the first time in ten days.
+Prior: 2026-09-25 (THE RONIN NOW WALKS THE ROUTE IT DRAWS, and the gate caption
 is plain English. Two faults Brad found in the built version: the piece glided straight to the
 endpoint over the top of the tiles instead of following the marked route, and the endpoint dots
 stayed lit through the move. Both were the carousel not copying `executeMove()`, which queues
