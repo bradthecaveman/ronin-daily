@@ -4,7 +4,7 @@
 > any session that changes the game, the pipeline, or a decision. Git history records the how;
 > this file records the what and why.
 
-## Where things stand — 2026-09-22
+## Where things stand — 2026-09-25
 
 Read this block first. Everything below it is history, kept in full.
 
@@ -12,130 +12,114 @@ Read this block first. Everything below it is history, kept in full.
 
 - **RONIN ⬛ (the square daily) is live at `roninpuzzles.com`**, on its own domain, with Ko-fi
   tips wired in. This is the public product.
-- **RONIN ◯ (the round board) is hidden, not retired.** Unlinked from `index.html` on 2026-07-24
-  because it wasn't being played. Still deployed, still reachable by URL, and the link is
-  commented out in `index.html` ready to restore. Brad has not given up on it.
+- **RONIN ◯ (the round board) is hidden, not retired.** Unlinked from `index.html` on
+  2026-07-24 because it wasn't being played. Still deployed, still reachable by URL, and the
+  link is commented out ready to restore. Brad has not given up on it.
+- **The live site is nineteen commits behind this repo.** Everything below is local only, so
+  roninpuzzles.com still shows the flat pre-visual-pass board and the old share string.
 
-### No gameplay has changed since 2026-07-24, but the board looks different
+### No board has changed, and that is proven
 
-One gameplay change in that time: **modals now anchor to the top of the window instead of
-dead-centre** (`52cfe4c`, 2026-07-31, applied to `index.html`, `ronin_daily_v1.html` and
-`round.html`). **Superseded on 2026-09-24**: panels now centre on the board itself, which
-serves the same intent better. See "Pop-ups centre on the board".
+Every result, par and past puzzle is byte-identical to what players have already seen.
 
-Everything committed since is **drawing only**: the terrace shadows, the gates, the lit edge
-and the piece reflections. The engine has not been touched, so no board, par or result can
-have changed, and the release gate was re-run on each one anyway. What has changed is how the
-castle reads: tiers with gateways cut through them rather than three stacked squares, light
-caught on their sunward edges, and pieces that catch that same light.
+Most of the work since 2026-07-24 is drawing only. **Two changes did touch more than drawing
+and are worth knowing about:**
+
+- **The `<script id="engine">` block was edited on 2026-09-25** to rename the `normal` mode to
+  `easy`. Boards are seeded from `mc.salt`, a fixed number, never the mode's name, so nothing
+  moved. Verified by fingerprinting 40 days per mode before and after: identical.
+  **`easy` must keep `salt: 0x4E524D4C` forever, whatever the mode is ever called.**
+- **Stored data gained a schema v3 migration** on the same day, moving player history from
+  `modes.normal` to `modes.easy`. Tested against a real pre-rename save.
+
+The release gate was re-run on every commit regardless.
 
 ### Fives has moved out
 
 Until 2026-08-09 this repo hosted Fives at `roninpuzzles.com/fives.html`. It now has its own
 repo and its own domain, `fivesgame.online`. What remains here is a **215-line signpost** at
-`fives.html` that points at the new address. Its own source lives in `~/Desktop/Projects/Links`,
-and `Links/STATUS.md` is the source of truth for it, not this file.
+`fives.html` pointing at the new address. Its source lives in `~/Desktop/Projects/Links`, and
+`Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Local-only files, deliberately ring-fenced
 
-`.gitignore` keeps five things off the public repo. **They are not junk and must not be cleaned up:**
+`.gitignore` keeps these off the public repo. **They are not junk and must not be cleaned up:**
 
 - `stones.html` — the Step Stone prototype. Parked, and Brad may come back to it.
 - `links.html`, `RONIN_JOURNEY_BRIEF.md`, `tests/epic-lab.mjs`
-- `CLAUDE.md` — project instructions for Claude, added 2026-08-19. Ignored deliberately:
-  the repo is public and the file names the unpublished work above.
+- `CLAUDE.md` — project instructions, ignored deliberately because the repo is public and the
+  file names the unpublished work above.
 
-`tests/lab.mjs` is modified and deliberately left unstaged. It has been that way for months.
+`tests/lab.mjs` is tracked, modified, and deliberately left unstaged. It has been that way for
+months. **Do not stage it.**
 
-### Committed locally, NOT pushed
+### Committed locally, NOT pushed — nineteen commits
 
-Nineteen commits are waiting. **The next push puts all nineteen live at once**, which is the
-whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes, modal centring and
-panel work landing on roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
-on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
-been deployed.
+**The next push puts all nineteen live at once.** That is the whole visual pass plus two days
+of panel and share work landing on roninpuzzles.com in one go, not just the most recent piece.
+That is a bigger call than any single item and it is Brad's.
 
-- **Straight-move zigzag fixed** (`4f0ee10`, 2026-09-15). Display only, boards proven
-  byte-identical to the previous engine.
-- **Terrace elevation shadows, the stacked-pass x2 spec** (2026-09-18). Built to the signed-off
-  table, plus the `#boardFrame` `box-shadow` removed so the outer board sits on the ground,
-  which Brad approved on the day. Drawing only. Measurements under "Shadow methodology".
-- **Gates cut through the walls, "variant D"** (2026-09-20). The whole gate item, chosen from
-  four rendered variants. Drawing only. Full spec and the rejected variants are in the
-  session below, under "Gates as cuts".
-- **The lit edge** (2026-09-20). Approved at the strength rendered, after a flaw in the
-  recorded spec was found and fixed. See "The lit edge" below.
-- **Piece reflections, guards and Ronin** (2026-09-22). Brad's "variant 1". The Ronin's
-  katana is redrawn on the reflection's own curve. See "Piece reflections" below.
-- **The throne and the flourish written up** (`014dfe6`, 2026-09-22). Docs only, no code.
-- **The throne** (`420dede`, 2026-09-22). All five decisions built, plus the pulse ring moved
-  out to clear the bigger sun. Drawing only. See "The throne" below.
-- **The win flourish** (`9dc8650`, 2026-09-22). The square board's first win moment: blood
-  wipe, tap to skip. Drawing and timing only. See "The win flourish" below.
-- **Flourish retimed, caption cut** (2026-09-24). VICTORY! removed as overkill, and the modal
-  unhooked from the animation length so it can arrive at 1250ms instead of a 1800ms floor.
-  The modal now fades up over 500ms. Drawing, timing and one CSS rule.
-- **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
-  eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
-  under "Design audit findings" below.
-- **`normal` renamed to `easy`, label and key** (2026-09-25). Both difficulties now tagged in
-  the share (`❀EASY` / `⚔HARD`). Carries a storage migration. See "normal becomes easy".
-- **The share string redesigned** (2026-09-25). Two lines instead of three, a gold square for
-  a par run, and moves read as `9 · par 6`. See "The share string".
-- **Fails bar redrawn, end-of-day numbers tightened** (2026-09-25). The fails bar is evenly
-  spaced and outlined rather than isolated and filled, and the big numbers sit closer to
-  SHARE RESULT.
-- **Statistics panel and the loss screen** (2026-09-24, square only). Bars aligned, a fails
-  bar added, zero bars narrowed, the big numbers moved to Shippori, and par dropped from the
-  loss headline. See "Statistics panel and the loss screen".
-- **Pop-ups centre on the board** (2026-09-24, and the first change to `round.html` in this
-  batch). Every panel now centres on the board instead of sitting at a fixed 6vh; the win
-  modal was 192px above the board's centre on desktop. See "Pop-ups centre on the board".
-- **The control row evened up** (2026-09-24). Every control is now one 80x37 box, RESCUE
-  included. Button padding trimmed to keep the bar on one row at 360 and 375, and RESCUE
-  lost its ⛩ to fit. **This is the last design-audit item; the list is now clear.**
-- **Ko-fi line widow fixed, two findings closed** (2026-09-24). `roll` no longer strands on
-  the win screen at 320px. The "overwhelmed" widow is closed as will-not-fix on Brad's call,
-  and the `now.` strand is closed as not reproducible at any real device width. Only the
-  button-row stagger is left, and it needs Brad's ruling rather than a fix.
+The visual pass, 09-15 to 09-22, all drawing only:
 
-`index.html` was re-synced in all nineteen, so the source and the deployed copy are identical.
+| | |
+|---|---|
+| `4f0ee10` | straight-move zigzag fixed |
+| `e58cc09` | terrace elevation shadows |
+| `72712c2` | gates cut through the walls, variant D |
+| `2ddd0df` | the lit edge |
+| `3af061d` | piece reflections, guards and Ronin |
+| `014dfe6` | throne and flourish written up (docs only) |
+| `420dede` | the throne |
+| `9dc8650` | the win flourish |
+| `e93b656` | flourish retimed, VICTORY! cut |
+
+The design-audit fixes and panel work, 09-24 to 09-25:
+
+| | |
+|---|---|
+| `9ab6142` | `attempt 1` wrap and eight status-line widows |
+| `7a6d22b` | `roll` strand on the win screen at 320px |
+| `29839bf` | every control one 80x37 box |
+| `79777af` | pop-ups centre on the board (**also touches `round.html`**) |
+| `c37e9b0` | statistics panel reworked, par dropped from the loss screen |
+| `8ee23d2` | three decisions recorded (docs only) |
+| `3d4775f` | fails bar redrawn, end-of-day numbers tightened |
+| `d50cd1a` | share string rewritten, gold square for a par run |
+| `73da412` | `normal` renamed `easy`, label and key, plus the migration |
+| `aa887aa` | easy tag swapped to a dingbat so the share lines align |
+
+`index.html` was re-synced in all nineteen, so source and deployed copy are identical.
 
 ### Working tree
 
-Only `tests/lab.mjs` is modified, as it has been for months.
+Clean apart from `tests/lab.mjs`, as above.
 
-An earlier, different shadow attempt was built and REVERTED on 2026-09-18 at Brad's request:
-"that's wrong, I want to start again from the current live version." That was the two-pass
-graduated version, which is on the rejected list under Parked. It is not what shipped.
-The patch that was kept at `scratchpad/shadow-work.patch` is gone; the scratchpad did not
-survive. No loss, the rejected parameters are recorded below.
+### Next up
 
-### Next up, in Brad's order
+1. **Rules box review** — Brad's stated next stage, and three findings are already waiting
+   there. They are listed under "Parked for the rules-section review".
+2. **Brad has one more topic** to open in a fresh session as of 2026-09-25. Not yet named.
 
-1. **Rules box review** — Brad's next stage, and three findings are already waiting there.
+**The design-audit list is clear** and **the visual pass is finished.** Nothing is outstanding
+on either.
 
-**The visual pass is finished.** Terrace shadows, gates, the lit edge, piece reflections, the
-throne and the win flourish are all built. Nothing on the visual list is outstanding. The
-throne was built before the flourish on purpose, because the flourish's settled wash had to be
-judged against the throne as revised rather than a board that was about to change.
+### Decisions that are closed — do not re-open without new information
 
-### Parked for the rules-section review
-
-Brad wants to revisit the rules box, so three findings from 2026-09-15 are waiting there
-rather than being fixed piecemeal. Detail in the section below.
-
-1. **The guard rule the help box promises is not the rule the engine runs.**
-2. **A gate is a tile you stand on, not a gap you pass through.**
-3. **The rules box copy contains em-dashes**, against the standing no-em-dash rule.
+- **The "You have been overwhelmed" widow**: will-not-fix. A long stranded word does not read
+  as a widow to Brad.
+- **The difficulty control stays a switch, not a stats filter.** It is the only route a player
+  has to hard mode, so filtering needs a new home for switching first.
+- **`round.html` is deliberately left behind** on the stats panel, the loss headline and the
+  share string. It was only brought along for the modal centring.
+- **The loss share keeps par** even though the loss screen no longer shows it.
+- **Dead-centre modals**: superseded. Panels centre on the board, which serves the same intent.
 
 ### Standing rules
 
 - **The repo is public.** Stage files by name, never `git add .`.
 - **`parity.mjs` must pass before any release.** It proves the tuning mirror and the shipped
   engine generate identical boards.
-
----
+- **Never change a mode's `salt`**, or every past board regenerates.
 
 *Last updated: 2026-09-25 (SHARE TAGS NOW ALIGN WHEN STACKED. The flower emoji left the
 squares 2.16px out of column; the fix was counter-intuitive, because the real mismatch was that
@@ -264,6 +248,8 @@ draw order. Prior: 2026-09-22 (piece reflections BUILT as variant 1: a hard term
 games; round board hidden to focus on square; share strings carry the site link; og-images shipped.
 Prior: 2026-07-19
 DECISIONS: keep both boards permanently — beta/pick-a-winner framing retired; epic mode's stealth core settled as the square board's identity — vision-only cover, temporary/positional hiding, hold-and-cover guards, "tempo not skeleton key". No code changed — design only. Prior: 2026-07-13 v2 `round.html` deployed as beta, epoch puzzle #1 = 2026-07-13.))))*
+
+---
 
 ## ⮕ Circular board redesign (v2) — DEPLOYED AS BETA (2026-07-13)
 
