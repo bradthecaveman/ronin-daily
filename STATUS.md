@@ -15,7 +15,7 @@ Read this block first. Everything below it is history, kept in full.
 - **RONIN ◯ (the round board) is hidden, not retired.** Unlinked from `index.html` on
   2026-07-24 because it wasn't being played. Still deployed, still reachable by URL, and the
   link is commented out ready to restore. Brad has not given up on it.
-- **The live site is nineteen commits behind this repo.** Everything below is local only, so
+- **The live site is twenty commits behind this repo.** Everything below is local only, so
   roninpuzzles.com still shows the flat pre-visual-pass board and the old share string.
 
 ### No board has changed, and that is proven
@@ -53,9 +53,9 @@ repo and its own domain, `fivesgame.online`. What remains here is a **215-line s
 `tests/lab.mjs` is tracked, modified, and deliberately left unstaged. It has been that way for
 months. **Do not stage it.**
 
-### Committed locally, NOT pushed — nineteen commits
+### Committed locally, NOT pushed — twenty commits
 
-**The next push puts all nineteen live at once.** That is the whole visual pass plus two days
+**The next push puts all twenty live at once.** That is the whole visual pass plus two days
 of panel and share work landing on roninpuzzles.com in one go, not just the most recent piece.
 That is a bigger call than any single item and it is Brad's.
 
@@ -87,8 +87,9 @@ The design-audit fixes and panel work, 09-24 to 09-25:
 | `d50cd1a` | share string rewritten, gold square for a par run |
 | `73da412` | `normal` renamed `easy`, label and key, plus the migration |
 | `aa887aa` | easy tag swapped to a dingbat so the share lines align |
+| *next* | rules box rewritten: 3-line card + how-to-play carousel |
 
-`index.html` was re-synced in all nineteen, so source and deployed copy are identical.
+`index.html` was re-synced in all twenty, so source and deployed copy are identical.
 
 ### Working tree
 
@@ -96,8 +97,9 @@ Clean apart from `tests/lab.mjs`, as above.
 
 ### Next up
 
-1. **Rules box review** — Brad's stated next stage, and three findings are already waiting
-   there. They are listed under "Parked for the rules-section review".
+1. **Gate legibility on the board** — the one rules finding this session did NOT close. The
+   carousel now teaches the gate rule; whether the gates read clearly on the real board is a
+   separate drawing question and is still open.
 2. **Brad has one more topic** to open in a fresh session as of 2026-09-25. Not yet named.
 
 **The design-audit list is clear** and **the visual pass is finished.** Nothing is outstanding
@@ -113,6 +115,13 @@ on either.
   share string. It was only brought along for the modal centring.
 - **The loss share keeps par** even though the loss screen no longer shows it.
 - **Dead-centre modals**: superseded. Panels centre on the board, which serves the same intent.
+- **The rules box does NOT mention par, hint, attempts or hard mode.** All four are already
+  on screen at the point they matter. Brad's call 2026-09-25, deliberate under-explaining.
+- **The guard copy no longer says "nearest".** It was false on 74% of boards, and the arrows
+  only appear after you select, so they answer your move rather than mark a chase.
+- **The carousel is three pages, not four.** A scene-setting page teaches nothing and a
+  par/daily page was rejected because par is better learned by losing to it.
+- **`round.html` keeps the old rules box**, including the false guard line. Brad's call.
 
 ### Standing rules
 
@@ -121,7 +130,22 @@ on either.
   engine generate identical boards.
 - **Never change a mode's `salt`**, or every past board regenerates.
 
-*Last updated: 2026-09-25 (SHARE TAGS NOW ALIGN WHEN STACKED. The flower emoji left the
+*Last updated: 2026-09-25 (THE RULES BOX IS NOW A 3-LINE CARD WITH A HOW-TO-PLAY CAROUSEL
+BEHIND IT. The old box was not long, it was compressed: 105 words in 6 bullets, every bullet
+tuned to exactly 2 lines, carrying about 19 facts. A reference card being used as a tutorial.
+The card is now 3 rules and the panel dropped from 471px to 342px at 375. Most of what left
+was already taught in play, which is why it could go. TWO PARKED FINDINGS CLOSED: the guard
+rule no longer claims "the two nearest" (false on 148 of the first 200 boards), and checking
+it turned up something bigger, that the arrows are only drawn once you select a destination,
+so they were never a chase indicator at all but the guards' answer to the move you are
+weighing, which is what the copy now says. And the gate rule is finally SHOWN rather than
+worded: carousel page 2 refuses the straight move through the doorway, then steps onto the
+gate tile and out. Mini-boards are flat CSS grids reading their colours from COL, placed in
+percentages so they scale; verified square and correctly aligned down to a 238px viewport.
+NO ENGINE CODE TOUCHED, proven by sha of the `<script id="engine">` block against HEAD:
+identical. Gate clean, site-check clean at 1280 and 420 (no widows, no contrast failures,
+no overflow). Gate legibility on the real board is the one finding left open.
+Prior: 2026-09-25 (SHARE TAGS NOW ALIGN WHEN STACKED. The flower emoji left the
 squares 2.16px out of column; the fix was counter-intuitive, because the real mismatch was that
 HARD is 3.4px wider than EASY, so the easy mark had to be WIDER than the sword, not matched to
 it. Making the sword an emoji made it worse. Shipped `❀` (U+2740, a dingbat not an emoji) at
@@ -417,6 +441,111 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## The rules box — DECIDED 2026-09-25, build follows
+
+Brad's stated next stage. The three findings parked against it are addressed below.
+
+### What was actually wrong
+
+Not length. Measured at 375px the old box was **105 words in 6 bullets, every bullet exactly
+2 lines, 471px tall, 56% of the phone screen**. The fault was compression: those 105 words
+carried about **19 separate facts**, because the 2026-07-15 pass tuned every rule to land in
+exactly two lines. The Move bullet alone said tap a marked cell, 3 a turn, 2 on hard, tap
+again to commit, and HOLD waits. It was a reference card being used as a tutorial.
+
+Most of it was already taught in play, at the moment it matters:
+
+| bullet | already on screen |
+|---|---|
+| Move | status line, `ronin_daily_v1.html:1680`, plus "Tap again, or hit MOVE" on select |
+| Rescue | "Beside the Emperor, tap him (or RESCUE) to finish" |
+| Daily | the three attempt dots, and "Attempt N" in the status line |
+| Hint | the HINT button is visible and disables after use |
+| Walls | "Out of reach this turn, cross walls at the stair tiles" on a bad tap |
+| Guards | arrows are drawn live, but the stated rule was wrong |
+
+### The shape: a short card, with a carousel behind it
+
+Brad picked this over a carousel alone, and over a short card alone. The box serves two
+people: it **auto-shows on first visit** (`seenHelp`) and it is what the `?` button opens for
+someone thirty days in. A carousel alone is good for the first and irritating for the second.
+
+- **The card** is the premise line plus **three rules**, about 58 words, down from 105.
+- **"show me how"** opens a **three-page carousel** in the same panel.
+
+Card copy, as signed off:
+
+> Tap a marked cell to plan your move, then tap again to take it.
+> The walls open only at the **stair tiles**.
+> Plan a move and the arrows show the guards' answer. Let one reach you and you are **captured**.
+
+**Par, hint, attempts and hard mode are deliberately absent.** All four are already on screen
+at the point they matter. Brad's call, consistent with letting players work it out.
+
+### Two parked findings, now resolved
+
+**The guard rule was false, and the fix makes it more useful.** The old copy said "the two
+nearest chase each move". `armyReply` (`ronin_daily_v1.html:281`) sorts by chebyshev distance
+**straight through walls**, so the two movers are not the two nearest by walking distance on
+**148 of the first 200 boards (74%)**. A second, larger point emerged while checking it: the
+arrows are only drawn when a preview exists (`ronin_daily_v1.html:1015`), which means **they
+appear after you select a destination**. They were never a chase indicator. They are the
+guards' answer to the move you are considering, which is the actual tactical loop of the game
+and is now what the copy says. No engine change, so no board moves.
+
+**The gate rule is now shown rather than worded.** A gate is a tile you must stand on, not a
+gap in the wall, so from one tile outside a door the diagonal through it is legal and straight
+ahead is blocked. `stepLegal` sits under the generator and cannot be changed without
+regenerating every published board, so the fix was always going to be visual. It is carousel
+page 2, and it is the reason the carousel exists at all.
+
+**Still parked: gate legibility on the real board.** If a tutorial page is needed to teach
+gates, that is evidence the gates may not read clearly on the board itself. That is a drawing
+question, deliberately out of scope here, and it stays open.
+
+### The carousel, as signed off
+
+Three pages, one rule each, every page a rule you can get wrong. A fourth scene-setting page
+was rejected for teaching nothing, and a par/daily page was rejected because par is better
+learned by losing to it.
+
+1. **Moving** — the token steps three cells including a diagonal. *Up to three cells a turn,
+   straight or diagonal.*
+2. **Walls and gates** — the token tries the diagonal that cuts the doorway, is refused, holds
+   a beat, then steps **onto** the gate tile and out the far side. *A gate is a tile you stand
+   on, not a gap you pass beside.*
+3. **Guards** — a destination is picked, two arrows answer, one lands on it and the ronin takes
+   a red ring; a second destination is picked and the arrows fall elsewhere. *Pick a move and
+   the arrows answer.*
+
+### How it is built, and the three options rejected
+
+**Mini-boards are CSS grids coloured from the existing `COL` object**
+(`ronin_daily_v1.html:550`). The palette lives in JS, not CSS, so the grid is built in JS and
+reads its tier colours, stair brown, ronin red and guard dark straight from `COL`. **No
+duplicated hex anywhere.** Flat, with no terraces or reflections, which was the deliberate
+trade: a blocked diagonal reads more clearly unshadowed, and that is the whole point of page 2.
+
+Rejected: a second small canvas drawing in the real vocabulary (a second drawing routine that
+would drift every time the board art changes, right after a long visual pass), and hand-drawn
+SVG diagrams (four bespoke drawings, and the style floats away from the game).
+
+**Refactoring `draw()` to render real boards was ruled out.** It is welded to the live canvas,
+`cell` and `G`. Prising it apart is the large rewrite this repo forbids, and it would mean
+touching the most delicate code in the file while nineteen visual commits sit unpushed.
+
+**Animations play once on arrival and replay on tap.** Rejected: continuous loops, because
+four of them across a swipeable panel is restless and a loop with no pause makes a blocked
+move read as a glitch; and tap-to-advance, because a page that looks static on arrival reads
+as broken.
+
+**The track height is fixed, and that is load-bearing.** `positionModal()` re-centres the
+panel on any height change via the ResizeObserver at `ronin_daily_v1.html:1446`, so pages of
+differing height would jump the whole panel on every swipe.
+
+**`round.html` is deliberately left behind again**, on Brad's call, consistent with the
+09-24 decision. Its help still carries the same false guard line.
 
 ## "normal" becomes "easy", DECIDED AND BUILT 2026-09-25
 
