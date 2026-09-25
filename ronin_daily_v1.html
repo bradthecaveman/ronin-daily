@@ -32,7 +32,7 @@
     --indigo:#8c2f27; --indigo-bright:#a63b31; /* action colour is now brick red */
     --vermillion:#a63b31; --gold:#d8a065; --pine:#7d9b74; --slate:#4a403a;
     --win:#5f8c58;
-    --tc:48px;          /* how-to-play mini-board cell */
+    --tw:200px;         /* how-to-play board: 4 cells at 50px */
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; padding:0; }
@@ -138,10 +138,9 @@
     width:100%; margin-top:12px; padding:12px; font-size:16px; font-weight:700;
     background:var(--indigo); color:#fff; border:none; border-radius:10px; cursor:pointer;
   }
-  /* how-to-play carousel. The mini-boards are built in JS and take every colour from the
-     COL object, so the palette keeps one home and no hex is duplicated down here. They are
-     drawn flat on purpose: a blocked diagonal reads more clearly without terrace shadows,
-     and that contrast is the whole point of page 2. */
+  /* how-to-play carousel. The boards are real 4x4 sections of a real castle, painted by
+     the game's own draw() into these canvases, so a tier, a wall, a gate and the move
+     indicators all look exactly like the board the player is about to meet. */
   .tutLink{
     display:block; text-align:center; color:var(--indigo); cursor:pointer;
     text-decoration:underline; font-size:13.5px; margin:14px 0 0;
@@ -149,7 +148,7 @@
   /* the track height is fixed on purpose: positionModal() re-centres the panel on any
      height change, so pages of differing height would jump the whole panel on each swipe */
   .tutTrack{
-    display:flex; height:302px; overflow-x:auto; overflow-y:hidden; margin:10px 0 0;
+    display:flex; height:264px; overflow-x:auto; overflow-y:hidden; margin:10px 0 0;
     scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch;
   }
   .tutTrack::-webkit-scrollbar{ display:none; }
@@ -159,22 +158,10 @@
   }
   .tutBoard{
     position:relative; flex:none; cursor:pointer; border-radius:8px; overflow:hidden;
-    width:min(calc(var(--tc) * 5), 100%); aspect-ratio:1;
+    width:min(var(--tw), 100%); aspect-ratio:1;
     box-shadow:inset 0 0 0 1px rgba(58,50,43,.18);
   }
-  .tutGrid{ position:absolute; inset:0; display:grid; grid-template-columns:repeat(5, 1fr); }
-  .tutSvg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-  .tutPiece{
-    position:absolute; left:0; top:0; width:20%; height:20%;
-    display:flex; align-items:center; justify-content:center;
-    transition:transform .42s cubic-bezier(.35,.1,.25,1);
-  }
-  .tutDisc{ width:62%; height:62%; border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.28); }
-  .tutPip{ width:24%; height:24%; border-radius:50%; opacity:.5; }
-  .tutRing{
-    position:absolute; inset:9%; border-radius:50%;
-    border:2.5px solid transparent; transition:border-color .18s ease;
-  }
+  .tutBoard canvas{ display:block; width:100%; height:100%; }
   .tutReplay{
     position:absolute; right:5px; bottom:5px; border:none; cursor:pointer; border-radius:50%;
     font-size:12px; line-height:1; padding:4px 5px; color:var(--ink);
@@ -195,7 +182,6 @@
     display:block; margin:6px auto 0; background:none; border:none; cursor:pointer;
     color:var(--indigo); font-size:13px; text-decoration:underline; padding:4px;
   }
-  @media (prefers-reduced-motion: reduce){ .tutPiece{ transition:none; } }
   .squares{ font-size:30px; letter-spacing:4px; text-align:center; margin:10px 0 4px; }
   .headline{ text-align:center; font-size:16px; margin:2px 0 10px; }
   .headline b{ color:var(--vermillion); }
@@ -601,7 +587,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   // Where a shared result sends people. Update this (and round.html's) if the domain changes.
   const SHARE_URL = 'https://roninpuzzles.com/';
   const canvas = document.getElementById('board');
-  const ctx = canvas.getContext('2d');
+  let ctx = canvas.getContext('2d');
 
   // ---------- palette ----------
   // Palette from the traditional card: 蕉鹃 forest / 唐茶 rooftops / 粉白 palace /
@@ -1646,237 +1632,166 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   }
 
   // ---------- how to play ----------
-  // A short card, with a three-page carousel behind "show me how". The mini-boards are flat
-  // CSS grids built here rather than by draw(), which stays welded to the live canvas; they
-  // read every colour from COL so the palette keeps one home. Flat is deliberate: a blocked
-  // diagonal reads more clearly without the terrace shadows, and that contrast is page 2.
-  // TC is the SVG coordinate unit only. Pieces are placed in percentages of the board, so
-  // a narrow panel can shrink the whole thing without any coordinate drifting off it.
-  const TC = 48;
-  const TUT_TILE = { o: 'outer', m: 'middle', i: 'inner', s: 'stair' };
+  // Three pages, one rule each, each a real 4x4 section of a real castle. Nothing here
+  // redraws the board: it points the game's own draw() at a small canvas for one frame,
+  // with the transform shifted so the chosen window lands at the origin, then puts every
+  // global back. That is why the tiers, the terrace shadows, the stair, the endpoint dots
+  // and the guard arrows are identical to the board the player is about to meet.
+  const TUT_CELL = 50, TUT_W = 4;              // cells across a page's window
   const tutReduce = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // One runner for the whole carousel: only one page animates at a time, and a swipe must be
-  // able to cancel the page it is leaving or two timelines end up fighting over the boards.
-  let tutTimers = [];
-  function tutStop() { tutTimers.forEach(clearTimeout); tutTimers = []; }
-  function tutRun(steps) { tutStop(); for (const s of steps) tutTimers.push(setTimeout(s.go, s.at)); }
+  let tutTimers = [], tutRaf = null;
+  function tutStop() {
+    tutTimers.forEach(clearTimeout); tutTimers = [];
+    if (tutRaf) cancelAnimationFrame(tutRaf);
+    tutRaf = null;
+  }
+  function tutRun(steps) { for (const s of steps) tutTimers.push(setTimeout(s.go, s.at)); }
 
-  function tutMini(rows) {
+  // A scene is a position on the real 13x13 grid plus the window we look at it through,
+  // so ringOf/tierOf give real tiers and stepLegal gives real legality.
+  function tutScene(o) {
+    return {
+      r0: o.r0, c0: o.c0,
+      layout: { ronin: o.ronin, army: o.army, stairs: new Set((o.stairs || []).map(([r, c]) => RE.key(r, c))), par: 1 },
+      ronin: o.ronin, army: o.army,
+    };
+  }
+
+  // Paint one frame of a scene. `at` is where the ronin is drawn (fractional during a
+  // move, exactly as the real board tweens it); `sel` is the endpoint being considered,
+  // which is what makes draw() lay down the route and the guards' answer.
+  function tutPaint(cvs, scene, at, sel) {
+    const keepCtx = ctx, keepCell = cell, keepPrev = preview, keepFlash = flashT;
+    const keepG = {
+      busy: G.busy, layout: G.layout, opts: G.opts, phase: G.phase,
+      ronin: G.ronin, sel: G.sel, selPath: G.selPath, diffCfg: G.diffCfg,
+    };
+    const keepVis = { ronin: vis.ronin, army: vis.army };
+    try {
+      const dpr = window.devicePixelRatio || 1;
+      const c2 = cvs.getContext('2d');
+      // shift the whole 13x13 so the window's top-left sits at the canvas origin
+      c2.setTransform(dpr, 0, 0, dpr, -scene.c0 * TUT_CELL * dpr, -scene.r0 * TUT_CELL * dpr);
+      ctx = c2; cell = TUT_CELL; flashT = 0;
+      G.busy = false; G.phase = 'play'; G.diffCfg = RE.MODES.easy;
+      G.layout = scene.layout; G.ronin = scene.ronin;
+      G.opts = RE.roninOptions(scene.ronin, scene.army, scene.layout.stairs, G.diffCfg.steps);
+      G.sel = sel || null;
+      G.selPath = sel ? RE.pathTo(scene.ronin, scene.army, scene.layout.stairs, sel, G.diffCfg.steps) : null;
+      preview = (sel && G.selPath) ? RE.armyReply({ r: sel.r, c: sel.c }, scene.army, scene.layout.stairs) : null;
+      vis.ronin = at || { r: scene.ronin.r, c: scene.ronin.c };
+      vis.army = scene.army.map((p) => ({ r: p.r, c: p.c }));
+      draw(performance.now());
+    } finally {
+      ctx = keepCtx; cell = keepCell; preview = keepPrev; flashT = keepFlash;
+      Object.assign(G, keepG);
+      vis.ronin = keepVis.ronin; vis.army = keepVis.army;
+    }
+  }
+
+  // Slide the ronin between two cells the way the board does, repainting each frame.
+  function tutGlide(pg, from, to, dur, done) {
+    const t0 = performance.now();
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / dur);
+      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      pg.paint({ r: from.r + (to.r - from.r) * e, c: from.c + (to.c - from.c) * e });
+      if (k < 1) tutRaf = requestAnimationFrame(tick);
+      else { tutRaf = null; if (done) done(); }
+    };
+    tutRaf = requestAnimationFrame(tick);
+  }
+
+  function tutPage(o) {
     const board = document.createElement('div');
     board.className = 'tutBoard';
-    const grid = document.createElement('div');
-    grid.className = 'tutGrid';
-    for (const row of rows) for (const ch of row) {
-      const c = document.createElement('div');
-      c.style.background = COL[TUT_TILE[ch]];
-      c.style.boxShadow = 'inset 0 0 0 .5px ' + COL.grid;
-      grid.appendChild(c);
-    }
-    board.appendChild(grid);
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'tutSvg');
-    svg.setAttribute('viewBox', '0 0 ' + (TC * 5) + ' ' + (TC * 5));
-    board.appendChild(svg);
-    board._svg = svg;
-    return board;
+    const cvs = document.createElement('canvas');
+    const px = TUT_W * TUT_CELL, dpr = window.devicePixelRatio || 1;
+    cvs.width = px * dpr; cvs.height = px * dpr;
+    board.appendChild(cvs);
+    const pg = { board, cap: o.cap, scene: o.scene };
+    pg.paint = (at, sel) => tutPaint(cvs, o.scene, at, sel === undefined ? pg.sel : sel);
+    pg.sel = null;
+    pg.still = () => { pg.sel = o.stillSel || null; pg.paint(o.stillAt || null); };
+    pg.play = () => { pg.sel = null; o.play(pg); };
+    return pg;
   }
 
-  // a wall runs along a cell boundary: (x,y) in cell units, then a length in cells
-  function tutWall(board, x, y, vertical, len) {
-    const w = document.createElement('div');
-    w.style.cssText = 'position:absolute;border-radius:2px;background:' + COL.wall;
-    if (vertical) {
-      w.style.left = 'calc(' + (x * 20) + '% - 1.5px)'; w.style.top = (y * 20) + '%';
-      w.style.width = '3px'; w.style.height = (len * 20) + '%';
-    } else {
-      w.style.left = (x * 20) + '%'; w.style.top = 'calc(' + (y * 20) + '% - 1.5px)';
-      w.style.width = (len * 20) + '%'; w.style.height = '3px';
-    }
-    board.appendChild(w);
-    return w;
-  }
-
-  function tutPiece(board, kind, r, c) {
-    const p = document.createElement('div');
-    p.className = 'tutPiece';
-    const d = document.createElement('i');
-    d.className = 'tutDisc';
-    d.style.background = kind === 'ronin' ? COL.ronin : COL.guard;
-    d.style.boxShadow = '0 1px 2px rgba(0,0,0,.28), inset 0 0 0 1.5px '
-      + (kind === 'ronin' ? COL.roninRing : COL.guardRing);
-    const ring = document.createElement('i');
-    ring.className = 'tutRing';
-    p.appendChild(d); p.appendChild(ring);
-    board.appendChild(p);
-    p.at = (rr, cc, frac) => {
-      const f = frac == null ? 1 : frac;
-      p.style.transform = 'translate(' + ((c + (cc - c) * f) * 100) + '%,'
-        + ((r + (rr - r) * f) * 100) + '%)';
-      if (f === 1) { r = rr; c = cc; }
-    };
-    p.mark = (col) => { ring.style.borderColor = col || 'transparent'; };
-    p.at(r, c);
-    return p;
-  }
-
-  function tutPip(board, r, c) {
-    const p = document.createElement('div');
-    p.className = 'tutPiece';
-    const d = document.createElement('i');
-    d.className = 'tutPip';
-    d.style.background = COL.pip;
-    const ring = document.createElement('i');
-    ring.className = 'tutRing';
-    p.appendChild(d); p.appendChild(ring);
-    p.style.transform = 'translate(' + (c * 100) + '%,' + (r * 100) + '%)';
-    p.style.transition = 'opacity .25s ease';
-    p.mark = (col) => { ring.style.borderColor = col || 'transparent'; };
-    board.appendChild(p);
-    return p;
-  }
-
-  // the same short stub-and-head the real board draws for guard intent
-  function tutArrow(board, fr, fc, tr, tc, colour) {
-    const mid = (n) => (n + .5) * TC;
-    const x1 = mid(fc), y1 = mid(fr), ang = Math.atan2(mid(tr) - y1, mid(tc) - x1);
-    const sx = x1 + Math.cos(ang) * TC * .46, sy = y1 + Math.sin(ang) * TC * .46;
-    const ex = x1 + Math.cos(ang) * TC * .84, ey = y1 + Math.sin(ang) * TC * .84;
-    const ns = 'http://www.w3.org/2000/svg';
-    const g = document.createElementNS(ns, 'g');
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('x1', sx); line.setAttribute('y1', sy);
-    line.setAttribute('x2', ex); line.setAttribute('y2', ey);
-    line.setAttribute('stroke', colour); line.setAttribute('stroke-width', '3');
-    const head = document.createElementNS(ns, 'polygon');
-    head.setAttribute('points', [
-      [ex + Math.cos(ang) * 7, ey + Math.sin(ang) * 7],
-      [ex + Math.cos(ang + 2.5) * 6, ey + Math.sin(ang + 2.5) * 6],
-      [ex + Math.cos(ang - 2.5) * 6, ey + Math.sin(ang - 2.5) * 6],
-    ].map((q) => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' '));
-    head.setAttribute('fill', colour);
-    g.appendChild(line); g.appendChild(head);
-    board._svg.appendChild(g);
-    return g;
-  }
-  function tutPath(board, fr, fc, tr, tc) {
-    const mid = (n) => (n + .5) * TC;
-    const ns = 'http://www.w3.org/2000/svg';
-    const l = document.createElementNS(ns, 'line');
-    l.setAttribute('x1', mid(fc)); l.setAttribute('y1', mid(fr));
-    l.setAttribute('x2', mid(tc)); l.setAttribute('y2', mid(tr));
-    l.setAttribute('stroke', COL.path); l.setAttribute('stroke-width', '2');
-    l.setAttribute('stroke-dasharray', '4 5'); l.setAttribute('stroke-linecap', 'round');
-    l.setAttribute('opacity', '.5');
-    board._svg.appendChild(l);
-    return l;
-  }
-  const tutClearArrows = (board) => { while (board._svg.firstChild) board._svg.firstChild.remove(); };
-
-  // Each page returns { el, play, still }. `still` is the reduced-motion form: it has to
-  // carry the same meaning in one frame, which matters most on the gate page, where the
-  // meaning IS the contrast between the refused move and the legal one.
+  // 1. Moving. Open outer ground with the tier wall along one edge, the real endpoint
+  //    dots the board always shows, and one ordinary three-cell move taken through them.
   function tutPageMoving() {
-    const board = tutMini(['ooooo', 'ooooo', 'ooooo', 'ooooo', 'ooooo']);
-    // every pip is exactly three cells away, the real reach on easy
-    const pips = [[0, 3], [2, 3], [4, 3]].map((p) => tutPip(board, p[0], p[1]));
-    const ronin = tutPiece(board, 'ronin', 2, 0);
-    const reset = () => { pips.forEach((p) => { p.style.opacity = '0'; }); ronin.at(2, 0); };
-    return {
-      board,
+    const scene = tutScene({ r0: 4, c0: 0, ronin: { r: 7, c: 0 }, army: [{ r: 4, c: 3 }], stairs: [] });
+    return tutPage({
+      scene,
       cap: 'Up to <b>three cells</b> a turn, straight or diagonal.',
-      still() { reset(); pips.forEach((p) => { p.style.opacity = '1'; }); ronin.at(0, 3); },
-      play() {
-        reset();
-        tutRun([
-          { at: 250, go: () => pips.forEach((p) => { p.style.opacity = '1'; }) },
-          { at: 900, go: () => ronin.at(1, 1) },
-          { at: 1350, go: () => ronin.at(0, 2) },
-          { at: 1800, go: () => ronin.at(0, 3) },
-        ]);
+      stillAt: { r: 4, c: 1 },
+      play(pg) {
+        pg.paint({ r: 7, c: 0 });
+        tutRun([{ at: 900, go: () => {
+          pg.sel = { r: 4, c: 1 };
+          pg.paint({ r: 7, c: 0 });
+          tutRun([{ at: 700, go: () => {
+            pg.sel = null;
+            tutGlide(pg, { r: 7, c: 0 }, { r: 4, c: 1 }, 900);
+          } }]);
+        } }]);
       },
-    };
+    });
   }
 
+  // 2. Walls and gates. A real outer-to-middle door at (6,2), and the ronin one tile from
+  //    it on the outer side. Selecting the cell straight across the wall is legal, but the
+  //    route the engine returns is [(6,2), (7,2)]: it bends to stand on the gate first.
+  //    That detour IS the rule, drawn by the board itself, so nothing here is staged.
   function tutPageGate() {
-    const board = tutMini(['ooomm', 'ooomm', 'oosmm', 'ooomm', 'ooomm']);
-    tutWall(board, 3, 0, true, 2);            // wall above the gate
-    tutWall(board, 3, 3, true, 2);            // wall below it
-    const blocked = tutPip(board, 3, 3);
-    blocked.style.opacity = '0';
-    const ronin = tutPiece(board, 'ronin', 3, 2);
-    const reset = () => { ronin.at(3, 2); ronin.mark(null); blocked.style.opacity = '0'; blocked.mark(null); };
-    return {
-      board,
+    const scene = tutScene({
+      r0: 4, c0: 1, ronin: { r: 7, c: 1 }, army: [{ r: 4, c: 1 }],
+      stairs: [[6, 2]],
+    });
+    return tutPage({
+      scene,
       cap: 'A gate is a tile you <b>stand on</b>, not a gap you pass beside.',
-      still() {
-        reset();
-        blocked.style.opacity = '1'; blocked.mark(COL.danger);
-        ronin.at(2, 3);
-      },
-      play() {
-        reset();
+      stillSel: { r: 7, c: 2 },
+      play(pg) {
+        pg.paint({ r: 7, c: 1 }, null);
         tutRun([
-          // refused: straight through the wall, one tile from the door
-          { at: 500, go: () => { ronin.at(3, 3, .13); blocked.style.opacity = '1'; blocked.mark(COL.danger); } },
-          { at: 1000, go: () => ronin.at(3, 2) },
-          { at: 1900, go: () => { blocked.mark(null); blocked.style.opacity = '0'; } },
-          // legal: onto the gate tile, then out the far side
-          { at: 2100, go: () => ronin.at(2, 2) },
-          { at: 2700, go: () => ronin.at(2, 3) },
+          // the cell straight across the wall, and the route that bends through the door
+          { at: 700, go: () => { pg.sel = { r: 7, c: 2 }; pg.paint({ r: 7, c: 1 }); } },
+          { at: 2600, go: () => {
+            pg.sel = null;
+            tutGlide(pg, { r: 7, c: 1 }, { r: 6, c: 2 }, 520, () => {
+              tutRun([{ at: 380, go: () => tutGlide(pg, { r: 6, c: 2 }, { r: 7, c: 2 }, 520) }]);
+            });
+          } },
         ]);
       },
-    };
+    });
   }
 
+  // 3. Guards. Same castle, a gate in view. Two destinations: one the guards can answer,
+  //    one they cannot. The arrows are the engine's, not a drawing.
   function tutPageGuards() {
-    const board = tutMini(['ooooo', 'ooooo', 'ooooo', 'ooooo', 'ooooo']);
-    const pip = tutPip(board, 2, 2);
-    const ronin = tutPiece(board, 'ronin', 2, 0);
-    const g1 = tutPiece(board, 'guard', 2, 3);
-    const g2 = tutPiece(board, 'guard', 0, 1);
-    const put = (r, c) => { pip.style.transform = 'translate(' + (c * 100) + '%,' + (r * 100) + '%)'; };
-    const reset = () => {
-      tutClearArrows(board);
-      ronin.at(2, 0); ronin.mark(null);
-      g1.at(2, 3); g2.at(0, 1);
-      pip.style.opacity = '0'; pip.mark(null); put(2, 2);
-    };
-    return {
-      board,
-      cap: 'Pick a move and the arrows show <b>their answer</b>.',
-      still() {
-        reset();
-        pip.style.opacity = '1'; pip.mark(COL.danger);
-        tutPath(board, 2, 0, 2, 2);
-        tutArrow(board, 2, 3, 2, 2, COL.danger);
-        tutArrow(board, 0, 1, 1, 1, COL.intent);
-      },
-      play() {
-        reset();
+    const scene = tutScene({
+      r0: 4, c0: 1, ronin: { r: 6, c: 1 }, army: [{ r: 4, c: 2 }, { r: 7, c: 2 }],
+      stairs: [[6, 2]],
+    });
+    return tutPage({
+      scene,
+      cap: 'Planning a move shows the guards&rsquo; counter. Avoid capture.',
+      stillSel: { r: 6, c: 2 },
+      play(pg) {
+        pg.paint({ r: 6, c: 1 }, null);
         tutRun([
-          // a destination one of them can reach: the arrows say so before you commit
-          { at: 400, go: () => { pip.style.opacity = '1'; tutPath(board, 2, 0, 2, 2); } },
-          { at: 800, go: () => {
-            tutArrow(board, 2, 3, 2, 2, COL.danger);
-            tutArrow(board, 0, 1, 1, 1, COL.intent);
-            pip.mark(COL.danger);
-          } },
-          // think again, and pick one they cannot answer
-          { at: 2300, go: () => {
-            tutClearArrows(board); pip.mark(null); put(4, 1); tutPath(board, 2, 0, 4, 1);
-          } },
-          { at: 2700, go: () => {
-            tutArrow(board, 2, 3, 3, 2, COL.intent);
-            tutArrow(board, 0, 1, 1, 1, COL.intent);
-          } },
-          { at: 3600, go: () => {
-            tutClearArrows(board); pip.style.opacity = '0';
-            ronin.at(4, 1); g1.at(3, 2); g2.at(1, 1);
+          { at: 600, go: () => { pg.sel = { r: 6, c: 2 }; pg.paint({ r: 6, c: 1 }); } },
+          { at: 2400, go: () => { pg.sel = { r: 5, c: 1 }; pg.paint({ r: 6, c: 1 }); } },
+          { at: 4000, go: () => {
+            pg.sel = null;
+            tutGlide(pg, { r: 6, c: 1 }, { r: 5, c: 1 }, 620);
           } },
         ]);
       },
-    };
+    });
   }
 
   function showHelp() {
@@ -1887,7 +1802,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
         <ul>
           <li>Tap a marked cell to plan your move, then tap again to take it.</li>
           <li>The walls open only at the <b>stair tiles</b>.</li>
-          <li>Plan a move and the arrows show the guards' answer. Let one reach you and you are <b>captured</b>.</li>
+          <li>Planning a move shows the guards&rsquo; counter. <b>Avoid capture.</b></li>
         </ul>
         <a class="tutLink" id="tutOpen">show me how</a>
       </div>
@@ -1899,12 +1814,11 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       <button class="primary" id="beginBtn">BEGIN</button>
     `);
 
-    const begin = () => {
+    $('beginBtn').onclick = () => {
       tutStop();
       closeModal();
       const s = readStore(); s.seenHelp = true; writeStore(s);
     };
-    $('beginBtn').onclick = begin;
 
     const track = $('tutTrack'), dots = $('tutDots');
     const pages = [tutPageMoving(), tutPageGate(), tutPageGuards()];
@@ -1916,7 +1830,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       replay.setAttribute('aria-label', 'Play again');
       replay.textContent = '↻';
       pg.board.appendChild(replay);
-      pg.board.onclick = () => { if (tutReduce()) pg.still(); else pg.play(); };
+      pg.board.onclick = () => { tutStop(); if (tutReduce()) pg.still(); else pg.play(); };
       const cap = document.createElement('p');
       cap.className = 'tutCap';
       cap.innerHTML = pg.cap;
@@ -1936,6 +1850,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
         const i = pages.findIndex((p) => p.el === e.target);
         if (i < 0) continue;
         [...dots.children].forEach((d, n) => d.classList.toggle('on', n === i));
+        tutStop();
         if (tutReduce()) pages[i].still(); else pages[i].play();
       }
     }, { root: track, threshold: [.6] });
@@ -1945,6 +1860,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       $('tutCard').hidden = true;
       $('tutShow').hidden = false;
       positionModal();             // the panel is a different height now, so re-centre once
+      tutStop();
       if (tutReduce()) pages[0].still(); else pages[0].play();
     };
     $('tutBack').onclick = () => {

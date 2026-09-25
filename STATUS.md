@@ -15,7 +15,7 @@ Read this block first. Everything below it is history, kept in full.
 - **RONIN ◯ (the round board) is hidden, not retired.** Unlinked from `index.html` on
   2026-07-24 because it wasn't being played. Still deployed, still reachable by URL, and the
   link is commented out ready to restore. Brad has not given up on it.
-- **The live site is twenty-two commits behind this repo.** Everything below is local only, so
+- **The live site is twenty-three commits behind this repo.** Everything below is local only, so
   roninpuzzles.com still shows the flat pre-visual-pass board and the old share string.
 
 ### No board has changed, and that is proven
@@ -53,9 +53,9 @@ repo and its own domain, `fivesgame.online`. What remains here is a **215-line s
 `tests/lab.mjs` is tracked, modified, and deliberately left unstaged. It has been that way for
 months. **Do not stage it.**
 
-### Committed locally, NOT pushed — twenty-two commits
+### Committed locally, NOT pushed — twenty-three commits
 
-**The next push puts all twenty-two live at once.** That is the whole visual pass plus two days
+**The next push puts all twenty-three live at once.** That is the whole visual pass plus two days
 of panel and share work landing on roninpuzzles.com in one go, not just the most recent piece.
 That is a bigger call than any single item and it is Brad's.
 
@@ -89,7 +89,8 @@ The design-audit fixes and panel work, 09-24 to 09-25:
 | `aa887aa` | easy tag swapped to a dingbat so the share lines align |
 | `9aa0dd2` | current-state block rewritten for handover (docs only) |
 | `e7b0dc0` | rules box: 3-line card + how-to-play carousel |
-| *head* | unpushed count corrected to twenty-two (docs only) |
+| `a92b255` | unpushed count corrected (docs only) |
+| *head* | carousel rebuilt on the real renderer |
 
 Count checked with `git log --oneline origin/main..HEAD | wc -l`, not by counting the rows.
 
@@ -135,7 +136,18 @@ on either.
   engine generate identical boards.
 - **Never change a mode's `salt`**, or every past board regenerates.
 
-*Last updated: 2026-09-25 (THE RULES BOX IS NOW A 3-LINE CARD WITH A HOW-TO-PLAY CAROUSEL
+*Last updated: 2026-09-25 (THE CAROUSEL NOW DRAWS REAL BOARD SECTIONS. Brad saw the
+flat CSS-grid version and reversed his own choice: it looked "out of sync visually with what
+the person is going to experience". Each page is now a real 4x4 window onto a real position,
+painted by the game's own `draw()` — one frame with `ctx` pointed at the page's canvas and
+every global restored after. Cost: `const ctx` became `let ctx`, and nothing else in the
+shipped path. The gate page improved by being checked rather than assumed: the straight move
+through the doorway is NOT refused, the engine returns a route that bends through the gate,
+so the board now draws its own detour and the detour is the lesson. Page 3's two destinations
+came from `armyReply`, verified capture and non-capture before building. Live board state is
+byte-identical after opening the panel, and crop tier colours match `RE.tierOf` cell for cell.
+Boards 4x4, down from 5x5. Card's third line is Brad's wording. Gate clean.
+Prior: 2026-09-25 (THE RULES BOX IS NOW A 3-LINE CARD WITH A HOW-TO-PLAY CAROUSEL
 BEHIND IT. The old box was not long, it was compressed: 105 words in 6 bullets, every bullet
 tuned to exactly 2 lines, carrying about 19 facts. A reference card being used as a tutorial.
 The card is now 3 rules and the panel dropped from 471px to 342px at 375. Most of what left
@@ -483,7 +495,9 @@ Card copy, as signed off:
 
 > Tap a marked cell to plan your move, then tap again to take it.
 > The walls open only at the **stair tiles**.
-> Plan a move and the arrows show the guards' answer. Let one reach you and you are **captured**.
+> Planning a move shows the guards' counter. **Avoid capture.**
+
+The third line is Brad's own wording, tightened. It replaced a longer line about arrows.
 
 **Par, hint, attempts and hard mode are deliberately absent.** All four are already on screen
 at the point they matter. Brad's call, consistent with letting players work it out.
@@ -524,30 +538,42 @@ learned by losing to it.
    a red ring; a second destination is picked and the arrows fall elsewhere. *Pick a move and
    the arrows answer.*
 
-### How it is built, and the three options rejected
+### How it is built — REVERSED 2026-09-25 after Brad saw it
 
-**Mini-boards are CSS grids coloured from the existing `COL` object**
-(`ronin_daily_v1.html:550`). The palette lives in JS, not CSS, so the grid is built in JS and
-reads its tier colours, stair brown, ronin red and guard dark straight from `COL`. **No
-duplicated hex anywhere.** Flat, with no terraces or reflections, which was the deliberate
-trade: a blocked diagonal reads more clearly unshadowed, and that is the whole point of page 2.
+**First attempt: flat CSS-grid mini-boards reading their colours from `COL`.** Brad picked
+that option knowing it would not carry the terrace shadows. On seeing it built he reversed:
+*"this fake board looks incongruous... they look out of sync visually with what the person is
+going to experience."* He was right, and the first version is gone.
 
-Rejected: a second small canvas drawing in the real vocabulary (a second drawing routine that
-would drift every time the board art changes, right after a long visual pass), and hand-drawn
-SVG diagrams (four bespoke drawings, and the style floats away from the game).
+**What ships instead: the game's own `draw()`, pointed at the carousel's canvases.** Each
+page is a real 4x4 window onto a real position on the real 13x13 grid. For one frame the
+panel swaps `ctx` for a page's canvas, sets `cell`, installs the scene in `G`/`vis`/`preview`,
+calls `draw()`, then puts every global back. So the tiers, terrace shadows, lit edges, stair
+treads, endpoint dots, route and guard arrows are not reproductions. They are the board.
 
-**Refactoring `draw()` to render real boards was ruled out.** It is welded to the live canvas,
-`cell` and `G`. Prising it apart is the large rewrite this repo forbids, and it would mean
-touching the most delicate code in the file while nineteen visual commits sit unpushed.
+**The only shipped-code change this needed was `const ctx` to `let ctx`** at
+`ronin_daily_v1.html:604`. `draw()` turned out to be entirely canvas-agnostic: it reads only
+`G.busy/layout/opts/phase/ronin/sel/selPath`, `vis.ronin/army`, `preview`, `flashT` and pure
+`RE` helpers, with six balanced `save`/`restore` pairs and no `setTransform`. The one
+`canvas.width` reference in that region belongs to `playWinFlourish`, not the draw path.
+Verified: after opening the panel the live board's state is byte-identical, and the crops'
+tier colours match `RE.tierOf` cell for cell.
 
-**Animations play once on arrival and replay on tap.** Rejected: continuous loops, because
-four of them across a swipeable panel is restless and a loop with no pause makes a blocked
-move read as a glitch; and tap-to-advance, because a page that looks static on arrival reads
-as broken.
+**The gate page got better by being made honest.** The first version animated the straight
+move through the doorway being *refused*. The engine says otherwise: `(7,2)` IS a legal
+endpoint from `(7,1)`, because `roninOptions` has three steps to play with. What it returns
+is the route `[(6,2), (7,2)]` — it bends to stand on the gate first. So the page now selects
+that cell and lets the board draw its own detour. **The detour is the rule**, and nothing is
+staged. Had this been drawn by hand the page would have taught something the game does not do.
 
-**The track height is fixed, and that is load-bearing.** `positionModal()` re-centres the
-panel on any height change via the ResizeObserver at `ronin_daily_v1.html:1446`, so pages of
-differing height would jump the whole panel on every swipe.
+**Page 3's two destinations were chosen from `armyReply`, not by eye.** From `(6,1)` with
+guards on `(4,2)` and `(7,2)`: selecting `(6,2)` is answered by `7,2 → 6,2` and is a capture;
+selecting `(5,1)` is not reachable by either. Both verified before being built.
+
+Windows used, all rows 4-7: page 1 cols 0-3 (outer tier and one wall), pages 2 and 3
+cols 1-4 (outer, wall, middle, wall, inner, with the gate at `(6,2)`).
+
+Boards are 4x4 at 50px, down from 5x5, on Brad's call to save space.
 
 **`round.html` is deliberately left behind again**, on Brad's call, consistent with the
 09-24 decision. Its help still carries the same false guard line.
