@@ -221,7 +221,9 @@ const EPOCH_UTC = Date.UTC(2026, 6, 4); // puzzle #1 = 2026-07-04 (local date)
 // boards are IDENTICAL to everything published before modes existed (regression-
 // tested in rules.mjs). Do not touch salts/steps/bands of a shipped mode.
 const MODES = {
-  normal: { key: 'normal', steps: 3, parMin: 6, parMax: 10, salt: 0x4E524D4C }, // "NRML"
+  // renamed from "normal" on 2026-09-25. The salt is what seeds the boards, so it MUST stay
+  // 0x4E524D4C ("NRML") whatever the mode is called, or every past board regenerates.
+  easy:   { key: 'easy',   steps: 3, parMin: 6, parMax: 10, salt: 0x4E524D4C },
   hard:   { key: 'hard',   steps: 2, parMin: 8, parMax: 14, salt: 0x524F4E49 }, // "RONI"
   // epic: reserved — future mechanics (leap/grapple/sight-lines), solver + lab work first
 };
@@ -561,7 +563,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   // ---------- game state ----------
   const G = {
     mode: 'daily', dayNum: 1, layout: null,
-    diff: 'normal', diffCfg: null, // difficulty mode (normal/hard) — set before any board loads
+    diff: 'easy', diffCfg: null, // difficulty mode (easy/hard) — set before any board loads
     ronin: null, army: null,
     attempt: 1, squares: [null, null, null],
     moveCount: 0, finalMoves: null, sel: null, selPath: null, opts: [],
@@ -574,11 +576,26 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   const SKEY = 'ronin.daily.v1';
   // schema v2: per-difficulty results/hints under s.modes; legacy v1 data was all
   // played under what is now HARD mode, so it migrates there (streaks preserved).
+  // schema v3 (2026-09-25): "normal" was renamed "easy". Same salt, so the boards are
+  // untouched and only the name moved — but a player's history has to move with it, or
+  // modeState() reads .results of undefined and the game throws on load.
   function migrate(s) {
-    if (s.modes) return s;
-    s.modes = { normal: { results: {}, hints: {} }, hard: { results: s.results || {}, hints: s.hints || {} } };
-    if (s.results && Object.keys(s.results).length) s.diff = s.diff || 'hard';
-    delete s.results; delete s.hints; delete s.board;
+    if (!s.modes) {
+      s.modes = { easy: { results: {}, hints: {} }, hard: { results: s.results || {}, hints: s.hints || {} } };
+      if (s.results && Object.keys(s.results).length) s.diff = s.diff || 'hard';
+      delete s.results; delete s.hints; delete s.board;
+    }
+    if (s.modes.normal) {
+      s.modes.easy = s.modes.easy || s.modes.normal;
+      delete s.modes.normal;
+    }
+    if (s.diff === 'normal') s.diff = 'easy';
+    // the cached board is still valid, the salt did not change: carrying it over saves
+    // re-running the solver on the first load after the update
+    if (s.boardCache && s.boardCache.normal) {
+      s.boardCache.easy = s.boardCache.easy || s.boardCache.normal;
+      delete s.boardCache.normal;
+    }
     return s;
   }
   const readStore = () => { try { return migrate(JSON.parse(localStorage.getItem(SKEY)) || {}); } catch { return migrate({}); } };
@@ -1455,7 +1472,9 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const w = G.squares.indexOf('w');
     const s = readStore();
     const lantern = modeState(s).hints[G.dayNum] ? ' 🏮' : '';
-    const tag = G.diff === 'hard' ? ' ⚔HARD' : '';
+    // both difficulties are tagged, at a matching four characters: players paste an easy and
+    // a hard result side by side to show progress, which only reads if both are labelled
+    const tag = G.diff === 'hard' ? ' ⚔HARD' : ' 🌸EASY';
     // the squares already say which attempt, so the result is moves against par and nothing else
     const score = w >= 0 ? `${G.finalMoves} · par ${G.layout.par}` : `par ${G.layout.par}`;
     return `RONIN #${G.dayNum}${tag} ${squaresStr()}${lantern} ${score}\n${SHARE_URL}`;
@@ -1637,7 +1656,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   const modeSegHtml = () => `
     <div class="modeRow">difficulty<br/>
       <span id="modeSeg">
-        <button data-diff="normal" class="${G.diff === 'normal' ? 'on' : ''}">normal</button>
+        <button data-diff="easy" class="${G.diff === 'easy' ? 'on' : ''}">easy</button>
         <button data-diff="hard" class="${G.diff === 'hard' ? 'on' : ''}">hard</button>
       </span>
     </div>`;
@@ -1675,7 +1694,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   function startDaily() {
     const s0 = readStore();
     writeStore(s0); // persist migration once at boot
-    G.diff = (s0.diff === 'hard' || s0.diff === 'normal') ? s0.diff : 'normal';
+    G.diff = (s0.diff === 'hard' || s0.diff === 'easy') ? s0.diff : 'easy';
     G.diffCfg = RE.MODES[G.diff];
     const dayNum = Math.max(1, RE.dayNumber());
     G.dayNum = dayNum;

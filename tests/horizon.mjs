@@ -1,10 +1,10 @@
 // Long-horizon validation: generate and solver-verify every daily board for the
 // next N years. Catches any pathological future day before players do.
-// Run: node tests/horizon.mjs [days] [mode]   (default 3650 ≈ 10 years, mode 'normal')
+// Run: node tests/horizon.mjs [days] [mode]   (default 3650 ≈ 10 years, mode 'easy')
 import * as E from './engine.mjs';
 
 const DAYS = Number(process.argv[2]) || 3650;
-const MC = E.MODES[process.argv[3] || 'normal'];
+const MC = E.MODES[process.argv[3] || 'easy'];
 if (!MC) { console.error('unknown mode', process.argv[3]); process.exit(1); }
 console.log(`mode: ${MC.key} (steps ${MC.steps}, band [${MC.parMin},${MC.parMax}])`);
 const t0 = performance.now();

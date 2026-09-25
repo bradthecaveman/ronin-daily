@@ -49,7 +49,7 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Seventeen commits are waiting. **The next push puts all seventeen live at once**, which is the
+Eighteen commits are waiting. **The next push puts all eighteen live at once**, which is the
 whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes, modal centring and
 panel work landing on roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
 on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
@@ -78,6 +78,8 @@ been deployed.
 - **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
   eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
   under "Design audit findings" below.
+- **`normal` renamed to `easy`, label and key** (2026-09-25). Both difficulties now tagged in
+  the share (`🌸EASY` / `⚔HARD`). Carries a storage migration. See "normal becomes easy".
 - **The share string redesigned** (2026-09-25). Two lines instead of three, a gold square for
   a par run, and moves read as `9 · par 6`. See "The share string".
 - **Fails bar redrawn, end-of-day numbers tightened** (2026-09-25). The fails bar is evenly
@@ -97,7 +99,7 @@ been deployed.
   and the `now.` strand is closed as not reproducible at any real device width. Only the
   button-row stagger is left, and it needs Brad's ruling rather than a fix.
 
-`index.html` was re-synced in all seventeen, so the source and the deployed copy are identical.
+`index.html` was re-synced in all eighteen, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -135,7 +137,17 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-25 (SHARE STRING REDESIGNED AND BUILT, down from three lines to two.
+*Last updated: 2026-09-25 (THE SQUARE BOARD'S `normal` MODE IS NOW `easy`, label and storage
+key both, and the share tags BOTH difficulties: `🌸EASY` / `⚔HARD`, four characters each, so a
+player pasting an easy and a hard result side by side to show progress gets two lines that
+match. Brad's reasons: the flower makes easy feel gentle and hard look like something to
+graduate to, and a planned EPIC mode for the square board fits the same four-character ladder.
+NO BOARD MOVED, and that is proven, not assumed: the seed comes from `mc.salt`, a fixed number,
+never the mode's name, and 40 days per mode fingerprint identically before and after. The salt
+stays 0x4E524D4C forever whatever the mode is called. Cost was a schema v3 storage migration,
+tested against a real pre-rename store: results, hints and the cached board all carried over.
+Round keeps its own easy/normal/hard/brutal ladder. Gate clean.
+Prior: 2026-09-25 (SHARE STRING REDESIGNED AND BUILT, down from three lines to two.
 `RONIN #84 🟨⬜⬜ 6 · par 6` — the squares already said which attempt, so "Rescued on attempt N"
 is gone, and a GOLD square now marks a rescue at par, carrying both which attempt and whether
 it was clean without lengthening the line. Moves read as `9 · par 6`: Brad ruled out a bare
@@ -413,6 +425,83 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## "normal" becomes "easy", DECIDED AND BUILT 2026-09-25
+
+Brad asked what renaming the square board's `normal` mode to `easy` would cost, so the share
+line could tag both difficulties at a matching width. **Decision: rename both the label and
+the storage key, tag both difficulties, and use a flower for easy.** Recorded before building.
+
+### Why it is cheap, and the one thing that made it so
+
+**Boards do not move.** `dailyBoard(dayNum, mc)` is `generateFromSeed(hash32(mc.salt, dayNum), mc)`
+— seeded from **`mc.salt`, a fixed number**, never from the mode's name. `easy` keeps
+`salt: 0x4E524D4C`, so every board, par and past result is untouched. This is what keeps the
+change clear of the epoch/PRNG red line in `CLAUDE.md`. **The salt must stay `0x4E524D4C`
+whatever the mode is ever called** — its `// "NRML"` comment is now historical, not a label.
+
+**The word was only ever visible in one place**, the difficulty segment on the stats panel.
+It is not a site-wide rename: of the five occurrences in the file, four were code.
+
+### What the rename does cost
+
+**A storage migration, and this is the real work.** Player results, streaks and hints live
+under `s.modes.normal`. Renaming the key without moving the data does not merely lose history,
+it throws: `modeState(s).results` would read `.results` of `undefined` on load. `migrate()`
+already exists for the v1→v2 schema move and gains the v3 step: move `modes.normal` to
+`modes.easy`, map `s.diff`, and carry the `boardCache` slot across so the first load after the
+update does not re-run the solver. The board cached under `normal` is still valid because the
+salt did not change.
+
+### The decisions inside it
+
+1. **Both difficulties get a tag**, so `🌸EASY` now appears where the default previously had
+   nothing. This costs about seven characters on the majority of shares, accepted deliberately:
+   **Brad's players paste an easy and a hard result side by side to show progress**, which only
+   reads if both are labelled.
+2. **`EASY` and `HARD` are both four characters**, which is the typographic reason the rename
+   was worth doing rather than just tagging `NORMAL`. **An `EPIC` mode for the square board is
+   planned**, and it fits the same four-character ladder.
+3. **A flower, `🌸`, against the sword.** The first non-martial glyph in a set of swords,
+   lanterns and torii, chosen on purpose: it makes easy read as gentle and is meant to make
+   hard mode look like something to graduate to.
+
+### Verified
+
+- **No board moved, proven rather than assumed.** 40 days of boards per mode were fingerprinted
+  (par, ronin start, every guard position, every stair) before and after the rename, keyed by
+  salt so the comparison survives the name change. Both digests identical:
+  `salt_4e524d4c: 445751e8…`, `salt_524f4e49: c6e0865d…`.
+- **Gate clean under the new name**: rules 20/20, parity 40/40 across `[easy, hard]`, bench 0
+  fallback boards and replay 10/10 in both modes.
+- **The v3 migration works on a real pre-rename store.** Planted one with 22 results, a hint
+  and a cached board under `modes.normal`: all 22 results, the hint and the cache came across
+  to `easy`, `modes.normal` was removed, `s.diff` mapped to `easy`, hard was untouched, and the
+  stats panel rendered the migrated history correctly (22 played, 86%, best 19, 12/5/2/3).
+- **The older v1 path still works**: a store with no `modes` at all still lands its history in
+  hard and sets `diff` to hard.
+- No console errors on any of those loads.
+
+### The two tags do not align to the pixel, and cannot
+
+Letter counts match, which is what was asked. But the marks in front of them do not: measured
+at 14px system UI, **`⚔` renders 8.4px as a narrow monochrome text glyph while `🌸` renders
+14px as a full-width colour emoji**. Whole lines come out 170.4px for hard against 172.5px for
+easy. Forcing the sword to emoji presentation with a variation selector (`⚔️`) makes it 14px
+and the line 175.9px, which is further out, not closer, because `EASY` and `HARD` are
+themselves different widths in a proportional face.
+
+**Left as the plain `⚔`**, which is both the status quo and the closer of the two. The open
+question is not alignment but weight: the flower is a large colour blob next to a small dark
+sword. Raised with Brad, not changed.
+
+### Deliberately not changed
+
+- **`round.html` keeps its own four-mode ladder** (easy / normal / hard / brutal) with its own
+  salts. The two games now disagree about what the names mean; round is hidden, and this
+  follows the 09-24 "leave round" call.
+- **The end-of-day panel's `splashSub` still shows `· ⚔ HARD` and nothing for easy.** Brad's
+  ruling was about the share string. Tag it there too only if asked.
 
 ## The share string, REDESIGNED AND BUILT (2026-09-25)
 

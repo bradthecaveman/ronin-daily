@@ -10,7 +10,9 @@ export const EPOCH_UTC = Date.UTC(2026, 6, 4); // puzzle #1 = 2026-07-04 (local 
 // boards are IDENTICAL to everything published before modes existed (regression-
 // tested in rules.mjs). Do not touch salts/steps/bands of a shipped mode.
 export const MODES = {
-  normal: { key: 'normal', steps: 3, parMin: 6, parMax: 10, salt: 0x4E524D4C }, // "NRML"
+  // renamed from "normal" on 2026-09-25. The salt is what seeds the boards, so it MUST stay
+  // 0x4E524D4C ("NRML") whatever the mode is called, or every past board regenerates.
+  easy:   { key: 'easy',   steps: 3, parMin: 6, parMax: 10, salt: 0x4E524D4C },
   hard:   { key: 'hard',   steps: 2, parMin: 8, parMax: 14, salt: 0x524F4E49 }, // "RONI"
   // epic: reserved — future mechanics (leap/grapple/sight-lines), solver + lab work first
 };

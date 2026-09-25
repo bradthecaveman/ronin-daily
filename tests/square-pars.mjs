@@ -2,7 +2,7 @@
 import { MODES, dailyBoard } from './engine.mjs';
 const DAYS = +(process.argv[2] || 180);
 const fmt = o => Object.keys(o).sort((a, b) => a - b).map(k => `${k}×${o[k]}`).join('  ');
-for (const key of ['normal', 'hard']) {
+for (const key of ['easy', 'hard']) {
   const mc = MODES[key]; const pars = {}; let sum = 0, n = 0, fb = 0;
   for (let d = 1; d <= DAYS; d++) {
     const b = dailyBoard(d, mc);

@@ -106,8 +106,8 @@ const t = (name, cond) => { if (cond) { pass++; } else { fail++; console.error('
 // --- Modes are distinct and both healthy ---
 {
   const h = E.dailyBoard(3, E.MODES.hard);
-  const n = E.dailyBoard(3, E.MODES.normal);
-  t('normal board solvable within its band', n && n.par >= E.MODES.normal.parMin && n.par <= E.MODES.normal.parMax);
+  const n = E.dailyBoard(3, E.MODES.easy);
+  t('easy board solvable within its band', n && n.par >= E.MODES.easy.parMin && n.par <= E.MODES.easy.parMax);
   t('modes produce different boards for the same day',
     JSON.stringify(h.army) !== JSON.stringify(n.army) || h.ronin.r !== n.ronin.r || h.ronin.c !== n.ronin.c);
   t('3-step options are a superset size of 2-step from open ground',
