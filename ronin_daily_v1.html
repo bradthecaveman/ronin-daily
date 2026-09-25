@@ -1661,7 +1661,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   // Paint one frame of a scene. `at` is where the ronin is drawn (fractional during a
   // move, exactly as the real board tweens it); `sel` is the endpoint being considered,
   // which is what makes draw() lay down the route and the guards' answer.
-  function tutPaint(cvs, scene, at, sel) {
+  function tutPaint(cvs, scene, at, sel, moving) {
     const keepCtx = ctx, keepCell = cell, keepPrev = preview, keepFlash = flashT;
     const keepG = {
       busy: G.busy, layout: G.layout, opts: G.opts, phase: G.phase,
@@ -1676,7 +1676,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       ctx = c2; cell = TUT_CELL; flashT = 0;
       G.busy = false; G.phase = 'play'; G.diffCfg = RE.MODES.easy;
       G.layout = scene.layout; G.ronin = scene.ronin;
-      G.opts = RE.roninOptions(scene.ronin, scene.army, scene.layout.stairs, G.diffCfg.steps);
+      G.opts = moving ? [] : RE.roninOptions(scene.ronin, scene.army, scene.layout.stairs, G.diffCfg.steps);
       G.sel = sel || null;
       G.selPath = sel ? RE.pathTo(scene.ronin, scene.army, scene.layout.stairs, sel, G.diffCfg.steps) : null;
       preview = (sel && G.selPath) ? RE.armyReply({ r: sel.r, c: sel.c }, scene.army, scene.layout.stairs) : null;
@@ -1690,17 +1690,30 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     }
   }
 
-  // Slide the ronin between two cells the way the board does, repainting each frame.
-  function tutGlide(pg, from, to, dur, done) {
-    const t0 = performance.now();
-    const tick = (now) => {
-      const k = Math.min(1, (now - t0) / dur);
-      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-      pg.paint({ r: from.r + (to.r - from.r) * e, c: from.c + (to.c - from.c) * e });
-      if (k < 1) tutRaf = requestAnimationFrame(tick);
-      else { tutRaf = null; if (done) done(); }
+  // The route the board would draw for this endpoint, and then walk. executeMove() queues
+  // one 150ms tween per cell of selPath, so the ronin steps through the route rather than
+  // sliding over it; same easing, same per-step duration, so the carousel moves like the game.
+  const TUT_STEP = 150;
+  const tutEase = (k) => (k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+  const tutRoute = (scene, to) =>
+    RE.pathTo(scene.ronin, scene.army, scene.layout.stairs, to, RE.MODES.easy.steps) || [];
+
+  function tutWalk(pg, from, path, done) {
+    let i = 0, cur = { r: from.r, c: from.c };
+    pg.moving = true;
+    const hop = () => {
+      if (i >= path.length) { tutRaf = null; pg.moving = false; if (done) done(); return; }
+      const to = path[i++], a = { r: cur.r, c: cur.c }, t0 = performance.now();
+      const tick = (now) => {
+        const k = Math.min(1, (now - t0) / TUT_STEP), e = tutEase(k);
+        pg.paint({ r: a.r + (to.r - a.r) * e, c: a.c + (to.c - a.c) * e });
+        if (k < 1) { tutRaf = requestAnimationFrame(tick); return; }
+        cur = { r: to.r, c: to.c };
+        tutRaf = requestAnimationFrame(hop);
+      };
+      tutRaf = requestAnimationFrame(tick);
     };
-    tutRaf = requestAnimationFrame(tick);
+    hop();
   }
 
   function tutPage(o) {
@@ -1711,10 +1724,10 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     cvs.width = px * dpr; cvs.height = px * dpr;
     board.appendChild(cvs);
     const pg = { board, cap: o.cap, scene: o.scene };
-    pg.paint = (at, sel) => tutPaint(cvs, o.scene, at, sel === undefined ? pg.sel : sel);
+    pg.paint = (at, sel) => tutPaint(cvs, o.scene, at, sel === undefined ? pg.sel : sel, pg.moving);
     pg.sel = null;
-    pg.still = () => { pg.sel = o.stillSel || null; pg.paint(o.stillAt || null); };
-    pg.play = () => { pg.sel = null; o.play(pg); };
+    pg.still = () => { pg.moving = false; pg.sel = o.stillSel || null; pg.paint(o.stillAt || null); };
+    pg.play = () => { pg.sel = null; pg.moving = false; o.play(pg); };
     return pg;
   }
 
@@ -1733,7 +1746,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
           pg.paint({ r: 7, c: 0 });
           tutRun([{ at: 700, go: () => {
             pg.sel = null;
-            tutGlide(pg, { r: 7, c: 0 }, { r: 4, c: 1 }, 900);
+            tutWalk(pg, { r: 7, c: 0 }, tutRoute(scene, { r: 4, c: 1 }));
           } }]);
         } }]);
       },
@@ -1751,7 +1764,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     });
     return tutPage({
       scene,
-      cap: 'A gate is a tile you <b>stand on</b>, not a gap you pass beside.',
+      cap: 'To cross a wall, step <b>onto the gate</b> itself.',
       stillSel: { r: 7, c: 2 },
       play(pg) {
         pg.paint({ r: 7, c: 1 }, null);
@@ -1760,9 +1773,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
           { at: 700, go: () => { pg.sel = { r: 7, c: 2 }; pg.paint({ r: 7, c: 1 }); } },
           { at: 2600, go: () => {
             pg.sel = null;
-            tutGlide(pg, { r: 7, c: 1 }, { r: 6, c: 2 }, 520, () => {
-              tutRun([{ at: 380, go: () => tutGlide(pg, { r: 6, c: 2 }, { r: 7, c: 2 }, 520) }]);
-            });
+            tutWalk(pg, { r: 7, c: 1 }, tutRoute(scene, { r: 7, c: 2 }));
           } },
         ]);
       },
@@ -1787,7 +1798,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
           { at: 2400, go: () => { pg.sel = { r: 5, c: 1 }; pg.paint({ r: 6, c: 1 }); } },
           { at: 4000, go: () => {
             pg.sel = null;
-            tutGlide(pg, { r: 6, c: 1 }, { r: 5, c: 1 }, 620);
+            tutWalk(pg, { r: 6, c: 1 }, tutRoute(scene, { r: 5, c: 1 }));
           } },
         ]);
       },

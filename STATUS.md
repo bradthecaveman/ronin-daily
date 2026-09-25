@@ -15,7 +15,7 @@ Read this block first. Everything below it is history, kept in full.
 - **RONIN ◯ (the round board) is hidden, not retired.** Unlinked from `index.html` on
   2026-07-24 because it wasn't being played. Still deployed, still reachable by URL, and the
   link is commented out ready to restore. Brad has not given up on it.
-- **The live site is twenty-three commits behind this repo.** Everything below is local only, so
+- **The live site is twenty-four commits behind this repo.** Everything below is local only, so
   roninpuzzles.com still shows the flat pre-visual-pass board and the old share string.
 
 ### No board has changed, and that is proven
@@ -53,9 +53,9 @@ repo and its own domain, `fivesgame.online`. What remains here is a **215-line s
 `tests/lab.mjs` is tracked, modified, and deliberately left unstaged. It has been that way for
 months. **Do not stage it.**
 
-### Committed locally, NOT pushed — twenty-three commits
+### Committed locally, NOT pushed — twenty-four commits
 
-**The next push puts all twenty-three live at once.** That is the whole visual pass plus two days
+**The next push puts all twenty-four live at once.** That is the whole visual pass plus two days
 of panel and share work landing on roninpuzzles.com in one go, not just the most recent piece.
 That is a bigger call than any single item and it is Brad's.
 
@@ -90,7 +90,8 @@ The design-audit fixes and panel work, 09-24 to 09-25:
 | `9aa0dd2` | current-state block rewritten for handover (docs only) |
 | `e7b0dc0` | rules box: 3-line card + how-to-play carousel |
 | `a92b255` | unpushed count corrected (docs only) |
-| *head* | carousel rebuilt on the real renderer |
+| `0239847` | carousel rebuilt on the real renderer |
+| *head* | ronin walks its route; gate caption rewritten |
 
 Count checked with `git log --oneline origin/main..HEAD | wc -l`, not by counting the rows.
 
@@ -136,7 +137,15 @@ on either.
   engine generate identical boards.
 - **Never change a mode's `salt`**, or every past board regenerates.
 
-*Last updated: 2026-09-25 (THE CAROUSEL NOW DRAWS REAL BOARD SECTIONS. Brad saw the
+*Last updated: 2026-09-25 (THE RONIN NOW WALKS THE ROUTE IT DRAWS, and the gate caption
+is plain English. Two faults Brad found in the built version: the piece glided straight to the
+endpoint over the top of the tiles instead of following the marked route, and the endpoint dots
+stayed lit through the move. Both were the carousel not copying `executeMove()`, which queues
+one 150ms tween per cell of `selPath` and empties `G.opts` on commit. The carousel now walks
+`RE.pathTo` at the same cadence, proved by tracking the red disc through the crop. Gate caption
+is now "To cross a wall, step onto the gate itself", picked from three: the old line was not
+clear, and it can be this plain because the board draws the bending route itself. Gate clean.
+Prior: 2026-09-25 (THE CAROUSEL NOW DRAWS REAL BOARD SECTIONS. Brad saw the
 flat CSS-grid version and reversed his own choice: it looked "out of sync visually with what
 the person is going to experience". Each page is now a real 4x4 window onto a real position,
 painted by the game's own `draw()` — one frame with `ctx` pointed at the page's canvas and
@@ -574,6 +583,30 @@ Windows used, all rows 4-7: page 1 cols 0-3 (outer tier and one wall), pages 2 a
 cols 1-4 (outer, wall, middle, wall, inner, with the gate at `(6,2)`).
 
 Boards are 4x4 at 50px, down from 5x5, on Brad's call to save space.
+
+### Two fixes on Brad's review of the built version
+
+**The ronin now walks the route it just drew.** It was gliding straight from start to
+endpoint, over the top of the tiles, ignoring the marked route. `executeMove()`
+(`ronin_daily_v1.html`) queues **one 150ms tween per cell of `selPath`**, so the real ronin
+steps through the route. The carousel now calls `RE.pathTo` for the endpoint and walks that
+list at the same 150ms per step with the same easing, which also removed the hand-chained
+hops on the gate page. Proved by tracking the red disc's centroid through the crop: it holds
+column 0 through `(6,0)` and `(5,0)` before turning to `(4,1)`, where a straight glide would
+have been at column 0.33 and 0.67.
+
+**The endpoint dots now go out while the ronin moves.** `executeMove()` sets `G.opts = []`
+on commit; the carousel was recomputing them every frame, so the dots stayed lit through the
+move. Found while tracking the centroid, because the pips' red was polluting the sample.
+
+**Gate caption rewritten.** *"A gate is a tile you stand on, not a gap you pass beside"* was
+not clear, which Brad flagged. The rule, from `stepLegal`: a step that changes tier is legal
+only if the square you leave **or** the square you land on is a stair. So the gate is a square
+you have to occupy at one end of the crossing step, not a hole in the wall. Stand one square
+to its side and you cannot cross at all, not even diagonally through the doorway. Now reads
+**"To cross a wall, step onto the gate itself."** Brad picked it from three. It can be that
+plain because the board now draws the bending route, so the caption only names what was
+just watched.
 
 **`round.html` is deliberately left behind again**, on Brad's call, consistent with the
 09-24 decision. Its help still carries the same false guard line.
