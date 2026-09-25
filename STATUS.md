@@ -49,7 +49,7 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Fifteen commits are waiting. **The next push puts all fifteen live at once**, which is the
+Seventeen commits are waiting. **The next push puts all seventeen live at once**, which is the
 whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes, modal centring and
 panel work landing on roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
 on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
@@ -78,6 +78,8 @@ been deployed.
 - **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
   eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
   under "Design audit findings" below.
+- **The share string redesigned** (2026-09-25). Two lines instead of three, a gold square for
+  a par run, and moves read as `9 · par 6`. See "The share string".
 - **Fails bar redrawn, end-of-day numbers tightened** (2026-09-25). The fails bar is evenly
   spaced and outlined rather than isolated and filled, and the big numbers sit closer to
   SHARE RESULT.
@@ -95,7 +97,7 @@ been deployed.
   and the `now.` strand is closed as not reproducible at any real device width. Only the
   button-row stagger is left, and it needs Brad's ruling rather than a fix.
 
-`index.html` was re-synced in all fifteen, so the source and the deployed copy are identical.
+`index.html` was re-synced in all seventeen, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -133,7 +135,15 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-25 (FAILS BAR REDRAWN AND THE END-OF-DAY NUMBERS TIGHTENED. The fails
+*Last updated: 2026-09-25 (SHARE STRING REDESIGNED AND BUILT, down from three lines to two.
+`RONIN #84 🟨⬜⬜ 6 · par 6` — the squares already said which attempt, so "Rescued on attempt N"
+is gone, and a GOLD square now marks a rescue at par, carrying both which attempt and whether
+it was clean without lengthening the line. Moves read as `9 · par 6`: Brad ruled out a bare
+`+3` for not anchoring the number, and his own `9/6` was dropped because a slash implies a
+ceiling so an over-par score reads as a mistake. Par is still named on a loss, which honours
+the 09-24 decision and now fits the grammar rather than being an exception. Fixed for free:
+`⚔` no longer means both HARD and perfect. Verified across all five shapes plus the clipboard
+fallback. Gate clean. Prior: 2026-09-25 (FAILS BAR REDRAWN AND THE END-OF-DAY NUMBERS TIGHTENED. The fails
 bar's isolating gap was what made it read as an error, not its colour: it is now evenly spaced
 with the attempt rows and drawn as a 1.5px outline in the same red instead of a vermillion
 fill. The end-of-day stat numbers move up against SHARE RESULT via a `tight` class keyed off
@@ -403,6 +413,56 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## The share string, REDESIGNED AND BUILT (2026-09-25)
+
+Brad's brief: the one-line modifier example in the screens sheet was more elegant than the
+real thing, and "rescued on attempt 1" just writes out what the squares already say. Settled
+over a conversation; the decision was recorded before anything was built, then built.
+
+**Verified live** against all five shapes by driving `shareText()` through each state: par win,
+over-par win, a win on attempt 2, a loss, and hard-with-a-hint. Each produced its intended
+string exactly. The clipboard fallback (breaks swapped for middots) was checked too and reads
+`RONIN #84 🟩⬜⬜ 9 · par 6 · https://roninpuzzles.com/`.
+
+### The format
+
+```
+RONIN #83 🟨⬜⬜ 6 · par 6          rescued at par, first attempt
+RONIN #83 🟩⬜⬜ 9 · par 6          rescued over par, first attempt
+RONIN #83 🟥🟥🟥 par 6              lost
+RONIN #83 ⚔HARD 🟩⬜⬜ 🏮 9 · par 6  hard, and a hint was spent
+https://roninpuzzles.com/
+```
+
+**Two lines, down from three.** The whole result is one line plus the link.
+
+### The four decisions inside it
+
+1. **"Rescued on attempt N" is gone.** It was the squares written out in words. 🟩⬜⬜ already
+   says attempt 1, so the sentence was pure duplication.
+2. **A gold square marks a par run.** Gold is the Emperor's own colour in the board palette.
+   This is the part that earns its place: it carries *which attempt* and *whether it was
+   clean* in a glyph that already exists, so the string gets no longer. Rejected alternatives
+   for the same job: a separate `⭐`/`⛩` appended, and giving par its own fourth square —
+   **the squares row encodes attempts, three slots, and a fourth would break the grammar that
+   makes the silhouette readable.**
+3. **Moves read as `9 · par 6`, not `9/6` and not `+3`.** Brad ruled out the bare delta
+   because it does not anchor the number. `9/6` was his own suggestion and was then dropped:
+   a slash means "out of", which implies a ceiling, so a score above par momentarily reads as
+   a mistake. `9 · par 6` is the phrasing the modal headline already uses and the middot is
+   already the share fallback's separator, so it needs no decoding.
+4. **A par run still spells out `6 · par 6`.** Redundant against the gold square, deliberately:
+   every share then has the same shape and nobody has to re-learn the format.
+
+### Two things this fixed for free
+
+- **The sword collision is gone.** The old string used `⚔` for HARD and `⚔️` for perfect, the
+  same glyph for two unrelated meanings in one line. Perfect is now the gold square, so `⚔`
+  means hard and nothing else.
+- **Par survives on the loss line**, which was the 2026-09-24 decision ("the share keeps par",
+  even though the loss *screen* dropped it). It now fits the grammar instead of being an
+  exception: par is named on every result, and moves appear only when there are any.
 
 ## Statistics panel and the loss screen, BUILT (2026-09-24, SQUARE ONLY)
 

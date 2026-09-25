@@ -1443,7 +1443,12 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   $('modalX').onclick = closeModal;
   $('overlay').onclick = (e) => { if (e.target === $('overlay')) closeModal(); };
 
-  function squaresStr() { return G.squares.map(s => s === 'w' ? '🟩' : s === 'f' ? '🟥' : '⬜').join(''); }
+  // gold for a rescue at par: the square carries both which attempt and whether it was clean,
+  // which is why the string needs no separate "perfect" mark
+  function squaresStr() {
+    const atPar = G.finalMoves != null && G.finalMoves === G.layout.par;
+    return G.squares.map(s => s === 'w' ? (atPar ? '🟨' : '🟩') : s === 'f' ? '🟥' : '⬜').join('');
+  }
   const resDots = () => `<div class="resDots">${G.squares.map(s =>
     `<span class="${s === 'w' ? 'w' : s === 'f' ? 'f' : ''}"></span>`).join('')}</div>`;
   function shareText() {
@@ -1451,11 +1456,9 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const s = readStore();
     const lantern = modeState(s).hints[G.dayNum] ? ' 🏮' : '';
     const tag = G.diff === 'hard' ? ' ⚔HARD' : '';
-    const head = `RONIN #${G.dayNum}${tag} ${squaresStr()}${lantern}`;
-    const line = w >= 0
-      ? `Rescued on attempt ${w + 1} · ${G.finalMoves} moves (par ${G.layout.par})${G.finalMoves === G.layout.par ? ' — perfect ⚔️' : ''}`
-      : `The Emperor waits… (par ${G.layout.par})`;
-    return head + '\n' + line + '\n' + SHARE_URL;
+    // the squares already say which attempt, so the result is moves against par and nothing else
+    const score = w >= 0 ? `${G.finalMoves} · par ${G.layout.par}` : `par ${G.layout.par}`;
+    return `RONIN #${G.dayNum}${tag} ${squaresStr()}${lantern} ${score}\n${SHARE_URL}`;
   }
 
   function calcStats() {
