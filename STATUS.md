@@ -49,7 +49,7 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Fourteen commits are waiting. **The next push puts all fourteen live at once**, which is the
+Fifteen commits are waiting. **The next push puts all fifteen live at once**, which is the
 whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes, modal centring and
 panel work landing on roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
 on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
@@ -78,6 +78,9 @@ been deployed.
 - **Design audit fixes, first two** (2026-09-24). The `attempt 1` stats-modal wrap and all
   eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
   under "Design audit findings" below.
+- **Fails bar redrawn, end-of-day numbers tightened** (2026-09-25). The fails bar is evenly
+  spaced and outlined rather than isolated and filled, and the big numbers sit closer to
+  SHARE RESULT.
 - **Statistics panel and the loss screen** (2026-09-24, square only). Bars aligned, a fails
   bar added, zero bars narrowed, the big numbers moved to Shippori, and par dropped from the
   loss headline. See "Statistics panel and the loss screen".
@@ -92,7 +95,7 @@ been deployed.
   and the `now.` strand is closed as not reproducible at any real device width. Only the
   button-row stagger is left, and it needs Brad's ruling rather than a fix.
 
-`index.html` was re-synced in all fourteen, so the source and the deployed copy are identical.
+`index.html` was re-synced in all fifteen, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -130,7 +133,17 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-24 (THREE DECISIONS, NO CODE. The loss share KEEPS par even though the
+*Last updated: 2026-09-25 (FAILS BAR REDRAWN AND THE END-OF-DAY NUMBERS TIGHTENED. The fails
+bar's isolating gap was what made it read as an error, not its colour: it is now evenly spaced
+with the attempt rows and drawn as a 1.5px outline in the same red instead of a vermillion
+fill. The end-of-day stat numbers move up against SHARE RESULT via a `tight` class keyed off
+`statsHtml(includeDist=false)`, 26px to 20px; the remaining 16px is the reserved
+"copied to clipboard!" line and stays, because losing it would make the panel jump AND
+re-centre on copy. THE SHARE STRING IS UNDER DISCUSSION and nothing has been built: four
+directions put to Brad (squares only / par delta / moves-par ratio / a gold square for a par
+run), plus a real wart found — the string uses the sword glyph for BOTH `⚔HARD` and
+`perfect ⚔️`. Gate clean.
+Prior: 2026-09-24 (THREE DECISIONS, NO CODE. The loss share KEEPS par even though the
 loss screen no longer shows it, and that difference is deliberate. The stats difficulty
 control STAYS a switch rather than becoming a filter: Brad asked for filtering, then reversed
 when it emerged that the segment is the only route to hard mode, so filtering would have
@@ -404,11 +417,14 @@ question that turned out to matter.
    `font-variant-numeric:tabular-nums`. 58px is exact: measured label scroll width is 58px,
    so nothing clips. All four bars now start at the same x, verified.
 2. **A fails bar.** `calcStats()` returns `fails: played - wins`, meaning days finished with
-   no rescue at all. Rendered as a fourth row **after a 10px gap and in `--vermillion`**,
-   which is the red the failed attempt-dots already use, rather than the `--indigo` brick of
-   the attempt bars. Brad's call, over a flush fourth row: the attempt bars answer "when did
-   you win", the fails bar answers "did you win at all", and flush-and-same-colour read as
-   "attempt 4". `maxD` now includes `fails` so all four scale together.
+   no rescue at all. `maxD` now includes `fails` so all four scale together.
+   **Revised 2026-09-25 after Brad saw it.** The first build separated it by a 10px gap and
+   filled it with `--vermillion`; he read that as "too close to what we have and looks like
+   an error". It is now **evenly spaced with the other rows (21px step, measured) and drawn
+   as a 1.5px outline in `--indigo`**, the same red as the attempt bars, with the number in
+   that red rather than white. The rule it is following: it should read as a sibling of the
+   attempt rows that is measuring something else, not as a fault or a fourth attempt.
+   The isolating gap was the part that made it look wrong, not the colour.
 3. **Zero bars are narrower, with the 0 centred.** A zero bar was a percentage-width pill
    (~34px) with the number shoved to its right edge. Zero now takes a **fixed 22px** pill
    with `text-align:center`, measured at 8px of space either side of the glyph.
@@ -420,6 +436,21 @@ question that turned out to matter.
    string). **DECIDED 2026-09-24: leave the share alone.** The two are deliberately different:
    par is noise on the screen of someone who just lost, but it is the tease that makes a
    shared loss worth answering. Do not "tidy" this into consistency.
+
+### The end-of-day numbers sit closer to SHARE RESULT (2026-09-25)
+
+Brad asked to close the gap between the big numbers and the SHARE RESULT button above them.
+`.statgrid` is shared with the Statistics panel, so the tightening is **scoped by the signal
+that already exists**: `statsHtml(includeDist)` is called with `false` only from
+`showEndModal`, so that call now adds a `tight` class. `.statgrid.tight` drops the top margin
+from 14px to 4px.
+
+**Most of the gap was not the margin.** Measured, it was 26px made of three parts: 6px of
+`#shareFeedback` margin, its 16px `min-height`, and the 4px grid margin. The margin is gone,
+giving **20px**. The 16px is the reserved line for "copied to clipboard!" and is **staying**:
+without it the panel changes height when you copy, and since the panel now re-centres on the
+board via a ResizeObserver, that would move the whole thing rather than just grow it. To go
+below 20px means accepting that jump, which is a worse trade. Not done.
 
 ### The difficulty control is a switch, not a filter — CLOSED 2026-09-24, leave it
 

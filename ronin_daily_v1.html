@@ -141,6 +141,8 @@
   .headline{ text-align:center; font-size:16px; margin:2px 0 10px; }
   .headline b{ color:var(--vermillion); }
   .statgrid{ display:flex; justify-content:space-around; text-align:center; margin:14px 0 4px; }
+  /* on the end-of-day panels the numbers follow SHARE RESULT, so they sit up against it */
+  .statgrid.tight{ margin-top:4px; }
   .statgrid .n{ font-family:"Shippori Mincho B1","Iowan Old Style",Palatino,Georgia,serif; font-size:26px; font-weight:700; }
   .statgrid .l{ font-size:11px; color:var(--ink-soft); letter-spacing:1px; text-transform:uppercase; }
   .dist{ margin:10px 0 2px; }
@@ -150,15 +152,18 @@
   .dist .row span:first-child{ white-space:nowrap; flex:none; width:58px; font-variant-numeric:tabular-nums; }
   .dist .bar{ background:var(--indigo); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; min-width:18px; text-align:right; }
   .dist .bar.zero{ text-align:center; padding:2px 0; min-width:0; }
-  .dist .row.fails{ margin-top:10px; }
-  .dist .row.fails .bar{ background:var(--vermillion); }
+  /* failed is a different measure from the attempt rows, so it is drawn as an outline
+     rather than a fill. Same red and same spacing: it should read as a sibling, not a fault */
+  .dist .row.fails .bar{ background:transparent; border:1.5px solid var(--indigo); color:var(--indigo); }
   #countdown{ text-align:center; font-size:13px; color:var(--ink-soft); margin-top:14px; }
   .splashSub{ text-align:center; color:var(--ink-soft); font-size:11.5px; letter-spacing:2.5px; margin:0 0 10px; }
   .resDots{ display:flex; gap:10px; justify-content:center; margin:12px 0 6px; }
   .resDots span{ width:18px; height:18px; border-radius:50%; border:2.5px solid var(--ink-soft); }
   .resDots span.w{ background:var(--win); border-color:var(--win); }
   .resDots span.f{ background:var(--vermillion); border-color:var(--vermillion); }
-  #shareFeedback{ text-align:center; font-size:13px; color:var(--win); min-height:16px; margin-top:6px; font-weight:700; }
+  /* min-height reserves the "copied to clipboard!" line so the panel cannot jump when it
+     appears, which matters more now the panel re-centres on any height change */
+  #shareFeedback{ text-align:center; font-size:13px; color:var(--win); min-height:16px; font-weight:700; }
 </style>
 </head>
 <body>
@@ -1487,7 +1492,7 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
       <div class="row${rowCls}"><span>${label}</span>
       <span class="bar${n ? '' : ' zero'}" style="width:${n ? Math.max(8, 90 * n / maxD) + '%' : '22px'}">${n}</span></div>`;
     return `
-      <div class="statgrid">
+      <div class="statgrid${includeDist ? '' : ' tight'}">
         <div><div class="n">${s.played}</div><div class="l">played</div></div>
         <div><div class="n">${pc}</div><div class="l">win %</div></div>
         <div><div class="n">${s.cur}</div><div class="l">streak</div></div>
