@@ -1472,9 +1472,11 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
     const w = G.squares.indexOf('w');
     const s = readStore();
     const lantern = modeState(s).hints[G.dayNum] ? ' 🏮' : '';
-    // both difficulties are tagged, at a matching four characters: players paste an easy and
-    // a hard result side by side to show progress, which only reads if both are labelled
-    const tag = G.diff === 'hard' ? ' ⚔HARD' : ' 🌸EASY';
+    // Both difficulties are tagged so an easy and a hard result can be pasted one under the
+    // other and still line up. ❀ is a dingbat, not an emoji: it takes one cell like ⚔ and is
+    // ~3px wider, which is exactly what offsets HARD being wider than EASY. An emoji flower
+    // takes two cells and can never align. Re-measure before swapping either glyph.
+    const tag = G.diff === 'hard' ? ' ⚔HARD' : ' ❀EASY';
     // the squares already say which attempt, so the result is moves against par and nothing else
     const score = w >= 0 ? `${G.finalMoves} · par ${G.layout.par}` : `par ${G.layout.par}`;
     return `RONIN #${G.dayNum}${tag} ${squaresStr()}${lantern} ${score}\n${SHARE_URL}`;

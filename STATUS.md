@@ -49,7 +49,7 @@ and `Links/STATUS.md` is the source of truth for it, not this file.
 
 ### Committed locally, NOT pushed
 
-Eighteen commits are waiting. **The next push puts all eighteen live at once**, which is the
+Nineteen commits are waiting. **The next push puts all nineteen live at once**, which is the
 whole visual pass from 09-15 to 09-22 plus the 09-24 design-audit fixes, modal centring and
 panel work landing on roninpuzzles.com in one go, not just the most recent piece of work. That is a bigger call than any single item
 on the list and it is Brad's. It is why the live board still looks flat: none of this has ever
@@ -79,7 +79,7 @@ been deployed.
   eight status-line widows from the 09-18 audit, fixed. See the "Fixed, 2026-09-24" note
   under "Design audit findings" below.
 - **`normal` renamed to `easy`, label and key** (2026-09-25). Both difficulties now tagged in
-  the share (`🌸EASY` / `⚔HARD`). Carries a storage migration. See "normal becomes easy".
+  the share (`❀EASY` / `⚔HARD`). Carries a storage migration. See "normal becomes easy".
 - **The share string redesigned** (2026-09-25). Two lines instead of three, a gold square for
   a par run, and moves read as `9 · par 6`. See "The share string".
 - **Fails bar redrawn, end-of-day numbers tightened** (2026-09-25). The fails bar is evenly
@@ -99,7 +99,7 @@ been deployed.
   and the `now.` strand is closed as not reproducible at any real device width. Only the
   button-row stagger is left, and it needs Brad's ruling rather than a fix.
 
-`index.html` was re-synced in all eighteen, so the source and the deployed copy are identical.
+`index.html` was re-synced in all nineteen, so the source and the deployed copy are identical.
 
 ### Working tree
 
@@ -137,8 +137,14 @@ rather than being fixed piecemeal. Detail in the section below.
 
 ---
 
-*Last updated: 2026-09-25 (THE SQUARE BOARD'S `normal` MODE IS NOW `easy`, label and storage
-key both, and the share tags BOTH difficulties: `🌸EASY` / `⚔HARD`, four characters each, so a
+*Last updated: 2026-09-25 (SHARE TAGS NOW ALIGN WHEN STACKED. The flower emoji left the
+squares 2.16px out of column; the fix was counter-intuitive, because the real mismatch was that
+HARD is 3.4px wider than EASY, so the easy mark had to be WIDER than the sword, not matched to
+it. Making the sword an emoji made it worse. Shipped `❀` (U+2740, a dingbat not an emoji) at
+11.4px against the sword's 8.4px: squares now within 0.43px across four font stacks, EXACT in
+monospace where an emoji's two cells can never align, and it cannot render in colour on any
+platform. Prior: 2026-09-25 (THE SQUARE BOARD'S `normal` MODE IS NOW `easy`, label and storage
+key both, and the share tags BOTH difficulties: `❀EASY` / `⚔HARD`, four characters each, so a
 player pasting an easy and a hard result side by side to show progress gets two lines that
 match. Brad's reasons: the flower makes easy feel gentle and hard look like something to
 graduate to, and a planned EPIC mode for the square board fits the same four-character ladder.
@@ -455,16 +461,17 @@ salt did not change.
 
 ### The decisions inside it
 
-1. **Both difficulties get a tag**, so `🌸EASY` now appears where the default previously had
+1. **Both difficulties get a tag**, so `❀EASY` now appears where the default previously had
    nothing. This costs about seven characters on the majority of shares, accepted deliberately:
    **Brad's players paste an easy and a hard result side by side to show progress**, which only
    reads if both are labelled.
 2. **`EASY` and `HARD` are both four characters**, which is the typographic reason the rename
    was worth doing rather than just tagging `NORMAL`. **An `EPIC` mode for the square board is
    planned**, and it fits the same four-character ladder.
-3. **A flower, `🌸`, against the sword.** The first non-martial glyph in a set of swords,
-   lanterns and torii, chosen on purpose: it makes easy read as gentle and is meant to make
-   hard mode look like something to graduate to.
+3. **A flower against the sword**, the first non-martial glyph in a set of swords, lanterns
+   and torii, chosen on purpose: it makes easy read as gentle and is meant to make hard mode
+   look like something to graduate to. **Shipped as `❀`, a dingbat, not the `🌸` emoji** —
+   see the alignment section below for why the emoji could not line up.
 
 ### Verified
 
@@ -482,18 +489,47 @@ salt did not change.
   hard and sets `diff` to hard.
 - No console errors on any of those loads.
 
-### The two tags do not align to the pixel, and cannot
+### The tags align, and the fix was the opposite of the obvious one — RESOLVED 2026-09-25
 
-Letter counts match, which is what was asked. But the marks in front of them do not: measured
-at 14px system UI, **`⚔` renders 8.4px as a narrow monochrome text glyph while `🌸` renders
-14px as a full-width colour emoji**. Whole lines come out 170.4px for hard against 172.5px for
-easy. Forcing the sword to emoji presentation with a variation selector (`⚔️`) makes it 14px
-and the line 175.9px, which is further out, not closer, because `EASY` and `HARD` are
-themselves different widths in a proportional face.
+The first build paired `🌸EASY` with `⚔HARD` and the columns were out by 2.16px, enough to
+shift the squares when two results are pasted one under the other, which is exactly how Brad's
+players show progress.
 
-**Left as the plain `⚔`**, which is both the status quo and the closer of the two. The open
-question is not alignment but weight: the flower is a large colour blob next to a small dark
-sword. Raised with Brad, not changed.
+**The obvious fix was wrong.** Making the sword a full emoji (`⚔️`, via a variation selector)
+made it *worse*, because the mismatch was never really the glyphs: **`HARD` is 3.4px wider than
+`EASY`** in a proportional face. The easy mark has to be *wider* than the sword to cancel that
+out, and an emoji flower is 14px against the sword's 8.4px — too wide, in the wrong direction
+to help.
+
+**The answer is `❀` (U+2740 WHITE FLORETTE), a dingbat rather than an emoji.** At 11.4px it is
+about 3px wider than `⚔`, which is very nearly the exact compensation needed.
+
+Measured across four font stacks on a complete line, worst-case gap between the two:
+
+| easy mark | system-ui | Helvetica | Segoe/Roboto | monospace | worst |
+|---|---|---|---|---|---|
+| `🌸` (first build) | 2.2 | 3.0 | 3.0 | 5.6 | **5.6px** |
+| `✿` | −0.3 | 0.6 | 0.5 | 0 | 0.6px |
+| **`❀` (shipped)** | **−0.4** | **0.4** | **0.4** | **0** | **0.4px** |
+
+The squares now start within **0.43px** of each other, against 2.16px before, and with equal
+scores the two lines are an identical 31 characters.
+
+**Two reasons a dingbat beats an emoji here, both worth keeping:**
+
+- **In monospace it is exact.** An emoji occupies two cells, so `🌸EASY` can never align with
+  `⚔HARD` in any monospaced context. A dingbat takes one cell, like the sword, so the gap is
+  0 — see the monospace column above.
+- **It cannot turn colour.** `❀` is a Dingbat with no emoji presentation, so it stays
+  monochrome on every platform. That matches the sword's world, which is what Brad asked for.
+
+**One platform risk that remains, and is not ours to fix.** `⚔` (U+2694) *is* in the emoji set
+with default text presentation, so a platform that force-renders it in colour would widen it
+and break the alignment from the other side. `❀` has no such ambiguity. Nothing to do about it
+beyond knowing it.
+
+**Re-measure before swapping either glyph.** The balance is a coincidence of three widths, not
+a property of flowers and swords.
 
 ### Deliberately not changed
 
