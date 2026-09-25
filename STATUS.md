@@ -15,7 +15,7 @@ Read this block first. Everything below it is history, kept in full.
 - **RONIN ◯ (the round board) is hidden, not retired.** Unlinked from `index.html` on
   2026-07-24 because it wasn't being played. Still deployed, still reachable by URL, and the
   link is commented out ready to restore. Brad has not given up on it.
-- **The live site is twenty commits behind this repo.** Everything below is local only, so
+- **The live site is twenty-two commits behind this repo.** Everything below is local only, so
   roninpuzzles.com still shows the flat pre-visual-pass board and the old share string.
 
 ### No board has changed, and that is proven
@@ -53,9 +53,9 @@ repo and its own domain, `fivesgame.online`. What remains here is a **215-line s
 `tests/lab.mjs` is tracked, modified, and deliberately left unstaged. It has been that way for
 months. **Do not stage it.**
 
-### Committed locally, NOT pushed — twenty commits
+### Committed locally, NOT pushed — twenty-two commits
 
-**The next push puts all twenty live at once.** That is the whole visual pass plus two days
+**The next push puts all twenty-two live at once.** That is the whole visual pass plus two days
 of panel and share work landing on roninpuzzles.com in one go, not just the most recent piece.
 That is a bigger call than any single item and it is Brad's.
 
@@ -87,9 +87,14 @@ The design-audit fixes and panel work, 09-24 to 09-25:
 | `d50cd1a` | share string rewritten, gold square for a par run |
 | `73da412` | `normal` renamed `easy`, label and key, plus the migration |
 | `aa887aa` | easy tag swapped to a dingbat so the share lines align |
-| *next* | rules box rewritten: 3-line card + how-to-play carousel |
+| `9aa0dd2` | current-state block rewritten for handover (docs only) |
+| `e7b0dc0` | rules box: 3-line card + how-to-play carousel |
+| *head* | unpushed count corrected to twenty-two (docs only) |
 
-`index.html` was re-synced in all twenty, so source and deployed copy are identical.
+Count checked with `git log --oneline origin/main..HEAD | wc -l`, not by counting the rows.
+
+`index.html` was re-synced in every commit that touched it, so source and deployed copy
+are identical.
 
 ### Working tree
 
