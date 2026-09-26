@@ -112,13 +112,24 @@ Clean apart from `tests/lab.mjs`, as above.
 
 ### Next up
 
-1. **Watch for anything odd on the live site**, especially a player opening the game and
+1. **Brad to confirm the par replay works** on a real device: win over par, hit "HOW TO GET TO
+   PAR". It could not be verified here, for the reasons in the flourish-bugs section.
+2. **Watch for anything odd on the live site**, especially a player opening the game and
    finding their stats missing. That would be the schema v3 migration, and it is the only part
-   of this release that edits data someone already had.
-2. **Gate legibility on the board** — the one rules finding this session did NOT close. The
+   of the 09-25 release that edits data someone already had.
+3. **Gate legibility on the board** — the one rules finding this session did NOT close. The
    carousel now teaches the gate rule; whether the gates read clearly on the real board is a
    separate drawing question and is still open.
-3. **Brad has one more topic** to open in a fresh session as of 2026-09-25. Not yet named.
+4. **The difficulty switch is hard to find.** Brad went looking for it on 09-26 and
+   concluded it was gone; it was on screen the whole time. Measured: the inactive option is
+   **11px at 3.58:1**, the tap target is **52x19px** against a 44x44 guideline, and it sits
+   under 26px stat numbers, one row lower than before because the `failed` bar landed with the
+   release. **Left alone for now on Brad's call** ("see if anyone else has the issue"). Three
+   options were put to him and none picked: enlarge it in place, move it to the top of the
+   stats panel, or add it to the end-of-day screen. Not a cache problem: every version ever
+   live contains the control, there is no service worker, and the score and the switch are
+   built in the same template literal, so seeing one means the other was there.
+5. **Brad has one more topic** to open in a fresh session as of 2026-09-25. Not yet named.
 
 **The design-audit list is clear** and **the visual pass is finished.** Nothing is outstanding
 on either.
@@ -148,7 +159,17 @@ on either.
   engine generate identical boards.
 - **Never change a mode's `salt`**, or every past board regenerates.
 
-*Last updated: 2026-09-25 (PUSHED. ALL TWENTY-FOUR COMMITS ARE LIVE at roninpuzzles.com,
+*Last updated: 2026-09-26 (TWO WIN-FLOURISH BUGS FIXED, both found by Brad on the live
+site the morning after the release, both from `fx` never being cleared after a win. The par
+replay drew onto a canvas the flourish still owned, so the status line counted over a frozen red
+board; and a tap after dismissing the win screen brought it straight back. Two logic lines:
+`clearFlourish()` at the top of `revealSolution()`, and `fxModalTimer` added to the
+`skipFlourish()` guard. NEITHER WAS REPRODUCIBLE in the preview pane, which holds the page
+hidden so the flourish never plays, rAF never fires and tweens never settle; the fixes rest on
+reading the code and Brad confirms on a device. Also investigated and NOT a bug: the difficulty
+switch is present and working, it is just 11px at 3.58:1 in a 52x19px target, and Brad went
+looking and could not find it. Left alone on his call. Gate clean, engine identical to live.
+Prior: 2026-09-25 (PUSHED. ALL TWENTY-FOUR COMMITS ARE LIVE at roninpuzzles.com,
 ending a backlog that had been stacking since 09-15: the full visual pass, the stats and share
 work, the difficulty rename with its storage migration, and the new rules box with the
 carousel. Verified rather than assumed — waited for the Pages build, then fetched both
@@ -486,6 +507,33 @@ own `CNAME` file), and it went green. HTTPS enforce + first-visit confirmation w
 Brad's side. The github.io URL 301-redirects to the domain, so links already shared keep working.
 Note: moving origin reset localStorage-based streaks — done now while the player base is ~nil, as
 planned.
+
+## Two win-flourish bugs found live, FIXED 2026-09-26
+
+Both reported by Brad playing the real site the morning after the release, and both come from
+the same root: **`fx` is set when you win and is never cleared except by a new board.**
+
+`loop()` is `if (fx) drawWinFrame(now); else draw(now);`, and `drawWinFrame` clamps its
+progress at 1, so once the flourish settles it holds that frozen frame for the rest of the day.
+
+**1. "HOW TO GET TO PAR" replayed onto a board that could not repaint.** Brad finished hard in
+16 against par 13, hit the button, and got the counting status line over a static red victory
+screen. The replay was working perfectly in state; it just had no canvas. `revealSolution()`
+now calls `clearFlourish()` before it starts. Harmless on the loss path, where `fx` is never set.
+
+**2. A tap brought the win screen back after it had been dismissed.** `skipFlourish()` only
+checked `!fx || modalOpen()`, so once the modal had been shown and closed, any tap on the board
+re-opened it, because as far as it knew there was still a flourish to skip. It now also requires
+`fxModalTimer`, which is null once the end modal has appeared. The intended behaviour, tapping
+to cut the flourish short before the modal arrives, is untouched: the timer is non-null then.
+
+**Neither could be reproduced in the preview pane, and the fixes rest on reading the code.**
+The pane holds the page `document.hidden`, which breaks three things at once: `finalizeDay()
+deliberately skips the flourish when hidden, `requestAnimationFrame` never fires so nothing
+paints, and `waitIdle()` never resolves because tweens only advance inside a frame. Every route
+tried either exercised a path that never ran or timed out. **If a flourish bug is ever suspected
+again, do not try to reproduce it in the pane — it cannot render this page.** Brad confirms on a
+real device.
 
 ## The rules box — DECIDED 2026-09-25, build follows
 

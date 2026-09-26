@@ -1236,7 +1236,10 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   // is held through the whole run. The guard matters: without it the very tap that won the
   // game bleeds through and cancels the flourish it just triggered.
   function skipFlourish() {
-    if (!fx || modalOpen()) return false;
+    // fxModalTimer is null once the end modal has been shown, and fx stays set for the rest
+    // of the day. Without that check a tap on the board AFTER dismissing the win screen
+    // brought it straight back, because there was still a flourish to "skip".
+    if (!fx || modalOpen() || !fxModalTimer) return false;
     if (performance.now() - fx.t0 < FX.skipGuard) return false;
     clearTimeout(fxModalTimer); fxModalTimer = null;
     fx.t0 = performance.now() - FX.dur;            // snap to the settled frame, do not freeze mid-wipe
@@ -1385,6 +1388,11 @@ const practiceBoard = (seed, mc) => generateFromSeed(hash32(hash32(0x50524143, m
   async function revealSolution(won) {
     if (G.phase !== 'done' || G.busy || G.revealing) return;
     G.revealing = true; G.busy = true;
+    // The win flourish owns the canvas for as long as fx is set: loop() draws drawWinFrame
+    // instead of draw(), and drawWinFrame holds its settled frame forever. Without this the
+    // replay runs correctly in state and in the status line while the board stays a frozen
+    // red snapshot of the winning position. Harmless on the loss path, where fx is never set.
+    clearFlourish();
     closeModal();
     G.ronin = { ...G.layout.ronin };
     G.army = G.layout.army.map(p => ({ ...p }));
